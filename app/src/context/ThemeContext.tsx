@@ -406,7 +406,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
             // Separate gym-wide settings from user-specific settings
             const gymWideKeys: (keyof GymSettings)[] = [
-                'academy_name', 'logo_url', 'gym_address', 'gym_phone'
+                'academy_name', 'logo_url', 'gym_address', 'gym_phone',
+                'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color'
             ];
 
             const userSpecificKeys: (keyof GymSettings)[] = [
@@ -415,8 +416,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 'search_icon_color', 'search_bg_color', 'search_border_color', 'search_text_color',
                 'hover_color', 'hover_border_color', 'input_bg_color', 'clock_position',
                 'clock_integration', 'weather_integration', 'language', 'premium_badge_color',
-                'brand_label_color', 'login_bg_url', 'login_logo_url', 'login_card_opacity',
-                'login_card_color'
+                'brand_label_color'
             ];
 
             // Build gym_settings payload

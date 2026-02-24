@@ -204,6 +204,25 @@ export default function Settings() {
         }
     };
 
+    const handleSaveLoginCustomization = async () => {
+        setLoading(true);
+        try {
+            await updateSettings({
+                login_bg_url: draftSettings.login_bg_url,
+                login_logo_url: draftSettings.login_logo_url,
+                login_card_opacity: draftSettings.login_card_opacity,
+                login_card_color: draftSettings.login_card_color,
+                academy_name: draftSettings.academy_name
+            });
+            toast.success("Login page settings saved successfully");
+        } catch (error: any) {
+            console.error('Failed to save login settings:', error);
+            toast.error(error.message || 'Failed to save login settings');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setProfileLoading(true);
@@ -790,9 +809,11 @@ export default function Settings() {
                                     </div>
 
                                     <button
-                                        onClick={handleSaveTheme}
-                                        className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-amber-500/20 mt-4"
+                                        onClick={handleSaveLoginCustomization}
+                                        disabled={loading}
+                                        className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-amber-500/20 mt-4 flex items-center justify-center gap-2"
                                     >
+                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                         Save Login Page Design
                                     </button>
                                 </div>
