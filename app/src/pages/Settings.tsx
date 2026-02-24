@@ -697,130 +697,199 @@ export default function Settings() {
                                     Login Page Customization
                                 </h2>
 
-                                <div className="space-y-6">
-                                    {/* Login Background */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Login Background</label>
-                                        <div className="relative group/upload h-32 rounded-2xl overflow-hidden border border-white/10 bg-black/40">
-                                            {draftSettings.login_bg_url ? (
-                                                <img src={draftSettings.login_bg_url} alt="Login Background" className="w-full h-full object-cover opacity-60" />
-                                            ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                                                    <Layout className="w-8 h-8 text-white/10" />
-                                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">No Custom Background</span>
-                                                </div>
-                                            )}
-                                            <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/upload:opacity-100 transition-all flex items-center justify-center cursor-pointer">
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (!file) return;
-                                                        setUploading(true);
-                                                        try {
-                                                            const fileExt = file.name.split('.').pop();
-                                                            const fileName = `login_bg_${Math.random().toString(36).substring(7)}.${fileExt}`;
-                                                            const { data, error } = await supabase.storage.from('logos').upload(fileName, file);
-                                                            if (error) throw error;
-                                                            const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
-                                                            setDraftSettings(prev => ({ ...prev, login_bg_url: publicUrl }));
-                                                            toast.success('Background uploaded');
-                                                        } catch (err: any) {
-                                                            toast.error(err.message || 'Upload failed');
-                                                        } finally {
-                                                            setUploading(false);
-                                                        }
-                                                    }}
-                                                />
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <Upload className="w-5 h-5 text-white" />
-                                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Change Background</span>
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* Login Logo */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Login Logo</label>
-                                        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
-                                                {draftSettings.login_logo_url ? (
-                                                    <img src={draftSettings.login_logo_url} alt="Login Logo" className="w-full h-full object-contain" />
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {/* Controls Column */}
+                                    <div className="space-y-6">
+                                        {/* Login Background */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Login Background</label>
+                                            <div className="relative group/upload h-32 rounded-2xl overflow-hidden border border-white/10 bg-black/40">
+                                                {draftSettings.login_bg_url ? (
+                                                    <img src={draftSettings.login_bg_url} alt="Login Background" className="w-full h-full object-cover opacity-60" />
                                                 ) : (
-                                                    <Camera className="w-6 h-6 text-white/20" />
+                                                    <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                                        <Layout className="w-8 h-8 text-white/10" />
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">No Custom Background</span>
+                                                    </div>
                                                 )}
+                                                <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/upload:opacity-100 transition-all flex items-center justify-center cursor-pointer">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+                                                            setUploading(true);
+                                                            try {
+                                                                const fileExt = file.name.split('.').pop();
+                                                                const fileName = `login_bg_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                                                const { data, error } = await supabase.storage.from('logos').upload(fileName, file);
+                                                                if (error) throw error;
+                                                                const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
+                                                                setDraftSettings(prev => ({ ...prev, login_bg_url: publicUrl }));
+                                                                toast.success('Background uploaded');
+                                                            } catch (err: any) {
+                                                                toast.error(err.message || 'Upload failed');
+                                                            } finally {
+                                                                setUploading(false);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <Upload className="w-5 h-5 text-white" />
+                                                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Change Background</span>
+                                                    </div>
+                                                </label>
                                             </div>
-                                            <label className="flex-1 cursor-pointer group">
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (!file) return;
-                                                        setUploading(true);
-                                                        try {
-                                                            const fileExt = file.name.split('.').pop();
-                                                            const fileName = `login_logo_${Math.random().toString(36).substring(7)}.${fileExt}`;
-                                                            const { data, error } = await supabase.storage.from('logos').upload(fileName, file);
-                                                            if (error) throw error;
-                                                            const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
-                                                            setDraftSettings(prev => ({ ...prev, login_logo_url: publicUrl }));
-                                                            toast.success('Logo uploaded');
-                                                        } catch (err: any) {
-                                                            toast.error(err.message || 'Upload failed');
-                                                        } finally {
-                                                            setUploading(false);
-                                                        }
-                                                    }}
-                                                />
-                                                <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-center">
-                                                    <span className="text-[9px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">Change Logo</span>
+                                        </div>
+
+                                        {/* Login Logo */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Login Logo</label>
+                                            <div className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                                                <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                                                    {draftSettings.login_logo_url ? (
+                                                        <img src={draftSettings.login_logo_url} alt="Login Logo" className="w-full h-full object-contain" />
+                                                    ) : (
+                                                        <Camera className="w-6 h-6 text-white/20" />
+                                                    )}
                                                 </div>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* Card Customization */}
-                                    <div className="grid grid-cols-1 gap-4 pt-4 border-t border-white/5">
-                                        <PremiumColorPicker
-                                            label="Card Color"
-                                            value={draftSettings.login_card_color || '#000000'}
-                                            onChange={(val) => setDraftSettings({ ...draftSettings, login_card_color: val })}
-                                        />
-                                        <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                            <div className="flex justify-between">
-                                                <label className="text-[9px] text-white/60 font-black uppercase tracking-widest">Card Opacity</label>
-                                                <span className="text-[9px] text-amber-500 font-bold">{Math.round((draftSettings.login_card_opacity || 0.6) * 100)}%</span>
+                                                <label className="flex-1 cursor-pointer group">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+                                                            setUploading(true);
+                                                            try {
+                                                                const fileExt = file.name.split('.').pop();
+                                                                const fileName = `login_logo_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                                                const { data, error } = await supabase.storage.from('logos').upload(fileName, file);
+                                                                if (error) throw error;
+                                                                const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
+                                                                setDraftSettings(prev => ({ ...prev, login_logo_url: publicUrl }));
+                                                                toast.success('Logo uploaded');
+                                                            } catch (err: any) {
+                                                                toast.error(err.message || 'Upload failed');
+                                                            } finally {
+                                                                setUploading(false);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-center">
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">Change Logo</span>
+                                                    </div>
+                                                </label>
                                             </div>
-                                            <input
-                                                type="range"
-                                                min="0.1"
-                                                max="1"
-                                                step="0.05"
-                                                value={draftSettings.login_card_opacity || 0.6}
-                                                onChange={(e) => setDraftSettings({ ...draftSettings, login_card_opacity: parseFloat(e.target.value) })}
-                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                        </div>
+
+                                        {/* Card Styles */}
+                                        <div className="space-y-4 pt-4 border-t border-white/5">
+                                            <PremiumColorPicker
+                                                label="Card Color"
+                                                value={draftSettings.login_card_color || '#000000'}
+                                                onChange={(val) => setDraftSettings({ ...draftSettings, login_card_color: val })}
                                             />
+                                            <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                                <div className="flex justify-between">
+                                                    <label className="text-[9px] text-white/60 font-black uppercase tracking-widest">Card Opacity</label>
+                                                    <span className="text-[9px] text-amber-500 font-bold">{Math.round((draftSettings.login_card_opacity || 0.6) * 100)}%</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="0.1"
+                                                    max="1"
+                                                    step="0.05"
+                                                    value={draftSettings.login_card_opacity || 0.6}
+                                                    onChange={(e) => setDraftSettings({ ...draftSettings, login_card_opacity: parseFloat(e.target.value) })}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={handleSaveLoginCustomization}
-                                        disabled={loading}
-                                        className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-amber-500/20 mt-4 flex items-center justify-center gap-2"
-                                    >
-                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                        Save Login Page Design
-                                    </button>
-                                </div>
-                            </div>
+                                    {/* Preview Column */}
+                                    <div className="flex flex-col gap-3">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2 text-center lg:text-left">Live Preview</label>
+                                        <div className="flex-1 relative min-h-[300px] lg:min-h-0 aspect-[9/16] lg:aspect-auto rounded-[2rem] overflow-hidden border border-white/10 bg-black shadow-2xl">
+                                            {/* Preview BG */}
+                                            <div
+                                                className="absolute inset-0 bg-cover bg-center transition-all duration-700"
+                                                style={{ backgroundImage: `url('${draftSettings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg"}?t=${Date.now()}')` }}
+                                            >
+                                                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+                                            </div>
 
-                            <SubscriptionPlansManager />
+                                            {/* Preview Content */}
+                                            <div className="relative h-full flex flex-col items-center justify-center p-6 text-center">
+                                                {/* Logo */}
+                                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden flex items-center justify-center bg-black/20 backdrop-blur-md border border-white/10 mb-4">
+                                                    <img
+                                                        src={draftSettings.login_logo_url || "/logo.png"}
+                                                        className="w-full h-full object-contain opacity-80"
+                                                        style={{ clipPath: 'circle(50%)' }}
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = "/logo.png";
+                                                            console.warn("Preview logo failed to load, falling back to default.");
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* Card Preview */}
+                                                <div
+                                                    className="w-full max-w-[180px] rounded-[1.5rem] border border-white/10 p-4 shadow-2xl transition-all duration-500"
+                                                    style={{
+                                                        backgroundColor: `${draftSettings.login_card_color || '#000000'}${Math.round((draftSettings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}`,
+                                                        backdropFilter: 'blur(10px)'
+                                                    }}
+                                                >
+                                                    <div className="text-[7px] font-black text-white uppercase tracking-[0.2em] mb-1 truncate leading-tight">
+                                                        {draftSettings.academy_name || 'Healy Gymnastic'}
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-2 mb-3">
+                                                        <div className="h-[0.5px] w-4 bg-amber-500/30"></div>
+                                                        <span className="text-amber-500 text-[4px] font-black uppercase tracking-[0.4em]">Academy</span>
+                                                        <div className="h-[0.5px] w-4 bg-amber-500/30"></div>
+                                                    </div>
+
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="h-2 w-full bg-white/5 rounded-md border border-white/5"></div>
+                                                        <div className="h-2 w-full bg-white/5 rounded-md border border-white/5"></div>
+                                                    </div>
+
+                                                    <div className="h-4 w-full bg-amber-500/10 rounded-full border border-amber-500/20 flex items-center justify-center">
+                                                        <span className="text-[4px] text-amber-500 font-black uppercase tracking-widest">Login</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-4 flex flex-col items-center gap-1.5">
+                                                    <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[5px] text-white/40 font-black uppercase tracking-widest">
+                                                        Language Switcher
+                                                    </div>
+                                                    <span className="text-[4px] text-white/20 font-black uppercase tracking-widest">© 2026 Healy Academy</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500/90 text-[8px] font-black text-black shadow-lg backdrop-blur-md">LIVE PREVIEW</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleSaveLoginCustomization}
+                                    disabled={loading}
+                                    className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-amber-500/20 mt-4 flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    Save Login Page Design
+                                </button>
+                            </div>
                         </div>
+
+                        <SubscriptionPlansManager />
                     </div>
                 )}
 
@@ -896,7 +965,7 @@ export default function Settings() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
 

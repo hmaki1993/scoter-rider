@@ -47,6 +47,13 @@ export default function Login() {
     const logoPath = settings.login_logo_url || "/logo.png";
     const bgPath = settings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
 
+    console.log('Login Page Settings:', {
+        login_logo_url: settings.login_logo_url,
+        login_bg_url: settings.login_bg_url,
+        logoPath,
+        bgPath
+    });
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -216,6 +223,12 @@ export default function Login() {
                         <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">
                             © 2026 Healy Academy
                         </span>
+
+                        {/* Diagnostic Trace - Temporary for Troubleshooting */}
+                        <div className="fixed bottom-1 right-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded border border-white/5 text-[5px] text-white/20 font-mono z-[9999] pointer-events-none flex gap-2">
+                            <span>ACADEMY: {settings.academy_name?.substring(0, 8) || 'NULL'}</span>
+                            <span>BG: {settings.login_bg_url ? 'CUSTOM' : 'SYSTEM'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
