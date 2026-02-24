@@ -22,6 +22,7 @@ export default function PublicRegistration() {
     const [success, setSuccess] = useState(false);
     const [coaches, setCoaches] = useState<{ id: string, full_name: string, specialty: string }[]>([]);
     const [plans, setPlans] = useState<{ id: string, name: string, price: number, duration_months: number }[]>([]);
+    const [logoUrl, setLogoUrl] = useState<string>('/logo_recovered.png');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -45,12 +46,14 @@ export default function PublicRegistration() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [coachesRes, plansRes] = await Promise.all([
+            const [coachesRes, plansRes, settingsRes] = await Promise.all([
                 supabase.from('coaches').select('id, full_name, specialty').order('full_name'),
-                supabase.from('subscription_plans').select('*')
+                supabase.from('subscription_plans').select('*'),
+                supabase.from('gym_settings').select('logo_url').maybeSingle()
             ]);
             if (coachesRes.data) setCoaches(coachesRes.data);
             if (plansRes.data) setPlans(plansRes.data);
+            if (settingsRes.data?.logo_url) setLogoUrl(settingsRes.data.logo_url);
         };
         fetchData();
     }, []);
@@ -134,7 +137,8 @@ export default function PublicRegistration() {
                     training_days: formData.training_days,
                     training_schedule: formData.training_schedule,
                     is_active: true,
-                    gender: formData.gender
+                    gender: formData.gender,
+                    training_type: formData.training_type, // Added missing field
                 })
                 .select('id')
                 .single();
@@ -308,9 +312,9 @@ export default function PublicRegistration() {
 
             {/* Header / Logo */}
             <div className="relative z-10 mb-12 text-center scale-90 md:scale-100">
-                <div className="relative inline-block group mb-8">
-                    <div className="absolute -inset-6 bg-gradient-to-r from-[#D4AF37]/20 to-transparent rounded-full blur-2xl opacity-40 group-hover:opacity-100 transition duration-1000"></div>
-                    <img src="/logo_recovered.png" alt="Healy Academy" className="relative h-32 w-auto object-contain drop-shadow-2xl brightness-110" />
+                <div className="flex justify-center mb-8 relative">
+                    <div className="absolute -inset-10 bg-primary/20 rounded-full blur-[60px] animate-pulse"></div>
+                    <img src={logoUrl} alt="Healy Academy" className="relative h-32 w-auto object-contain drop-shadow-2xl brightness-110" />
                 </div>
                 <h2 className="text-5xl font-black text-white uppercase tracking-tight premium-gradient-text-mind leading-tight">
                     Join The Legacy

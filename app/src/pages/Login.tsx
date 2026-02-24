@@ -110,31 +110,33 @@ export default function Login() {
             <div className="w-full max-w-md relative z-10 group/page scale-90 md:scale-100 -mt-8 md:mt-0">
 
                 {/* Prominent Logo - Faded as requested */}
-                <div className="flex justify-center mb-8 relative group">
-                    <div className="relative">
-                        <div className="absolute inset-[-30px] bg-[#D4AF37]/10 blur-3xl rounded-full opacity-40 group-hover:opacity-80 transition-opacity duration-700"></div>
-                        <div
-                            className="w-20 h-20 md:w-36 md:h-36 rounded-full overflow-hidden flex items-center justify-center relative z-10 transition-transform duration-500"
-                            style={{
-                                transform: `translate(${settings.login_logo_x_offset || 0}px, ${settings.login_logo_y_offset || 0}px) scale(${settings.login_logo_scale || 1.0})`
-                            }}
-                        >
-                            <img
-                                src={logoPath}
-                                alt="Healy Academy"
-                                className="w-full h-full object-contain opacity-100 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl mix-blend-screen"
-                                style={{ clipPath: 'circle(50%)' }}
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                {settings.login_show_logo !== false && (
+                    <div className="flex justify-center mb-8 relative group">
+                        <div className="relative">
+                            <div className="absolute inset-[-30px] bg-[#D4AF37]/10 blur-3xl rounded-full opacity-40 group-hover:opacity-80 transition-opacity duration-700"></div>
+                            <div
+                                className="w-20 h-20 md:w-36 md:h-36 rounded-full overflow-hidden flex items-center justify-center relative z-10 transition-transform duration-500"
+                                style={{
+                                    transform: `translate(${settings.login_logo_x_offset || 0}px, ${settings.login_logo_y_offset || 0}px) scale(${settings.login_logo_scale || 1.0})`
                                 }}
-                            />
-                        </div>
-                        <div className="hidden w-24 h-24 rounded-full border border-[#D4AF37]/20 bg-black/40 backdrop-blur-md flex items-center justify-center relative z-10">
-                            <Award className="w-12 h-12 text-[#D4AF37]/30" />
+                            >
+                                <img
+                                    src={logoPath}
+                                    alt="Healy Academy"
+                                    className="w-full h-full object-contain opacity-100 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl mix-blend-screen"
+                                    style={{ clipPath: 'circle(50%)' }}
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    }}
+                                />
+                            </div>
+                            <div className="hidden w-24 h-24 rounded-full border border-[#D4AF37]/20 bg-black/40 backdrop-blur-md flex items-center justify-center relative z-10">
+                                <Award className="w-12 h-12 text-[#D4AF37]/30" />
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Login Card - Ultra Compact & Responsive */}
                 {/* Login Card - Guaranteed Visibility with Inline 5% Transparency */}
@@ -152,15 +154,21 @@ export default function Login() {
 
                     {/* Header - Inside Card */}
                     <div className="text-center mb-6">
-                        <h1 className="text-xl font-black text-white tracking-[0.3em] uppercase mb-1">
+                        <h1
+                            className="text-xl font-black tracking-[0.3em] uppercase mb-1"
+                            style={{ color: settings.login_text_color || '#ffffff' }}
+                        >
                             {settings.academy_name || 'Healy Gymnastic'}
                         </h1>
                         <div className="flex items-center justify-center gap-4">
-                            <div className="h-[1px] w-8 bg-[#D4AF37]/30"></div>
-                            <span className="text-[#D4AF37] text-[9px] font-black uppercase tracking-[0.7em] opacity-80">
+                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: settings.login_accent_color || '#D4AF37' }}></div>
+                            <span
+                                className="text-[9px] font-black uppercase tracking-[0.7em] opacity-80"
+                                style={{ color: settings.login_accent_color || '#D4AF37' }}
+                            >
                                 Academy
                             </span>
-                            <div className="h-[1px] w-8 bg-[#D4AF37]/30"></div>
+                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: settings.login_accent_color || '#D4AF37' }}></div>
                         </div>
                     </div>
 
@@ -182,9 +190,12 @@ export default function Login() {
                                 dir="ltr"
                                 spellCheck={false}
                                 autoComplete="off"
-                                className="w-full px-8 py-3.5 bg-black/40 border-2 border-[#D4AF37] md:border md:border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37] outline-none transition-all text-white text-sm font-bold shadow-none"
+                                className="w-full px-8 py-3.5 bg-black/40 border-2 rounded-2xl outline-none transition-all text-white text-sm font-bold shadow-none"
+                                style={{ borderColor: `${settings.login_accent_color || '#D4AF37'}33` }}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onFocus={(e) => e.target.style.borderColor = settings.login_accent_color || '#D4AF37'}
+                                onBlur={(e) => e.target.style.borderColor = `${settings.login_accent_color || '#D4AF37'}33`}
                             />
                         </div>
 
@@ -199,9 +210,12 @@ export default function Login() {
                                 dir="ltr"
                                 spellCheck={false}
                                 autoComplete="off"
-                                className="w-full px-8 py-3.5 bg-black/40 border-2 border-[#D4AF37] md:border md:border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37] outline-none transition-all text-white text-sm font-bold shadow-none"
+                                className="w-full px-8 py-3.5 bg-black/40 border-2 rounded-2xl outline-none transition-all text-white text-sm font-bold shadow-none"
+                                style={{ borderColor: `${settings.login_accent_color || '#D4AF37'}33` }}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                onFocus={(e) => e.target.style.borderColor = settings.login_accent_color || '#D4AF37'}
+                                onBlur={(e) => e.target.style.borderColor = `${settings.login_accent_color || '#D4AF37'}33`}
                             />
                         </div>
 
@@ -209,7 +223,19 @@ export default function Login() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black text-[#D4AF37] border border-[#D4AF37]/40 shadow-xl hover:bg-[#D4AF37]/5 transition-all active:scale-[0.98] group/btn overflow-hidden"
+                            className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black border shadow-xl transition-all active:scale-[0.98] group/btn overflow-hidden"
+                            style={{
+                                color: settings.login_accent_color || '#D4AF37',
+                                borderColor: `${settings.login_accent_color || '#D4AF37'}66`
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = `${settings.login_accent_color || '#D4AF37'}1a`;
+                                e.currentTarget.style.borderColor = settings.login_accent_color || '#D4AF37';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'black';
+                                e.currentTarget.style.borderColor = `${settings.login_accent_color || '#D4AF37'}66`;
+                            }}
                         >
                             <span className="relative z-10 flex items-center justify-center gap-3">
                                 {loading ? (
@@ -229,7 +255,15 @@ export default function Login() {
 
                         <button
                             onClick={toggleLanguage}
-                            className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 text-white hover:text-[#D4AF37] hover:border-[#D4AF37] transition-all text-[9px] font-black uppercase tracking-[0.3em]"
+                            className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 text-white transition-all text-[9px] font-black uppercase tracking-[0.3em]"
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.color = settings.login_accent_color || '#D4AF37';
+                                e.currentTarget.style.borderColor = settings.login_accent_color || '#D4AF37';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'white';
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                            }}
                         >
                             <Globe className="w-3.5 h-3.5" />
                             {i18n.language === 'en' ? 'Switch to Arabic' : 'Switch to English'}

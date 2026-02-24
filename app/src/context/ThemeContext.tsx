@@ -45,6 +45,9 @@ export interface GymSettings {
     login_card_y_offset?: number;
     login_card_border_color?: string;
     login_card_scale?: number;
+    login_show_logo?: boolean;
+    login_text_color?: string;
+    login_accent_color?: string;
 }
 
 export const applySettingsToRoot = (settings: GymSettings) => {
@@ -178,7 +181,10 @@ export const defaultSettings: GymSettings = {
     login_bg_url: '/Tom Roberton Images _ Balance-and-Form _ 2.jpg',
     login_logo_url: '/logo.png',
     login_card_opacity: 0.6,
-    login_card_color: '#000000'
+    login_card_color: '#000000',
+    login_show_logo: true,
+    login_text_color: '#ffffff',
+    login_accent_color: '#D4AF37'
 };
 
 // Keys that are shared across the entire gym
@@ -189,7 +195,8 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
     'login_bg_x_offset', 'login_bg_y_offset',
     'login_card_x_offset', 'login_card_y_offset',
-    'login_card_border_color', 'login_card_scale'
+    'login_card_border_color', 'login_card_scale', 'login_show_logo',
+    'login_text_color', 'login_accent_color'
 ];
 
 // Keys that can be customized per user
@@ -240,9 +247,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
                 fetchSettings();
             } else if (event === 'SIGNED_OUT') {
-                console.log('🔐 ThemeContext: User signed out, resetting settings and profile...');
-                setSettings(defaultSettings);
+                console.log('🔐 ThemeContext: User signed out, keeping global settings and clearing profile...');
                 setUserProfile(null);
+                // Re-fetch to ensure we show the global gym settings for unauthenticated users
+                fetchSettings();
             }
         });
 
@@ -395,7 +403,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             console.log('📥 FINAL SETTINGS LOADED:', finalSettings);
             setSettings(finalSettings);
 
-            // 3. Setup Realtime for THIS USER specifically
+            // 3. Setup Realtime for GLOBAL GYM SETTINGS (Always active)
+            const gymChannelId = 'global_gym_settings';
+            supabase.removeChannel(supabase.channel(gymChannelId));
+
+            supabase
+                .channel(gymChannelId)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'gym_settings'
+                    },
+                    (payload) => {
+                        console.log('🔔 Realtime update for global gym settings');
+                        // Filter payload to only include keys we care about
+                        const newGymSettings = payload.new as any;
+                        const filteredGym = Object.fromEntries(
+                            Object.entries(newGymSettings).filter(([key]) =>
+                                GYM_WIDE_KEYS.includes(key as any)
+                            )
+                        );
+                        setSettings(prev => ({ ...prev, ...filteredGym }));
+                    }
+                )
+                .subscribe();
+
+            // 4. Setup Realtime for THIS USER specifically
             if (user) {
                 console.log('🔔 Subscribing to realtime updates for user:', user.id);
                 const channelId = `user_settings_${user.id}`;
