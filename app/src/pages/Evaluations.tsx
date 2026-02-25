@@ -126,12 +126,13 @@ export default function Evaluations() {
                         r.coach_id === record.coach_id
                     );
 
+                    const isUUID = (str: any) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
                     batches.push({
                         id: record.id, // Just for key
                         key: key, // Added explicit key for selection
                         title: record.title,
                         date: record.date,
-                        coach_name: record.coaches?.full_name || 'System',
+                        coach_name: record.coaches?.full_name && !isUUID(record.coaches.full_name) ? record.coaches.full_name : 'System',
                         student_count: batchRecords.length,
                         avg_score: Math.round(batchRecords.reduce((acc, r) => acc + (r.total_score || 0), 0) / batchRecords.length),
                         records: batchRecords,

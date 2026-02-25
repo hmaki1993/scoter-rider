@@ -63,6 +63,23 @@ import { useTheme, applySettingsToRoot, defaultSettings, GymSettings } from '../
 import { useOutletContext } from 'react-router-dom';
 import PaletteImportModal from '../components/PaletteImportModal';
 
+// Helper to calculate luminance for contrast logic
+const lum = (hex: string) => {
+    try {
+        if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) return 0;
+        const c = hex.substring(1);
+        const rgb = parseInt(c, 16);
+        if (isNaN(rgb)) return 0;
+        const r = (rgb >> 16) & 0xff;
+        const g = (rgb >> 8) & 0xff;
+        const b = (rgb >> 0) & 0xff;
+        const uR = r / 255, uG = g / 255, uB = b / 255;
+        return 0.2126 * (uR <= 0.03928 ? uR / 12.92 : Math.pow((uR + 0.055) / 1.055, 2.4)) +
+            0.7152 * (uG <= 0.03928 ? uG / 12.92 : Math.pow((uG + 0.055) / 1.055, 2.4)) +
+            0.0722 * (uB <= 0.03928 ? uB / 12.92 : Math.pow((uB + 0.055) / 1.055, 2.4));
+    } catch { return 0; }
+};
+
 export default function Settings() {
     const { currency, setCurrency } = useCurrency();
     const { settings, updateSettings, resetToDefaults, hasLoaded } = useTheme();
@@ -227,13 +244,16 @@ export default function Settings() {
             secondary_color: theme.secondary,
             accent_color: theme.accent || prev.accent_color,
             surface_color: theme.surface || prev.surface_color,
-            hover_color: (theme as any).hover || prev.hover_color,
+            hover_color: (theme as any).hover || theme.primary + '33',
+            hover_border_color: theme.primary + '66',
             input_bg_color: (theme as any).input || prev.input_bg_color,
+            text_color_base: (theme as any).text_base || (lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc'),
+            text_color_muted: (theme as any).text_muted || (lum(theme.bg) > 0.6 ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.6)'),
             font_family: (theme as any).font || prev.font_family,
         }));
     };
 
-    const handlePaletteImport = (palette: { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string }) => {
+    const handlePaletteImport = (palette: { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string; text_base: string; text_muted: string; hover: string; hover_border: string }) => {
         setDraftSettings(prev => ({
             ...prev,
             // App theme
@@ -242,12 +262,15 @@ export default function Settings() {
             accent_color: palette.accent,
             surface_color: palette.surface,
             input_bg_color: palette.input,
-            hover_color: palette.primary + '80',
+            text_color_base: palette.text_base,
+            text_color_muted: palette.text_muted,
+            hover_color: palette.hover,
+            hover_border_color: palette.hover_border,
             // Login page sync
             login_card_color: palette.input,
             login_card_border_color: palette.primary + '40',
             login_accent_color: palette.primary,
-            login_text_color: '#ffffff',
+            login_text_color: palette.text_base,
         }));
         toast.success('✨ Palette applied across full app + login!', { duration: 2500 });
     };
@@ -268,14 +291,17 @@ export default function Settings() {
             secondary_color: theme.secondary,
             accent_color: theme.accent || prev.accent_color,
             surface_color: theme.surface || prev.surface_color,
-            hover_color: (theme as any).hover || prev.hover_color,
+            hover_color: (theme as any).hover || theme.primary + '33',
+            hover_border_color: theme.primary + '66',
             input_bg_color: (theme as any).input || prev.input_bg_color,
+            text_color_base: (theme as any).text_base || (lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc'),
+            text_color_muted: (theme as any).text_muted || (lum(theme.bg) > 0.6 ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.6)'),
             font_family: (theme as any).font || prev.font_family,
             // Login page sync
             login_card_color: cardBg,
             login_card_border_color: theme.primary + '40',
             login_accent_color: theme.primary,
-            login_text_color: '#ffffff',
+            login_text_color: lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc',
         }));
 
         toast.success(`✨ ${theme.name} applied across the full app!`, { duration: 2500 });
@@ -567,67 +593,92 @@ export default function Settings() {
             )}
             {/* Premium Publishing Overlay */}
             {isPublishing && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-0">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl animate-in fade-in duration-700"></div>
-                    <div className="relative glass-card p-10 rounded-[3rem] border border-white/10 shadow-[0_0_80px_rgba(var(--color-primary),0.1)] max-w-sm w-full text-center animate-in zoom-in slide-in-from-bottom-12 duration-1000 flex flex-col items-center">
-                        <div className="relative w-36 h-36 mb-8 flex items-center justify-center">
-                            <div className="absolute inset-0 bg-primary/10 rounded-full blur-[40px] animate-pulse scale-75"></div>
-                            <svg viewBox="0 0 192 192" className="absolute inset-0 w-full h-full transform -rotate-90 filter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.2)]">
-                                <circle cx="96" cy="96" r="86" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/[0.03]" />
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    {/* Dynamic Branded Backdrop */}
+                    <div className="absolute inset-0 bg-black animate-in fade-in duration-1000">
+                        <div
+                            className="absolute inset-0 opacity-40 blur-[120px] scale-150 transition-all duration-1000"
+                            style={{
+                                background: `radial-gradient(circle at center, ${draftSettings.primary_color}, transparent 60%)`
+                            }}
+                        />
+                        <div className="absolute inset-0 backdrop-blur-[60px] bg-black/40" />
+                    </div>
+
+                    {/* Centered Premium Card */}
+                    <div className="relative glass-card px-8 py-10 rounded-[3.5rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] max-w-sm w-full text-center animate-in zoom-in slide-in-from-bottom-8 duration-700 flex flex-col items-center">
+                        <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full blur-[30px] animate-pulse scale-90"
+                                style={{ backgroundColor: `${draftSettings.primary_color}33` }}
+                            />
+                            <svg viewBox="0 0 192 192" className="absolute inset-0 w-full h-full transform -rotate-90">
+                                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/[0.05]" />
                                 <circle
-                                    cx="96" cy="96" r="86" stroke="currentColor" strokeWidth="6" fill="transparent"
-                                    strokeDasharray={540} strokeDashoffset={540 - (540 * publishProgress) / 100}
-                                    className="transition-all duration-1000 ease-in-out"
-                                    style={{ color: 'var(--color-brand-label)' }}
+                                    cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="5" fill="transparent"
+                                    strokeDasharray={553} strokeDashoffset={553 - (553 * publishProgress) / 100}
+                                    className="transition-all duration-700 ease-out"
+                                    style={{ color: draftSettings.primary_color }}
                                     strokeLinecap="round"
                                 />
                             </svg>
-                            <div className="relative z-10 flex items-center justify-center w-24 h-24">
+                            <div className="relative z-10 flex items-center justify-center w-20 h-20">
                                 {publishProgress === 100 ? (
-                                    <div className="bg-primary/20 p-4 rounded-full border border-primary/30 animate-in zoom-in spin-in-12 duration-700">
-                                        <CheckCircle2 className="w-8 h-8 text-primary" />
+                                    <div className="bg-green-500/20 p-4 rounded-full border border-green-500/30 animate-in zoom-in spin-in-12 duration-500">
+                                        <CheckCircle2 className="w-8 h-8 text-green-400" />
                                     </div>
                                 ) : (
                                     <div className="relative flex items-center justify-center">
-                                        <div className="absolute w-14 h-14 border-2 border-primary/20 rounded-full animate-ping duration-[2000ms]"></div>
-                                        <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+                                        <div className="absolute w-12 h-12 border-2 rounded-full animate-ping duration-[1500ms]"
+                                            style={{ borderColor: `${draftSettings.primary_color}44` }}
+                                        />
+                                        <Sparkles className="w-8 h-8 animate-pulse shadow-primary" style={{ color: draftSettings.primary_color }} />
                                     </div>
                                 )}
                             </div>
                         </div>
+
                         <div className="space-y-4 w-full">
                             <div className="space-y-1">
-                                <p className="text-[8px] font-black uppercase tracking-[0.4em] animate-pulse" style={{ color: 'var(--color-brand-label)' }}>
-                                    {publishProgress === 100 ? 'Update Complete' : 'Optimizing'}
+                                <p className="text-[7px] font-black uppercase tracking-[0.5em] animate-pulse"
+                                    style={{ color: draftSettings.primary_color }}>
+                                    {publishProgress === 100 ? 'SUCCESS' : 'PUBLISHING'}
                                 </p>
-                                <h3 className="text-2xl font-black text-white uppercase tracking-tighter leading-tight">
+                                <h3 className="text-xl font-black text-white uppercase tracking-tight">
                                     {publishProgress === 100 ? t('settings.publishComplete') : t('settings.publishingDesign')}
                                 </h3>
                             </div>
-                            <div className="flex flex-col items-center gap-3">
-                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.1em] px-5 py-1.5 bg-white/5 rounded-full border border-white/5">
+
+                            <div className="flex flex-col items-center gap-4">
+                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-4 py-1.5 bg-white/[0.03] rounded-full border border-white/[0.05]">
                                     {publishStep}
                                 </p>
-                                <div className="flex gap-1.5">
+                                <div className="flex gap-2">
                                     {[1, 2, 3].map((step) => (
                                         <div
                                             key={step}
-                                            className={`h-1 rounded-full transition-all duration-500 ${publishProgress >= (step * 33)
-                                                ? 'w-6 bg-primary shadow-[0_0_5px_rgba(var(--color-primary),0.5)]'
-                                                : 'w-1.5 bg-white/10'}`}
+                                            className={`h-1 rounded-full transition-all duration-700 ${publishProgress >= (step * 33)
+                                                ? 'w-8 shadow-[0_0_10px_rgba(var(--color-primary),0.3)]'
+                                                : 'w-2 bg-white/10'}`}
+                                            style={{ backgroundColor: publishProgress >= (step * 33) ? draftSettings.primary_color : undefined }}
                                         ></div>
                                     ))}
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-10 grid grid-cols-2 gap-3 w-full">
-                            <div className="p-4 rounded-[2rem] bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
-                                <ShieldCheck className="w-4 h-4" style={{ color: 'var(--color-brand-label)', opacity: 0.6 }} />
-                                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] text-center">{t('settings.encryptionNote')}</span>
+
+                        {/* Note Blocks: Integrated cleaner */}
+                        <div className="mt-8 grid grid-cols-2 gap-2 w-full">
+                            <div className="p-3 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] flex flex-col items-center gap-1.5">
+                                <ShieldCheck className="w-3.5 h-3.5 opacity-40" style={{ color: draftSettings.primary_color }} />
+                                <span className="text-[6px] font-black text-white/20 uppercase tracking-[0.2em] text-center leading-relaxed">
+                                    {t('settings.encryptionNote')}
+                                </span>
                             </div>
-                            <div className="p-4 rounded-[2rem] bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
-                                <Zap className="w-4 h-4" style={{ color: 'var(--color-brand-label)', opacity: 0.6 }} />
-                                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] text-center">{t('settings.syncReadyNote')}</span>
+                            <div className="p-3 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] flex flex-col items-center gap-1.5">
+                                <Zap className="w-3.5 h-3.5 opacity-40" style={{ color: draftSettings.primary_color }} />
+                                <span className="text-[6px] font-black text-white/20 uppercase tracking-[0.2em] text-center leading-relaxed">
+                                    {t('settings.syncReadyNote')}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -705,14 +756,36 @@ export default function Settings() {
                                     </div>
                                     <div className="flex bg-black/20 p-1 rounded-xl">
                                         <button
-                                            onClick={() => setDraftSettings(prev => ({ ...prev, secondary_color: '#F8FAFC', surface_color: '#ffffff', input_bg_color: '#ffffff', search_bg_color: '#f1f5f9', search_text_color: '#0f172a' }))}
+                                            onClick={() => setDraftSettings(prev => ({
+                                                ...prev,
+                                                secondary_color: '#F8FAFC',
+                                                surface_color: '#ffffff',
+                                                input_bg_color: '#ffffff',
+                                                search_bg_color: '#f1f5f9',
+                                                search_text_color: '#0f172a',
+                                                text_color_base: '#0f172a',
+                                                text_color_muted: 'rgba(15, 23, 42, 0.6)',
+                                                hover_color: prev.primary_color + '22',
+                                                hover_border_color: prev.primary_color + '44'
+                                            }))}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${draftSettings.secondary_color === '#F8FAFC' ? 'bg-white text-slate-900 shadow-lg' : 'text-white/40 hover:text-white'}`}
                                         >
                                             <Sun className="w-3.5 h-3.5" />
                                             {t('settings.light')}
                                         </button>
                                         <button
-                                            onClick={() => setDraftSettings(prev => ({ ...prev, secondary_color: '#0E1D21', surface_color: 'rgba(18, 46, 52, 0.7)', input_bg_color: '#0f172a', search_bg_color: 'rgba(255, 255, 255, 0.05)', search_text_color: '#ffffff' }))}
+                                            onClick={() => setDraftSettings(prev => ({
+                                                ...prev,
+                                                secondary_color: '#0E1D21',
+                                                surface_color: 'rgba(18, 46, 52, 0.7)',
+                                                input_bg_color: '#0f172a',
+                                                search_bg_color: 'rgba(255, 255, 255, 0.05)',
+                                                search_text_color: '#ffffff',
+                                                text_color_base: '#f8fafc',
+                                                text_color_muted: 'rgba(255, 255, 255, 0.6)',
+                                                hover_color: prev.primary_color + '33',
+                                                hover_border_color: prev.primary_color + '66'
+                                            }))}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${draftSettings.secondary_color !== '#F8FAFC' ? 'bg-secondary text-primary shadow-lg ring-1 ring-white/10' : 'text-white/40 hover:text-white'}`}
                                         >
                                             <Moon className="w-3.5 h-3.5" />
@@ -786,14 +859,17 @@ export default function Settings() {
                                             <div className="pt-4 border-t border-white/5 space-y-4">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <div className="w-1 h-3 bg-white/20 rounded-full"></div>
-                                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Interface Elements</span>
+                                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Interface Branding</span>
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <PremiumColorPicker label="Brand Text" value={draftSettings.brand_label_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, brand_label_color: val })} />
+                                                    <PremiumColorPicker label="Text Base" value={draftSettings.text_color_base || ''} onChange={(val) => setDraftSettings({ ...draftSettings, text_color_base: val })} />
+                                                    <PremiumColorPicker label="Text Muted" value={draftSettings.text_color_muted || ''} onChange={(val) => setDraftSettings({ ...draftSettings, text_color_muted: val })} />
                                                     <PremiumColorPicker label="Surface" value={draftSettings.surface_color} onChange={(val) => setDraftSettings({ ...draftSettings, surface_color: val })} />
                                                     <PremiumColorPicker label="Input Bg" value={draftSettings.input_bg_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, input_bg_color: val })} />
+                                                    <PremiumColorPicker label="Hover Color" value={draftSettings.hover_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, hover_color: val })} />
+                                                    <PremiumColorPicker label="Hover Border" value={draftSettings.hover_border_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, hover_border_color: val })} />
                                                     <PremiumColorPicker label="Search Bg" value={draftSettings.search_bg_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, search_bg_color: val })} />
-                                                    <PremiumColorPicker label="Hover" value={draftSettings.hover_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, hover_color: val })} />
+                                                    <PremiumColorPicker label="Brand Label" value={draftSettings.brand_label_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, brand_label_color: val })} />
                                                 </div>
                                             </div>
                                         </div>
@@ -826,14 +902,47 @@ export default function Settings() {
                                                 </div>
                                             </div>
 
-                                            {/* Sliders */}
+                                            {/* Font Scaling */}
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] text-white/40 font-black uppercase tracking-widest flex items-center gap-2">
+                                                    <Type className="w-3 h-3" />
+                                                    {t('settings.fontScale')}
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[
+                                                        { label: 'Standard', scale: 1.0 },
+                                                        { label: 'Large', scale: 1.15 },
+                                                        { label: 'Huge', scale: 1.3 },
+                                                        { label: 'XXL', scale: 1.5 }
+                                                    ].map(({ label, scale }) => (
+                                                        <button
+                                                            key={label}
+                                                            onClick={() => setDraftSettings({ ...draftSettings, font_scale: scale })}
+                                                            className={`p-3 rounded-xl transition-all border ${draftSettings.font_scale === scale ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'}`}
+                                                        >
+                                                            <div className="text-[10px] font-black uppercase tracking-widest">{label}</div>
+                                                            <div className="text-[8px] font-bold opacity-60 mt-0.5">{Math.round(scale * 100)}%</div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Experience Sliders */}
                                             <div className="grid grid-cols-1 gap-6 bg-white/5 p-6 rounded-3xl border border-white/5">
                                                 <div className="space-y-3">
                                                     <div className="flex justify-between">
-                                                        <label className="text-[9px] text-white/60 font-black uppercase tracking-widest">{t('settings.fontScale')}</label>
-                                                        <span className="text-[9px] text-primary font-bold">{Math.round(draftSettings.font_scale * 100)}%</span>
+                                                        <label className="text-[9px] text-white/60 font-black uppercase tracking-widest">Fine Tuning</label>
+                                                        <span className="text-[9px] text-primary font-bold">{Math.round((draftSettings.font_scale || 1) * 100)}%</span>
                                                     </div>
-                                                    <input type="range" min="0.8" max="1.2" step="0.05" value={draftSettings.font_scale} onChange={(e) => setDraftSettings({ ...draftSettings, font_scale: parseFloat(e.target.value) })} className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary" />
+                                                    <input
+                                                        type="range"
+                                                        min="0.8"
+                                                        max="1.6"
+                                                        step="0.05"
+                                                        value={draftSettings.font_scale || 1}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, font_scale: parseFloat(e.target.value) })}
+                                                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                    />
                                                 </div>
                                                 <div className="space-y-3">
                                                     <div className="flex justify-between">

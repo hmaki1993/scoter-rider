@@ -9,6 +9,8 @@ export interface GymSettings {
     accent_color: string;
     font_family: string;
     font_scale: number;
+    text_color_base?: string;
+    text_color_muted?: string;
     border_radius: string;
     glass_opacity: number;
     surface_color: string;
@@ -106,15 +108,15 @@ export const applySettingsToRoot = (settings: GymSettings) => {
 
     if (isLightMode) {
         // Light Mode Text - Deep contrast
-        root.style.setProperty('--color-text-base', '#0a0a0f'); // Near black for sharp readability
-        root.style.setProperty('--color-text-muted', '#475569'); // Slate 600 - darker than before
+        root.style.setProperty('--color-text-base', settings.text_color_base || '#0a0a0f'); // Manual or near black
+        root.style.setProperty('--color-text-muted', settings.text_color_muted || '#475569'); // Manual or slate 600
         root.style.setProperty('--color-surface-border', 'rgba(0, 0, 0, 0.15)');
         root.style.setProperty('--is-light-mode', '1');
         root.style.setProperty('color-scheme', 'light');
     } else {
         // Dark Mode Text
-        root.style.setProperty('--color-text-base', '#f8fafc'); // Slate 50
-        root.style.setProperty('--color-text-muted', 'rgba(255, 255, 255, 0.6)');
+        root.style.setProperty('--color-text-base', settings.text_color_base || '#f8fafc'); // Manual or slate 50
+        root.style.setProperty('--color-text-muted', settings.text_color_muted || 'rgba(255, 255, 255, 0.6)'); // Manual or muted
         root.style.setProperty('--color-surface-border', 'rgba(255, 255, 255, 0.08)');
         root.style.setProperty('--is-light-mode', '0');
         root.style.setProperty('color-scheme', 'dark');
@@ -161,6 +163,8 @@ export const defaultSettings: GymSettings = {
     accent_color: '#A30000',
     font_family: 'Cairo',
     font_scale: 1,
+    text_color_base: '#f8fafc',
+    text_color_muted: 'rgba(255, 255, 255, 0.6)',
     border_radius: '1.5rem',
     glass_opacity: 0.6,
     surface_color: 'rgba(21, 31, 28, 0.8)',
@@ -210,7 +214,8 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'login_logo_scale', 'login_logo_x_offset', 'login_logo_y_offset',
     'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
     'login_bg_x_offset', 'login_bg_y_offset',
-    'login_card_x_offset', 'login_card_y_offset'
+    'login_card_x_offset', 'login_card_y_offset',
+    'text_color_base', 'text_color_muted'
 ];
 
 // Keys that can be customized per user
@@ -220,7 +225,7 @@ export const USER_SPECIFIC_KEYS: (keyof GymSettings)[] = [
     'search_icon_color', 'search_bg_color', 'search_border_color', 'search_text_color',
     'hover_color', 'hover_border_color', 'input_bg_color', 'clock_position',
     'clock_integration', 'weather_integration', 'language', 'premium_badge_color',
-    'brand_label_color'
+    'brand_label_color', 'text_color_base', 'text_color_muted'
 ];
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);

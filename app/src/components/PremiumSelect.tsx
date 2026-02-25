@@ -25,8 +25,9 @@ export default function PremiumSelect({
 }: PremiumSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const isUUID = (str: any) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
 
-    const selectedOption = options.find(opt => opt.value === value);
+    const selectedOption = options.find(opt => String(opt.value) === String(value));
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -56,7 +57,12 @@ export default function PremiumSelect({
                 `}
             >
                 <span className={`text-[10px] font-bold ${selectedOption ? 'text-white' : 'text-white/20'}`}>
-                    {selectedOption ? (typeof selectedOption.label === 'string' ? selectedOption.label : selectedOption.label) : placeholder}
+                    {selectedOption &&
+                        selectedOption.label &&
+                        !isUUID(selectedOption.label) &&
+                        String(selectedOption.label).trim() !== String(selectedOption.value).trim()
+                        ? selectedOption.label
+                        : (selectedOption ? 'Coach' : placeholder)}
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 absolute right-5 top-1/2 -translate-y-1/2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
             </button>
@@ -80,7 +86,7 @@ export default function PremiumSelect({
 
                     <div className="max-h-64 overflow-y-auto custom-scrollbar relative z-10">
                         {options.map((option) => {
-                            const isSelected = value === option.value;
+                            const isSelected = String(value) === String(option.value);
                             return (
                                 <button
                                     key={option.value}
@@ -98,7 +104,7 @@ export default function PremiumSelect({
                                     `}
                                 >
                                     <span className={`text-xs font-bold tracking-wide transition-all duration-300 ${isSelected ? 'translate-x-1' : 'group-hover/opt:translate-x-1'}`}>
-                                        {option.label}
+                                        {option.label && !isUUID(option.label) ? option.label : `Coach (${String(option.value).substring(0, 4)})`}
                                     </span>
                                     {isSelected && (
                                         <Check className="w-3 h-3 text-primary animate-in zoom-in duration-300" />

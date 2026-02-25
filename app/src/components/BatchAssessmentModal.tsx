@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import SkillsManagerModal from './SkillsManagerModal';
 import { useTheme } from '../context/ThemeContext';
+import PremiumSelect from './PremiumSelect';
 
 interface BatchAssessmentModalProps {
     isOpen: boolean;
@@ -88,6 +89,10 @@ export default function BatchAssessmentModal({ isOpen, onClose, onSuccess, curre
                 const role = (c.role || '').toLowerCase();
                 const name = (c.full_name || '').toLowerCase();
                 const forbidden = ['admin', 'reception', 'cleaner', 'reciption'];
+
+                // If this is the current coach, ALWAYS keep them regardless of filters
+                if (c.id === currentCoachId) return true;
+
                 // Only include coaches with a valid profile_id (linked to a user)
                 return c.profile_id && !forbidden.some(f => role.includes(f) || name.includes(f));
             });
@@ -273,7 +278,7 @@ id,
                 {/* Header */}
                 <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
                     <div>
-                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider">Batch Assessment</h2>
+                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider">Batch Assessment <span className="text-[8px] text-primary/40">DEBUG_V2</span></h2>
                         <p className="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest mt-1">Step {step}: {step === 1 ? 'Setup' : step === 2 ? 'Define Test' : 'Enter Grades'}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
@@ -296,18 +301,16 @@ id,
 
                             <div>
                                 <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5 block">Assessing Coach</label>
-                                <div className="relative">
-                                    <select
+                                <div className="mt-1">
+                                    <PremiumSelect
                                         value={assessorId}
-                                        onChange={(e) => setAssessorId(e.target.value)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white focus:border-primary/50 outline-none appearance-none"
-                                    >
-                                        <option value="" className="bg-[#0E1D21]"></option>
-                                        {coaches.map(c => (
-                                            <option key={c.id} value={c.id} className="bg-[#0E1D21]">{c.full_name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 rotate-90 pointer-events-none" />
+                                        onChange={(val) => setAssessorId(val)}
+                                        options={coaches.map(c => ({
+                                            value: c.id,
+                                            label: c.full_name || `Coach (${c.id.substring(0, 4)})`
+                                        }))}
+                                        placeholder="Select Coach"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -375,16 +378,20 @@ id,
                                                 </button>
                                             )}
                                         </div>
-                                        <select
-                                            value={coachFilter}
-                                            onChange={(e) => setCoachFilter(e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 sm:py-2.5 text-[10px] text-white/60 focus:border-amber-500/50 outline-none min-w-[100px]"
-                                        >
-                                            <option value="" className="bg-[#0E1D21]">Coaches</option>
-                                            {Array.from(new Set(allStudents.map(s => s.coaches?.full_name).filter(Boolean))).map(coachName => (
-                                                <option key={coachName as string} value={coachName as string} className="bg-[#0E1D21]">{coachName as string}</option>
-                                            ))}
-                                        </select>
+                                        <div className="min-w-[140px]">
+                                            <PremiumSelect
+                                                value={coachFilter}
+                                                onChange={(val) => setCoachFilter(val)}
+                                                options={[
+                                                    { value: '', label: 'All Coaches' },
+                                                    ...coaches.map(c => ({
+                                                        value: c.id,
+                                                        label: c.full_name || `Coach (${c.id.substring(0, 4)})`
+                                                    }))
+                                                ]}
+                                                placeholder="Coaches"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="max-h-[180px] sm:max-h-[250px] overflow-y-auto custom-scrollbar pr-2 space-y-1.5">
@@ -441,20 +448,17 @@ id,
                                 {selectedSkills.map((row, index) => (
                                     <div key={index} className="flex gap-2 sm:gap-3 items-start animate-in fade-in slide-in-from-left-4 duration-300">
                                         <div className="flex-1 min-w-0">
-                                            <select
+                                            <PremiumSelect
                                                 value={row.skill_id}
-                                                onChange={(e) => updateSkillRow(index, 'skill_id', e.target.value)}
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-2 sm:px-4 py-3 text-[11px] sm:text-sm text-white focus:border-primary/50 outline-none appearance-none truncate"
-                                            >
-                                                <option value="" className="bg-slate-900"></option>
-                                                {availableSkills.map(s => {
-                                                    const isSelectedElsewhere = selectedSkills.some((r, i) => i !== index && String(r.skill_id) === String(s.id));
-                                                    if (isSelectedElsewhere) return null;
-                                                    return (
-                                                        <option key={s.id} value={s.id} className="bg-slate-900">{s.name} (Max {s.max_score})</option>
-                                                    );
-                                                })}
-                                            </select>
+                                                onChange={(val) => updateSkillRow(index, 'skill_id', val)}
+                                                options={availableSkills
+                                                    .filter(s => !selectedSkills.some((r, i) => i !== index && String(r.skill_id) === String(s.id)))
+                                                    .map(s => ({
+                                                        value: String(s.id),
+                                                        label: `${s.name} (Max ${s.max_score})`
+                                                    }))}
+                                                placeholder="Select Skill"
+                                            />
                                         </div>
                                         <div className="w-16 sm:w-24 shrink-0 relative">
                                             <div className="w-full bg-white/5 border border-white/10 rounded-xl px-2 sm:px-4 py-3 text-[10px] sm:text-sm text-white/50 text-center">

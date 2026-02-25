@@ -206,37 +206,36 @@ export default function Finance() {
                 </div>
 
                 <div className="flex flex-col items-center lg:items-end gap-6 md:gap-8 w-full">
-                    {/* Utility Bar */}
-                    <div className="flex items-center gap-3 md:gap-4 bg-white/[0.02] p-1.5 md:p-2 rounded-2xl md:rounded-[2.5rem] border border-white/5 shadow-2xl w-full sm:w-auto justify-between sm:justify-start">
-                        <div className="flex items-center gap-1 md:gap-2 bg-black/20 p-1 rounded-xl border border-white/5 flex-1 sm:flex-initial">
+                    {/* Premium Utility Bar */}
+                    <div className="flex items-center gap-4 bg-white/[0.03] p-1.5 md:p-2 rounded-2xl md:rounded-[2.5rem] border border-white/[0.05] shadow-2xl w-full sm:w-auto justify-between sm:justify-start">
+                        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl md:rounded-2xl border border-white/5 flex-1 sm:flex-initial shadow-inner">
                             <button
                                 onClick={() => setSelectedDate(prev => addMonths(prev, -1))}
-                                className="w-8 h-8 md:w-9 md:h-9 hover:bg-white/5 text-white/20 hover:text-white rounded-lg flex items-center justify-center transition-all active:scale-95 shrink-0"
+                                className="w-9 h-9 md:w-12 md:h-12 bg-white/[0.01] hover:bg-white/10 text-white/20 hover:text-white rounded-lg md:rounded-xl flex items-center justify-center transition-all active:scale-90 shrink-0 border border-white/[0.02] hover:border-white/10"
                             >
-                                <ChevronLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
                             </button>
-                            <div className="flex flex-col items-center px-2 md:px-4 min-w-[100px] md:min-w-[120px] flex-1">
-                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] mb-0.5 opacity-40 md:opacity-100" style={{ color: 'var(--color-brand-label)' }}>{t('finance.period')}</span>
-                                <span className="text-xs md:text-sm font-black text-white uppercase tracking-tight text-center">
+                            <div className="flex flex-col items-center px-4 md:px-8 min-w-[120px] md:min-w-[170px] flex-1">
+                                <span className="text-[8px] font-black uppercase tracking-[0.4em] mb-1 text-primary animate-pulse">{t('finance.period')}</span>
+                                <span className="text-sm md:text-base font-black text-white uppercase tracking-tighter text-center leading-none">
                                     {format(selectedDate, 'MMMM yyyy')}
                                 </span>
                             </div>
                             <button
                                 onClick={() => setSelectedDate(prev => addMonths(prev, 1))}
-                                className="w-8 h-8 md:w-9 md:h-9 hover:bg-white/5 text-white/20 hover:text-white rounded-lg flex items-center justify-center transition-all active:scale-95 shrink-0"
+                                className="w-9 h-9 md:w-12 md:h-12 bg-white/[0.01] hover:bg-white/10 text-white/20 hover:text-white rounded-lg md:rounded-xl flex items-center justify-center transition-all active:scale-90 shrink-0 border border-white/[0.02] hover:border-white/10"
                             >
-                                <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-2 pr-1 md:pr-2 border-l border-white/10 pl-3 md:pl-4 ml-1 md:ml-2">
-
+                        <div className="flex items-center gap-3 pr-2 border-l border-white/10 pl-4">
                             <button
                                 onClick={() => setShowTrashModal(true)}
-                                className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 hover:bg-rose-500/10 flex items-center justify-center text-white/40 hover:text-rose-400 transition-all active:scale-90"
+                                className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-white/[0.03] hover:bg-rose-500/10 flex items-center justify-center text-white/20 hover:text-rose-400 transition-all active:scale-90 border border-white/[0.05] group"
                                 title={t('finance.history')}
                             >
-                                <History className="w-3.5 h-3.5" />
+                                <History className="w-5 h-5 md:w-6 md:h-6 group-hover:-rotate-12 transition-transform" />
                             </button>
                         </div>
                     </div>

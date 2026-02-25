@@ -186,8 +186,7 @@ export default function Login() {
                                             required
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-8 text-white text-base font-bold focus:outline-none focus:border-primary/50 transition-all placeholder:opacity-0"
-                                            placeholder=""
+                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-8 text-white text-[16px] font-bold focus:outline-none focus:border-primary/50 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -200,8 +199,7 @@ export default function Login() {
                                             required
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-8 text-white text-base font-bold focus:outline-none focus:border-primary/50 transition-all placeholder:opacity-0"
-                                            placeholder=""
+                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-8 text-white text-[16px] font-bold focus:outline-none focus:border-primary/50 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -294,12 +292,13 @@ export default function Login() {
                     background-color: transparent !important;
                     box-shadow: none !important;
                     border-color: ${stripAlpha(settings.login_accent_color || '#D4AF37')}26 !important;
+                    font-size: 16px !important;
+                    line-height: 1.5 !important;
+                    height: auto !important;
                 }
-                /* Removed hardcoded media queries in favor of state-based logic */
-                @media (min-width: 768px) {
-                    input {
-                        border-color: ${stripAlpha(settings.login_accent_color || '#D4AF37')}33 !important;
-                    }
+                /* Higher specificity for Login inputs to beat index.css */
+                .group/card input {
+                    font-size: 16px !important;
                 }
                 input:focus {
                     border-color: ${settings.login_accent_color || '#D4AF37'} !important;
