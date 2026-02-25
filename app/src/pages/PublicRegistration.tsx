@@ -314,7 +314,7 @@ export default function PublicRegistration() {
             <div className="relative z-10 mb-12 text-center scale-90 md:scale-100">
                 <div className="flex justify-center mb-8 relative">
                     <div className="absolute -inset-10 bg-primary/20 rounded-full blur-[60px] animate-pulse"></div>
-                    <img src={logoUrl} alt="Healy Academy" className="relative h-32 w-auto object-contain drop-shadow-2xl brightness-110" />
+                    <img src={logoUrl} alt="Logo" className="relative h-32 w-auto object-contain drop-shadow-2xl brightness-110" />
                 </div>
                 <h2 className="text-5xl font-black text-white uppercase tracking-tight premium-gradient-text-mind leading-tight">
                     Join The Legacy
@@ -549,7 +549,7 @@ export default function PublicRegistration() {
             </div>
 
             <footer className="relative z-10 text-center pb-12">
-                <p className="text-[10px] font-black text-[#ABAFB5]/20 uppercase tracking-[0.5em]">Powered by Healy Academy Systems • Excellence since day one</p>
+                <p className="text-[10px] font-black text-[#ABAFB5]/20 uppercase tracking-[0.5em]">Powered by Academy Systems • Excellence since day one</p>
             </footer>
 
             <style>{`

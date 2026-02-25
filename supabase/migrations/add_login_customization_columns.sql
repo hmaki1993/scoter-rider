@@ -5,23 +5,27 @@
 ALTER TABLE public.gym_settings 
 ADD COLUMN IF NOT EXISTS login_show_logo BOOLEAN DEFAULT TRUE,
 ADD COLUMN IF NOT EXISTS login_text_color TEXT DEFAULT '#ffffff',
-ADD COLUMN IF NOT EXISTS login_accent_color TEXT DEFAULT '#D4AF37';
+ADD COLUMN IF NOT EXISTS login_accent_color TEXT DEFAULT '#D4AF37',
+ADD COLUMN IF NOT EXISTS login_logo_opacity FLOAT8 DEFAULT 1.0;
 
 -- Add columns to user_settings
 ALTER TABLE public.user_settings 
 ADD COLUMN IF NOT EXISTS login_show_logo BOOLEAN DEFAULT TRUE,
 ADD COLUMN IF NOT EXISTS login_text_color TEXT DEFAULT '#ffffff',
-ADD COLUMN IF NOT EXISTS login_accent_color TEXT DEFAULT '#D4AF37';
+ADD COLUMN IF NOT EXISTS login_accent_color TEXT DEFAULT '#D4AF37',
+ADD COLUMN IF NOT EXISTS login_logo_opacity FLOAT8 DEFAULT 1.0;
 
 -- Update existing rows to have default values if they are null
 UPDATE public.gym_settings 
 SET 
   login_show_logo = COALESCE(login_show_logo, TRUE),
   login_text_color = COALESCE(login_text_color, '#ffffff'),
-  login_accent_color = COALESCE(login_accent_color, '#D4AF37');
+  login_accent_color = COALESCE(login_accent_color, '#D4AF37'),
+  login_logo_opacity = COALESCE(login_logo_opacity, 1.0);
 
 UPDATE public.user_settings 
 SET 
   login_show_logo = COALESCE(login_show_logo, TRUE),
   login_text_color = COALESCE(login_text_color, '#ffffff'),
-  login_accent_color = COALESCE(login_accent_color, '#D4AF37');
+  login_accent_color = COALESCE(login_accent_color, '#D4AF37'),
+  login_logo_opacity = COALESCE(login_logo_opacity, 1.0);

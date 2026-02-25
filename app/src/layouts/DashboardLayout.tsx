@@ -535,14 +535,14 @@ export default function DashboardLayout() {
                 </div>
                 <div className="px-8 pb-3 text-center">
                     <span className="text-[6px] font-black text-[#D4AF37]/30 uppercase tracking-[0.5em] block cursor-default">
-                        Elite Reborn • {new Date().getFullYear()}
+                        {settings.academy_name} Ecosystem • {new Date().getFullYear()}
                     </span>
                 </div>
             </aside>
 
             {/* Main Content Area */}
             <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-500 ${isRtl ? 'lg:mr-72' : 'lg:ml-72'}`}>
-                {/* Header - Elite Reborn */}
+                {/* Header - Branding */}
                 <header className="relative h-16 flex items-center justify-between px-6 bg-background/50 backdrop-blur-3xl sticky top-0 z-30 w-full border-b border-surface-border">
                     <div className="flex items-center gap-4">
                         <button

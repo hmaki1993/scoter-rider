@@ -14,7 +14,7 @@ export interface N8nPayload {
     event: string;
     timestamp: string;
     data: any;
-    source: 'healy-web-app';
+    source: 'epic-web-app';
 }
 
 /**
@@ -33,7 +33,7 @@ export const sendToN8n = async (event: string, data: any): Promise<boolean> => {
         event,
         timestamp: new Date().toISOString(),
         data,
-        source: 'healy-web-app'
+        source: 'epic-web-app'
     };
 
     try {
@@ -59,5 +59,5 @@ export const sendToN8n = async (event: string, data: any): Promise<boolean> => {
  * Test function to verify n8n connection
  */
 export const testN8nConnection = async () => {
-    return sendToN8n('test_connection', { message: 'Hello from Healy Academy!' });
+    return sendToN8n('test_connection', { message: 'Hello from your Academy!' });
 };

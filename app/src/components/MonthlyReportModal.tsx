@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { X, Send, FileText, CheckCircle2, AlertCircle, Loader2, Calendar } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth } from 'date-fns';
+import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
 
 interface MonthlyReportModalProps {
@@ -20,6 +21,8 @@ interface MonthlyReportModalProps {
 
 export default function MonthlyReportModal({ isOpen, onClose, student, currentUserRole }: MonthlyReportModalProps) {
     const { t } = useTranslation();
+    const { settings } = useTheme();
+    const academyName = settings.academy_name || 'Academy System';
     const [loading, setLoading] = useState(false);
     const [calculating, setCalculating] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -113,7 +116,7 @@ export default function MonthlyReportModal({ isOpen, onClose, student, currentUs
             const monthName = format(new Date(selectedMonth), 'MMMM yyyy');
 
             const message = `
-*Healy Gymnastics Academy - Monthly Report* 🤸‍♂️
+*${academyName} - Monthly Report* 🤸‍♂️
 ----------------------------------
 📅 *Month:* ${monthName}
 👤 *Gymnast:* ${student.full_name}
@@ -142,7 +145,7 @@ ${evaluations.behavior || 'Great attitude and focus!'}
 
 ----------------------------------
 *Best Regards,*
-*Healy Gymnastics Team* 🏅
+*${academyName} Team* 🏅
             `.trim();
 
             // Prioritize the specific "WhatsApp for Reports" field (parent_contact)

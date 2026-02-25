@@ -51,7 +51,7 @@ export default function LandingPage() {
             span: "md:col-span-12 lg:col-span-8"
         },
         {
-            title: "Healy AI Oracle",
+            title: "Epic AI Oracle",
             description: "Neural-assisted academy optimization. AI that anticipates staff needs and athlete progression.",
             icon: <Bot className="w-6 h-6 text-black" />,
             color: "from-[#AA841E] via-[#D4AF37] to-[#F9E29C]",
@@ -102,11 +102,11 @@ export default function LandingPage() {
                     <div className="flex items-center gap-6 group cursor-pointer sidebar-3d-item hover:translate-x-1 transition-all duration-500">
                         <div className="relative w-12 h-12 flex items-center justify-center p-1.5 overflow-hidden transition-all duration-700 group-hover:scale-110 group-hover:rotate-3 rounded-full bg-white/5 border border-white/10 group-hover:border-[#D4AF37]/50 shadow-2xl">
                             <div className="absolute inset-0 bg-[#D4AF37]/20 opacity-0 group-hover:opacity-100 transition-opacity blur-md"></div>
-                            <img src="/logo.png" alt="Healy Logo" className="relative z-10 w-full h-full object-contain mix-blend-screen" style={{ clipPath: 'circle(50%)' }} />
+                            <img src="/logo.png" alt="Epic Logo" className="relative z-10 w-full h-full object-contain mix-blend-screen" style={{ clipPath: 'circle(50%)' }} />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[13px] font-black tracking-[0.35em] leading-tight text-white/90 group-hover:text-white transition-colors">HEALY <span className="text-[#D4AF37] italic">GYMNASTICS</span></span>
-                            <span className="text-[8px] font-extrabold text-[#D4AF37]/40 uppercase tracking-[0.6em] mt-0.5">Established 1886</span>
+                            <span className="text-[13px] font-black tracking-[0.35em] leading-tight text-white/90 group-hover:text-white transition-colors">ACADEMY <span className="text-[#D4AF37] italic">SYSTEM</span></span>
+                            <span className="text-[8px] font-extrabold text-[#D4AF37]/40 uppercase tracking-[0.6em] mt-0.5">Excellence Preferred</span>
                         </div>
                     </div>
 
@@ -143,11 +143,11 @@ export default function LandingPage() {
                 <h1 className="text-5xl md:text-[6rem] font-black tracking-[-0.04em] mb-10 leading-[0.9] max-w-5xl animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-200">
                     <span className="block opacity-90">THE ELITE</span>
                     <span className="bg-gradient-to-b from-[#D4AF37] via-[#F9E29C] to-[#AA841E] bg-clip-text text-fill-transparent italic">ACADEMY</span>
-                    <br /> <span className="opacity-90">ECOSYSTEM</span>
+                    <br /> <span className="opacity-90">PLATFORM</span>
                 </h1>
 
                 <p className="text-lg md:text-xl text-white/30 max-w-3xl mb-12 leading-relaxed font-light animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-500 tracking-wide">
-                    Beyond digital management. A handcrafted institutional infrastructure for the globally distinguished <span className="text-white/60 font-semibold tracking-normal px-1">Healy Gymnastics Academy.</span>
+                    Beyond digital management. A handcrafted institutional infrastructure for the globally distinguished <span className="text-white/60 font-semibold tracking-normal px-1">Elite Academy.</span>
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center gap-8 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-700">
@@ -186,7 +186,7 @@ export default function LandingPage() {
                             <img
                                 src="/logo.png"
                                 className="w-56 h-56 object-contain relative z-10 transition-all duration-300"
-                                alt="Healy Academy Logo"
+                                alt="Logo"
                             />
 
                             {/* Focus Glow Aura */}
@@ -323,7 +323,7 @@ export default function LandingPage() {
                                 <div className="absolute inset-0 bg-[#D4AF37]/10 opacity-0 group-hover:opacity-100 transition-opacity blur-md"></div>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-xl font-black tracking-[0.4em] uppercase text-white/80 group-hover:text-white transition-colors">HEALY <span className="text-[#D4AF37]">SYSTEM</span></span>
+                                <span className="text-xl font-black tracking-[0.4em] uppercase text-white/80 group-hover:text-white transition-colors">ACADEMY <span className="text-[#D4AF37]">SYSTEM</span></span>
                                 <span className="text-[8px] font-bold text-white/20 tracking-[0.5em] uppercase">Ecosystem Standard</span>
                             </div>
                         </div>
@@ -337,7 +337,7 @@ export default function LandingPage() {
 
                     <div className="text-center">
                         <div className="text-white/10 text-[10px] font-black tracking-[0.6em] uppercase flex flex-col items-center gap-6">
-                            <span>© 2026 Healy Academy Ecosystem • Designed for Absolute Distinction</span>
+                            <span>© 2026 Academy Ecosystem • Designed for Absolute Distinction</span>
                             <span className="text-[#D4AF37]/80 tracking-[0.4em] font-black uppercase text-[8px] drop-shadow-[0_0_8px_rgba(212,175,55,0.4)] cursor-default">
                                 Articulated by Ahmed Hmaki
                             </span>

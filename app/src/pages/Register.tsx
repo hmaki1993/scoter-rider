@@ -102,7 +102,7 @@ export default function Register() {
                         <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
                         <img
                             src="/logo.png"
-                            alt="Healy Academy Logo"
+                            alt="Logo"
                             className="relative h-24 w-auto mx-auto drop-shadow-[0_0_15px_rgba(251,191,36,0.2)] transition-transform hover:scale-105 duration-500"
                         />
                     </div>

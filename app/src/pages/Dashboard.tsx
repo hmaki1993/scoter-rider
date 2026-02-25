@@ -148,8 +148,8 @@ export default function Dashboard() {
                     <div key={index} className="glass-card p-7 rounded-[2.5rem] border border-white/10 shadow-premium group hover:scale-[1.03] transition-all duration-500 hover:border-primary/30 relative overflow-hidden bg-white/[0.02]">
                         <div className={`absolute top-0 right-0 w-32 h-32 ${stat.color}/10 blur-[60px] rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 opacity-50`}></div>
 
-                        <div className="flex items-center justify-between mb-6 relative z-10">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 pr-2">{stat.label}</p>
+                        <div className="flex items-center justify-between gap-4 mb-6 relative z-10">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 truncate flex-1">{stat.label}</p>
                             <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 backdrop-blur-xl transition-all duration-500 border border-white/10 flex-shrink-0 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/10 group-hover:border-white/20">
                                 <stat.icon
                                     className={`w-4 h-4 ${stat.color.replace('bg-', 'text-')} drop-shadow-[0_0_12px_currentColor]`}

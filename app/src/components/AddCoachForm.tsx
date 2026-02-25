@@ -231,8 +231,8 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                                 setFormData(prev => ({
                                     ...prev,
                                     full_name: newName,
-                                    email: prev.email === '' || prev.email.includes(`${prev.full_name.toLowerCase().replace(/\s+/g, '')}@healy.com`)
-                                        ? (emailName ? `${emailName}@healy.com` : '')
+                                    email: prev.email === '' || prev.email.includes(`${prev.full_name.toLowerCase().replace(/\s+/g, '')}@epic.com`)
+                                        ? (emailName ? `${emailName}@epic.com` : '')
                                         : prev.email
                                 }));
                             }}

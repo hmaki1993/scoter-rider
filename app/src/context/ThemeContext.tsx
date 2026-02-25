@@ -48,6 +48,7 @@ export interface GymSettings {
     login_show_logo?: boolean;
     login_text_color?: string;
     login_accent_color?: string;
+    login_logo_opacity?: number;
 }
 
 export const applySettingsToRoot = (settings: GymSettings) => {
@@ -149,6 +150,7 @@ interface ThemeContextType {
     settings: GymSettings;
     updateSettings: (newSettings: Partial<GymSettings>) => Promise<void>;
     isLoading: boolean;
+    hasLoaded: boolean;
     resetToDefaults: () => Promise<void>;
     userProfile: { id: string; email: string; full_name: string | null; role: string | null; avatar_url: string | null } | null;
 }
@@ -175,28 +177,40 @@ export const defaultSettings: GymSettings = {
     language: 'en',
     premium_badge_color: '#A30000',
     brand_label_color: '#A30000',
-    academy_name: 'Healy Academy',
+    academy_name: 'Academy System',
     gym_address: 'Cairo, Egypt',
     gym_phone: '+20 123 456 7890',
     login_bg_url: '/Tom Roberton Images _ Balance-and-Form _ 2.jpg',
     login_logo_url: '/logo.png',
     login_card_opacity: 0.6,
     login_card_color: '#000000',
-    login_show_logo: true,
+    login_card_border_color: '#D4AF3733',
+    login_accent_color: '#D4AF37',
     login_text_color: '#ffffff',
-    login_accent_color: '#D4AF37'
+    login_show_logo: true,
+    login_logo_scale: 1,
+    login_logo_x_offset: 0,
+    login_logo_y_offset: 0,
+    login_bg_blur: 0,
+    login_bg_brightness: 1,
+    login_bg_zoom: 1,
+    login_bg_x_offset: 0,
+    login_bg_y_offset: 0,
+    login_card_x_offset: 0,
+    login_card_y_offset: 0,
+    login_card_scale: 1,
+    login_logo_opacity: 1
 };
 
-// Keys that are shared across the entire gym
 export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'academy_name', 'logo_url', 'gym_address', 'gym_phone',
     'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color',
+    'login_card_border_color', 'login_card_scale', 'login_show_logo',
+    'login_text_color', 'login_accent_color', 'login_logo_opacity',
     'login_logo_scale', 'login_logo_x_offset', 'login_logo_y_offset',
     'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
     'login_bg_x_offset', 'login_bg_y_offset',
-    'login_card_x_offset', 'login_card_y_offset',
-    'login_card_border_color', 'login_card_scale', 'login_show_logo',
-    'login_text_color', 'login_accent_color'
+    'login_card_x_offset', 'login_card_y_offset'
 ];
 
 // Keys that can be customized per user
@@ -212,10 +226,21 @@ export const USER_SPECIFIC_KEYS: (keyof GymSettings)[] = [
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [settings, setSettings] = useState<GymSettings>(defaultSettings);
-    const hasPossibleSession = typeof window !== 'undefined' &&
-        Object.keys(localStorage).some(key => key.includes('auth-token'));
-    const [isLoading, setIsLoading] = useState(hasPossibleSession);
+    const [settings, setSettings] = useState<GymSettings>(() => {
+        const initial = { ...defaultSettings };
+        const saved = localStorage.getItem('gym_settings');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.academy_name && parsed.academy_name !== 'Academy System') {
+                    initial.academy_name = parsed.academy_name;
+                }
+            } catch (e) { }
+        }
+        return initial;
+    });
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
     const [userProfile, setUserProfile] = useState<ThemeContextType['userProfile']>(null);
 
     const { i18n } = useTranslation();
@@ -225,8 +250,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, [settings]);
 
     useEffect(() => {
-        if (settings.academy_name) {
+        if (settings.academy_name && settings.academy_name !== 'Academy System') {
             document.title = settings.academy_name;
+            // Sync to localStorage for immediate index.html pickup on refresh
+            localStorage.setItem('gym_settings', JSON.stringify({ academy_name: settings.academy_name }));
         }
     }, [settings.academy_name]);
 
@@ -271,14 +298,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const fetchSettings = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-
-            console.log('📥 LOADING SETTINGS FOR USER:', user?.id, user?.email);
-
-            // 1. Get Global Defaults
+            // 1. Get Global Defaults (ALWAYS DO THIS FIRST - Works for unauthenticated users)
+            console.log('📥 Fetching global gym settings...');
             const { data: globalData, error: globalError } = await supabase
                 .from('gym_settings')
                 .select('*')
+                .limit(1)
                 .maybeSingle();
 
             if (globalError) {
@@ -287,13 +312,41 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
             let finalSettings = { ...defaultSettings };
             if (globalData) {
-                console.log('📥 Loaded global defaults from gym_settings');
-                // Filter out nulls from globalData
+                console.log('📥 Loaded global data row:', globalData.id);
+                // Filter out nulls and explicitly include all login_ prefixed keys
                 const filteredGlobal = Object.fromEntries(
-                    Object.entries(globalData).filter(([_, v]) => v !== null)
+                    Object.entries(globalData).filter(([key, v]) =>
+                        v !== null && (GYM_WIDE_KEYS.includes(key as any) || key.startsWith('login_'))
+                    )
                 );
                 finalSettings = { ...finalSettings, ...filteredGlobal };
             }
+
+            // 2. Setup Realtime for GLOBAL GYM SETTINGS (Sticky & Indepedent)
+            const gymChannelId = 'global_gym_settings_channel';
+            supabase.removeChannel(supabase.channel(gymChannelId));
+            supabase
+                .channel(gymChannelId)
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'gym_settings' },
+                    (payload) => {
+                        console.log('🔔 Realtime update for global gym settings');
+                        const newGymSettings = payload.new as any;
+                        const filteredGym = Object.fromEntries(
+                            Object.entries(newGymSettings).filter(([key, v]) =>
+                                v !== null && GYM_WIDE_KEYS.includes(key as any)
+                            )
+                        );
+                        setSettings(prev => ({ ...prev, ...filteredGym }));
+                    }
+                )
+                .subscribe();
+
+            // 3. Get Auth User
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log('📥 Auth Check:', user ? `Logged in as ${user.email}` : 'Unauthenticated');
+
 
             // 2. Overlay User Personal Settings & Fetch Profile
             if (user) {
@@ -402,39 +455,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
             console.log('📥 FINAL SETTINGS LOADED:', finalSettings);
             setSettings(finalSettings);
+            setHasLoaded(true);
 
-            // 3. Setup Realtime for GLOBAL GYM SETTINGS (Always active)
-            const gymChannelId = 'global_gym_settings';
-            supabase.removeChannel(supabase.channel(gymChannelId));
-
-            supabase
-                .channel(gymChannelId)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: 'gym_settings'
-                    },
-                    (payload) => {
-                        console.log('🔔 Realtime update for global gym settings');
-                        // Filter payload to only include keys we care about
-                        const newGymSettings = payload.new as any;
-                        const filteredGym = Object.fromEntries(
-                            Object.entries(newGymSettings).filter(([key]) =>
-                                GYM_WIDE_KEYS.includes(key as any)
-                            )
-                        );
-                        setSettings(prev => ({ ...prev, ...filteredGym }));
-                    }
-                )
-                .subscribe();
-
-            // 4. Setup Realtime for THIS USER specifically
+            // 4. Setup Realtime for THIS USER specifically if logged in
             if (user) {
-                console.log('🔔 Subscribing to realtime updates for user:', user.id);
-                const channelId = `user_settings_${user.id}`;
-                supabase.removeChannel(supabase.channel(channelId)); // Cleanup previous if exists
+                console.log('🔔 Subscribing to user-specific updates:', user.id);
+                const channelId = `user_settings_${user.id}_channel`;
+                supabase.removeChannel(supabase.channel(channelId));
 
                 supabase
                     .channel(channelId)
@@ -447,17 +474,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                             filter: `user_id=eq.${user.id}`
                         },
                         (payload) => {
-                            console.log('🔔 Realtime update for current user:', user.id);
-                            setSettings(prev => ({ ...prev, ...(payload.new as any) }));
+                            console.log('🔔 Realtime update for user settings');
+                            const newUserSettings = payload.new as any;
+                            const filteredUser = Object.fromEntries(
+                                Object.entries(newUserSettings).filter(([key, v]) =>
+                                    v !== null && USER_SPECIFIC_KEYS.includes(key as any)
+                                )
+                            );
+                            setSettings(prev => ({ ...prev, ...filteredUser }));
                         }
                     )
                     .subscribe();
             }
 
+
         } catch (error) {
             console.error('Error fetching theme settings:', error);
         } finally {
             setIsLoading(false);
+            setHasLoaded(true);
         }
     };
 
@@ -562,7 +597,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <ThemeContext.Provider value={{ settings, updateSettings, isLoading, resetToDefaults, userProfile }}>
+        <ThemeContext.Provider value={{ isLoading, hasLoaded, settings, updateSettings, resetToDefaults, userProfile }}>
             {children}
         </ThemeContext.Provider>
     );

@@ -5,7 +5,7 @@ import { Loader2, Globe, Sparkles, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 
-export default function HealyLogin() {
+export default function EpicLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -70,7 +70,7 @@ export default function HealyLogin() {
                         <div className="w-36 h-36 rounded-full overflow-hidden flex items-center justify-center relative z-10">
                             <img
                                 src={logoPath}
-                                alt="Healy Academy"
+                                alt="Logo"
                                 className="w-full h-full object-contain opacity-90 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl mix-blend-screen"
                                 style={{ clipPath: 'circle(50%)' }}
                                 onError={(e) => {
@@ -91,7 +91,7 @@ export default function HealyLogin() {
                     {/* Header - Inside Card */}
                     <div className="text-center mb-6">
                         <h1 className="text-xl font-black text-white tracking-[0.3em] uppercase mb-1">
-                            Healy Gymnastic
+                            Epic Gymnastic
                         </h1>
                         <div className="flex items-center justify-center gap-4">
                             <div className="h-[1px] w-8 bg-[#D4AF37]/30"></div>
@@ -174,7 +174,7 @@ export default function HealyLogin() {
 
                         {/* Copyright Footer */}
                         <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.4em]">
-                            © 2026 Healy Gymnastic Academy
+                            © 2026 Epic Gymnastic Academy
                         </span>
                     </div>
                 </div>
