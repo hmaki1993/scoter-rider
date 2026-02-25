@@ -81,15 +81,27 @@ export default function ModernSelect({
                 <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
             </button>
 
-            {/* Hidden Input for Form Validation/Submission */}
+            {/* Hidden Input for Form Validation/Submission - ABSOLUTELY CONCEALED */}
             <input
                 type="text"
                 value={value}
                 onChange={() => { }}
                 readOnly
                 required={required}
-                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+                aria-hidden="true"
                 tabIndex={-1}
+                style={{
+                    position: 'absolute',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    width: '100%',
+                    height: '100%',
+                    inset: 0,
+                    border: 'none',
+                    padding: 0,
+                    margin: 0,
+                    visibility: 'hidden'
+                }}
             />
 
             {/* Dropdown Menu */}

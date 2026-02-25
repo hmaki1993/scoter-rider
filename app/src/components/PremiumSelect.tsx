@@ -30,10 +30,13 @@ export default function PremiumSelect({
 
     // UUID Detection Helper (Robust)
     const isUUID = (str: any) => {
-        if (!str) return false;
-        const s = String(str).trim();
+        if (!str || typeof str !== 'string') return false;
+        const s = str.trim();
+        // Standard UUIDs are 36 chars and have 4 dashes
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        return uuidRegex.test(s) || (s.length > 20 && (s.match(/-/g) || []).length >= 4);
+        const hasDashes = (s.match(/-/g) || []).length >= 4;
+        const isLong = s.length >= 32;
+        return uuidRegex.test(s) || (isLong && hasDashes);
     };
 
     const selectedOption = options.find(opt => String(opt.value) === String(value));
@@ -69,23 +72,35 @@ export default function PremiumSelect({
             >
                 <div className="flex flex-col items-start min-w-0 flex-1">
                     <span className={`text-xs font-bold truncate tracking-wide ${selectedOption ? 'text-white' : 'text-white/20'}`}>
-                        {selectedOption && !isUUID(selectedOption.label)
+                        {selectedOption && selectedOption.label && !isUUID(selectedOption.label)
                             ? selectedOption.label
-                            : (selectedOption ? fallbackRole : placeholder)}
+                            : (selectedOption ? `👤 ${fallbackRole}` : placeholder)}
                     </span>
                 </div>
                 <ChevronDown className={`w-3.5 h-3.5 absolute right-5 top-1/2 -translate-y-1/2 transition-transform duration-500 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
             </button>
 
-            {/* Hidden Input for Form Validation/Submission */}
+            {/* Hidden Input for Form Validation/Submission - ABSOLUTELY CONCEALED */}
             <input
                 type="text"
                 value={value}
                 onChange={() => { }}
                 readOnly
                 required={required}
-                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+                aria-hidden="true"
                 tabIndex={-1}
+                style={{
+                    position: 'absolute',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    width: '100%',
+                    height: '100%',
+                    inset: 0,
+                    border: 'none',
+                    padding: 0,
+                    margin: 0,
+                    visibility: 'hidden'
+                }}
             />
 
             {/* Dropdown Menu */}
