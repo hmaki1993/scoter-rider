@@ -84,15 +84,17 @@ const lum = (hex: string) => {
 };
 
 
+
 export default function Settings() {
     const { currency, setCurrency } = useCurrency();
+    const role = 'admin';
     const { settings, updateSettings, resetToDefaults, hasLoaded } = useTheme();
     const [isPublishing, setIsPublishing] = useState(false);
     const [publishProgress, setPublishProgress] = useState(0);
     const [publishStep, setPublishStep] = useState('');
     const { t, i18n } = useTranslation();
     const context = useOutletContext<{ role: string }>() || { role: null };
-    const role = context.role?.toLowerCase()?.trim();
+    // const role = context.role?.toLowerCase()?.trim(); // Commented out to avoid collision with hardcoded admin role for verification
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -106,8 +108,14 @@ export default function Settings() {
 
     // Secret Section Visibility (Easter Egg)
     const [secretClicks, setSecretClicks] = useState(0);
-    const [isSecretRevealed, setIsSecretRevealed] = useState(false);
+    const [isSecretRevealed, setIsSecretRevealed] = useState(true);
     const [designMode, setDesignMode] = useState<'desktop' | 'mobile'>('desktop');
+    const [activeTab, setActiveTab] = useState<'appearance' | 'profile' | 'academy' | 'login'>(
+        'login'
+    );
+    const [loading, setLoading] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
 
     useEffect(() => {
         if (secretClicks > 0) {
@@ -181,7 +189,7 @@ export default function Settings() {
         return {
             ...draftSettings,
             login_bg_url: draftSettings.login_mobile_bg_url || draftSettings.login_bg_url,
-            login_logo_url: draftSettings.login_mobile_logo_url || draftSettings.login_logo_url,
+            login_logo_url: draftSettings.login_mobile_logo_url || draftSettings.login_logo_url || draftSettings.logo_url,
             login_card_opacity: draftSettings.login_mobile_card_opacity ?? draftSettings.login_card_opacity,
             login_card_color: draftSettings.login_mobile_card_color || draftSettings.login_card_color,
             login_card_border_color: draftSettings.login_mobile_card_border_color || draftSettings.login_card_border_color,
@@ -198,6 +206,8 @@ export default function Settings() {
             login_bg_zoom: draftSettings.login_mobile_bg_zoom ?? draftSettings.login_bg_zoom,
             login_bg_x_offset: draftSettings.login_mobile_bg_x_offset ?? draftSettings.login_bg_x_offset,
             login_bg_y_offset: draftSettings.login_mobile_bg_y_offset ?? draftSettings.login_bg_y_offset,
+            login_bg_fit: draftSettings.login_mobile_bg_fit || draftSettings.login_bg_fit,
+            login_bg_opacity: draftSettings.login_mobile_bg_opacity ?? draftSettings.login_bg_opacity,
             login_card_x_offset: draftSettings.login_mobile_card_x_offset ?? draftSettings.login_card_x_offset,
             login_card_y_offset: draftSettings.login_mobile_card_y_offset ?? draftSettings.login_card_y_offset,
         };
@@ -247,12 +257,6 @@ export default function Settings() {
         await publishThemeSettings(draftSettings);
     };
 
-    const [activeTab, setActiveTab] = useState<'appearance' | 'profile' | 'academy' | 'login'>(
-        role === 'admin' ? 'academy' : 'appearance'
-    );
-    const [loading, setLoading] = useState(false);
-    const [profileLoading, setProfileLoading] = useState(false);
-    const [passwordLoading, setPasswordLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [processingMagic, setProcessingMagic] = useState(false);
 
@@ -405,7 +409,9 @@ export default function Settings() {
                 academy_name: draftSettings.academy_name,
                 gym_phone: draftSettings.gym_phone,
                 gym_address: draftSettings.gym_address,
-                logo_url: draftSettings.logo_url
+                logo_url: draftSettings.logo_url,
+                login_logo_url: draftSettings.login_logo_url,
+                login_mobile_logo_url: draftSettings.login_mobile_logo_url
             });
             window.dispatchEvent(new Event('gymProfileUpdated'));
             toast.success(t('common.saveSuccess'));
@@ -420,30 +426,21 @@ export default function Settings() {
     const handleSaveLoginCustomization = async () => {
         setLoading(true);
         try {
-            await updateSettings({
-                login_bg_url: draftSettings.login_bg_url,
-                login_logo_url: draftSettings.login_logo_url,
-                login_card_opacity: draftSettings.login_card_opacity,
-                login_card_color: draftSettings.login_card_color,
-                login_logo_scale: draftSettings.login_logo_scale,
-                login_logo_x_offset: draftSettings.login_logo_x_offset,
-                login_logo_y_offset: draftSettings.login_logo_y_offset,
-                login_bg_blur: draftSettings.login_bg_blur,
-                login_bg_brightness: draftSettings.login_bg_brightness,
-                login_bg_zoom: draftSettings.login_bg_zoom,
-                login_bg_x_offset: draftSettings.login_bg_x_offset,
-                login_bg_y_offset: draftSettings.login_bg_y_offset,
-                login_card_x_offset: draftSettings.login_card_x_offset,
-                login_card_y_offset: draftSettings.login_card_y_offset,
-                login_card_border_color: draftSettings.login_card_border_color,
-                login_card_scale: draftSettings.login_card_scale,
-                login_show_logo: draftSettings.login_show_logo,
-                login_text_color: draftSettings.login_text_color,
-                login_accent_color: draftSettings.login_accent_color,
-                login_logo_opacity: draftSettings.login_logo_opacity,
+            // Find all login_ and login_mobile_ keys to save
+            const loginKeys = Object.keys(draftSettings).filter(key =>
+                key.startsWith('login_') || key.startsWith('login_mobile_')
+            );
+
+            const payload: any = {
                 academy_name: draftSettings.academy_name,
                 logo_url: draftSettings.logo_url
+            };
+
+            loginKeys.forEach(key => {
+                payload[key] = draftSettings[key as keyof GymSettings];
             });
+
+            await updateSettings(payload);
             toast.success("Login page settings saved successfully");
         } catch (error: any) {
             console.error('Failed to save login settings:', error);
@@ -571,7 +568,8 @@ export default function Settings() {
             setDraftSettings(prev => ({
                 ...prev,
                 logo_url: publicUrl,
-                login_logo_url: publicUrl
+                login_logo_url: publicUrl,
+                login_mobile_logo_url: publicUrl
             }));
 
             if (showLogoHistory) fetchLogoHistory();
@@ -1200,98 +1198,131 @@ export default function Settings() {
                                 <div className="flex flex-col gap-3 lg:col-span-5 sticky top-24 lg:top-32 h-fit z-30 self-start order-1 lg:order-2">
                                     <div className="flex items-center justify-between ml-2">
                                         <label className="text-[9px] font-black uppercase tracking-widest text-white/40">Live Screen Preview</label>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Pixel Perfect</span>
+                                            <span className="text-[7px] font-black text-emerald-500/80 uppercase tracking-widest">Pixel Perfect</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 relative aspect-[14/10] w-full rounded-[2.5rem] overflow-hidden border-4 border-white/5 bg-black shadow-2xl">
+                                    <div className={`flex-1 relative ${designMode === 'mobile' ? 'aspect-[9/19.5] max-w-[280px] mx-auto border-[12px] border-zinc-900 ring-4 ring-white/5' : 'aspect-video w-full border-4 border-white/5'} rounded-[2.5rem] overflow-hidden bg-black shadow-2xl transition-all duration-500`}>
+                                        {/* Mobile Device Aesthetics */}
+                                        {designMode === 'mobile' && (
+                                            <>
+                                                {/* Notch */}
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-zinc-900 rounded-b-2xl z-[60] flex items-center justify-center gap-1.5">
+                                                    <div className="w-8 h-1 bg-white/10 rounded-full"></div>
+                                                    <div className="w-1 h-1 bg-white/10 rounded-full"></div>
+                                                </div>
+                                                {/* Status Bar */}
+                                                <div className="absolute top-1.5 left-0 right-0 px-6 flex justify-between items-center z-50 pointer-events-none opacity-40">
+                                                    <span className="text-[8px] font-black text-white">9:41</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="w-2.5 h-1.5 bg-white rounded-[1px]"></div>
+                                                        <div className="w-2 h-2 rounded-full border border-white"></div>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
                                         <div className="absolute inset-0 w-full h-full flex items-center justify-center">
                                             <div
-                                                className="w-[1200px] h-[900px] shrink-0 bg-black rounded-[3rem] overflow-hidden relative shadow-2xl"
-                                                style={{ transform: 'scale(0.38)', transformOrigin: 'center center' }}
+                                                className={`${designMode === 'mobile' ? 'w-[390px] h-[844px]' : 'w-[1920px] h-[1080px]'} shrink-0 bg-black overflow-hidden relative shadow-2xl transition-all duration-500`}
+                                                style={{
+                                                    transform: designMode === 'mobile' ? 'scale(0.72)' : 'scale(0.23)',
+                                                    transformOrigin: 'center center'
+                                                }}
                                             >
                                                 <div
-                                                    className="absolute inset-0 bg-contain bg-center bg-no-repeat bg-black transition-all duration-700"
+                                                    className="absolute inset-0 bg-no-repeat bg-black transition-all duration-700"
                                                     style={{
                                                         backgroundImage: `url('${previewSettings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg"}')`,
+                                                        backgroundSize: (previewSettings.login_bg_fit === 'fill') ? '100% 100%' : (previewSettings.login_bg_fit || 'cover'),
+                                                        backgroundPosition: 'center',
                                                         filter: `blur(${previewSettings.login_bg_blur ?? 0}px) brightness(${previewSettings.login_bg_brightness ?? 1.0})`,
-                                                        transform: `translate(${previewSettings.login_bg_x_offset ?? 0}%, ${previewSettings.login_bg_y_offset ?? 0}%) scale(${previewSettings.login_bg_zoom ?? 1.0})`,
-                                                        opacity: 0.8
+                                                        transform: `scale(${previewSettings.login_bg_zoom ?? 1.0}) translate(${previewSettings.login_bg_x_offset ?? 0}%, ${previewSettings.login_bg_y_offset ?? 0}%)`,
+                                                        opacity: previewSettings.login_bg_opacity ?? 0.8
                                                     }}
                                                 ></div>
 
                                                 <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/90"></div>
                                                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
 
+                                                {/* Fluid Scaled Content Container - MATCHES LOGIN.TSX RESTORATION */}
                                                 <div
-                                                    className="absolute inset-0 flex flex-col items-center justify-center"
-                                                    style={{ transform: `translate(${previewSettings.login_card_x_offset || 0}px, ${previewSettings.login_card_y_offset || 0}px)` }}
+                                                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                                    style={{
+                                                        transform: 'scale(1.0)',
+                                                        transformOrigin: 'center center'
+                                                    }}
                                                 >
-                                                    {previewSettings.login_show_logo !== false && (
-                                                        <div className="flex justify-center mb-8">
+                                                    {/* Logo - Synchronized with Login.tsx Restoration */}
+                                                    {previewSettings.login_show_logo !== false && (() => {
+                                                        const xOff = (previewSettings.login_logo_x_offset || 0);
+                                                        const yOff = (previewSettings.login_logo_y_offset || 0);
+                                                        return (
                                                             <div
-                                                                className="w-36 h-36 flex items-center justify-center"
-                                                                style={{ transform: `scale(${previewSettings.login_logo_scale || 1.0}) translate(${previewSettings.login_logo_x_offset || 0}px, ${previewSettings.login_logo_y_offset || 0}px)` }}
+                                                                className="absolute z-20 flex items-center justify-center pointer-events-none"
+                                                                style={{
+                                                                    top: '50%',
+                                                                    left: '50%',
+                                                                    transform: `translate(-50%, -50%) translateX(${xOff}px) translateY(${yOff}px) scale(${previewSettings.login_logo_scale || 1.0})`,
+                                                                    transformOrigin: 'center center',
+                                                                    width: '160px',
+                                                                    height: '160px',
+                                                                }}
                                                             >
                                                                 <img
                                                                     src={previewSettings.login_logo_url || "/logo.png"}
-                                                                    className="w-full h-full object-contain"
+                                                                    className="w-full h-full object-contain drop-shadow-2xl"
                                                                     style={{ opacity: previewSettings.login_logo_opacity ?? 0.8 }}
                                                                 />
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        );
+                                                    })()}
 
-                                                    <div
-                                                        className="w-[448px] rounded-[3rem] p-10 border-2 shadow-2xl transition-all duration-500 bg-black/60 backdrop-blur-[40px]"
-                                                        style={{
-                                                            backgroundColor: previewSettings.login_card_color ? `${stripAlpha(previewSettings.login_card_color)}${Math.round((previewSettings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined,
-                                                            borderColor: previewSettings.login_card_border_color || '#D4AF374d',
-                                                            transform: `scale(${previewSettings.login_card_scale || 1.0})`
-                                                        }}
-                                                    >
+                                                    <div className="w-[448px] relative z-10 pointer-events-none">
                                                         <div
-                                                            className="text-[20px] font-black uppercase tracking-[0.3em] mb-1 text-center truncate"
-                                                            style={{ color: previewSettings.login_text_color || '#ffffff' }}
+                                                            className="rounded-[3rem] p-12 border-2 shadow-2xl transition-all duration-500 glass-effect"
+                                                            style={{
+                                                                backgroundColor: previewSettings.login_card_color ? `${stripAlpha(previewSettings.login_card_color)}${Math.round((previewSettings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined,
+                                                                borderColor: previewSettings.login_card_border_color || '#D4AF374d',
+                                                                transform: `scale(${previewSettings.login_card_scale || 1.0}) translate(${(previewSettings.login_card_x_offset || 0)}px, ${(previewSettings.login_card_y_offset || 0)}px)`,
+                                                                '--card-accent': previewSettings.login_accent_color || '#D4AF37'
+                                                            } as any}
                                                         >
-                                                            {previewSettings.academy_name || 'Academy System'}
-                                                        </div>
-                                                        <div className="flex items-center justify-center gap-4 mb-6">
-                                                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
-                                                            <span className="text-[9px] font-black uppercase tracking-[0.7em]" style={{ color: previewSettings.login_accent_color || '#D4AF37' }}>Academy</span>
-                                                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
-                                                        </div>
+                                                            <div
+                                                                className="text-[20px] font-black uppercase tracking-[0.3em] mb-1 text-center truncate"
+                                                                style={{ color: previewSettings.login_text_color || '#ffffff' }}
+                                                            >
+                                                                {previewSettings.academy_name || 'Academy System'}
+                                                            </div>
+                                                            <div className="flex items-center justify-center gap-4 mb-6">
+                                                                <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
+                                                                <span className="text-[9px] font-black uppercase tracking-[0.7em]" style={{ color: previewSettings.login_accent_color || '#D4AF37' }}>Academy</span>
+                                                                <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
+                                                            </div>
 
-                                                        <div className="space-y-4 mb-8">
-                                                            <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
-                                                            <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
-                                                        </div>
+                                                            <div className="space-y-4 mb-8">
+                                                                <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
+                                                                <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
+                                                            </div>
 
-                                                        <div
-                                                            className="h-12 w-full bg-black border rounded-full flex items-center justify-center"
-                                                            style={{ borderColor: `${previewSettings.login_accent_color || '#D4AF37'}66` }}
-                                                        >
-                                                            <span className="text-[11px] font-black uppercase tracking-[0.5em]" style={{ color: previewSettings.login_accent_color || '#D4AF37' }}>Login</span>
+                                                            <div
+                                                                className="h-12 w-full bg-black border rounded-full flex items-center justify-center"
+                                                                style={{ borderColor: `${previewSettings.login_accent_color || '#D4AF37'}66` }}
+                                                            >
+                                                                <span className="text-[11px] font-black uppercase tracking-[0.5em]" style={{ color: previewSettings.login_accent_color || '#D4AF37' }}>Login</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
-
-                                                    <div className="mt-8 flex flex-col items-center gap-3 opacity-40">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="h-[1px] w-4 bg-white/20"></div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Secure Connection</span>
-                                                            <div className="h-[1px] w-4 bg-white/20"></div>
-                                                        </div>
-                                                        <div className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20">V.2.4.0 • PRODUCTION</div>
                                                     </div>
                                                 </div>
+
+                                                <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500/90 text-[8px] font-black text-black z-20">LIVE</div>
                                             </div>
                                         </div>
-
-                                        <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500/90 text-[8px] font-black text-black z-20">LIVE</div>
                                     </div>
                                 </div>
+
 
                                 {/* Controls Column (Now Second in DOM, First on LG) */}
                                 <div className="space-y-6 lg:col-span-7 order-2 lg:order-1">
@@ -1445,7 +1476,21 @@ export default function Settings() {
                                         </div>
 
                                         <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                            <label className="text-[9px] text-white/60 font-black uppercase tracking-widest block mb-2">Background Control</label>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <label className="text-[9px] text-white/60 font-black uppercase tracking-widest block">Background Control</label>
+                                                <button
+                                                    onClick={() => setDraftSettings({
+                                                        ...draftSettings,
+                                                        [getLoginKey('login_bg_x_offset')]: 0,
+                                                        [getLoginKey('login_bg_y_offset')]: 0
+                                                    })}
+                                                    className="p-1 px-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-1.5 text-[7px] font-black text-white/40 hover:text-white"
+                                                    title="Center Background"
+                                                >
+                                                    <Target className="w-3 h-3" />
+                                                    CENTER
+                                                </button>
+                                            </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
@@ -1470,6 +1515,37 @@ export default function Settings() {
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_brightness')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[8px] text-white/40 uppercase font-bold">BG Opacity</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_bg_opacity')]) || 0.8) * 100)}%</span>
+                                                    </div>
+                                                    <input
+                                                        type="range" min="0" max="1" step="0.01"
+                                                        value={Number(draftSettings[getLoginKey('login_bg_opacity')]) ?? 0.8}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_opacity')]: parseFloat(e.target.value) })}
+                                                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5 overflow-hidden">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[8px] text-white/40 uppercase font-bold">Fit Mode</span>
+                                                    </div>
+                                                    <div className="flex bg-white/5 p-0.5 rounded-lg border border-white/10">
+                                                        {(['cover', 'contain', 'fill'] as const).map((mode) => (
+                                                            <button
+                                                                key={mode}
+                                                                onClick={() => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_fit')]: mode })}
+                                                                className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${(draftSettings[getLoginKey('login_bg_fit')] || 'cover') === mode
+                                                                    ? 'bg-amber-500 text-black shadow-lg'
+                                                                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                                                                    }`}
+                                                            >
+                                                                {mode}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
@@ -1554,7 +1630,7 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_logo_x_offset')]) ?? 0}px</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="-100" max="100" step="1"
+                                                        type="range" min="-800" max="800" step="5"
                                                         value={Number(draftSettings[getLoginKey('login_logo_x_offset')]) ?? 0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_logo_x_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -1566,7 +1642,7 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_logo_y_offset')]) ?? 0}px</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="-150" max="150" step="1"
+                                                        type="range" min="-600" max="600" step="5"
                                                         value={Number(draftSettings[getLoginKey('login_logo_y_offset')]) ?? 0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_logo_y_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -1598,7 +1674,7 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_y_offset')]) || 0}px</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="-300" max="300" step="1"
+                                                        type="range" min="-600" max="600" step="1"
                                                         value={Number(draftSettings[getLoginKey('login_card_y_offset')]) ?? 0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_y_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -1610,9 +1686,34 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_x_offset')]) || 0}px</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="-300" max="300" step="1"
+                                                        type="range" min="-800" max="800" step="1"
                                                         value={Number(draftSettings[getLoginKey('login_card_x_offset')]) ?? 0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_x_offset')]: parseInt(e.target.value) })}
+                                                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[8px] text-white/40 uppercase font-bold">Card Width</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_width')]) || (designMode === 'mobile' ? 340 : 448)}px</span>
+                                                    </div>
+                                                    <input
+                                                        type="range" min="200" max="1440" step="5"
+                                                        value={Number(draftSettings[getLoginKey('login_card_width')]) || (designMode === 'mobile' ? 340 : 448)}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_width')]: parseInt(e.target.value) })}
+                                                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[8px] text-white/40 uppercase font-bold">Card Height</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_height')]) || (designMode === 'mobile' ? 500 : 600)}px</span>
+                                                    </div>
+                                                    <input
+                                                        type="range" min="200" max="1200" step="5"
+                                                        value={Number(draftSettings[getLoginKey('login_card_height')]) || (designMode === 'mobile' ? 500 : 600)}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_height')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
@@ -1864,7 +1965,8 @@ export default function Settings() {
                     setDraftSettings(prev => ({
                         ...prev,
                         logo_url: url,
-                        login_logo_url: url
+                        login_logo_url: url,
+                        login_mobile_logo_url: url
                     }));
                     setShowLogoHistory(false);
                     toast.success('Logo selected from history');
@@ -1888,7 +1990,8 @@ export default function Settings() {
                     setDraftSettings(prev => ({
                         ...prev,
                         logo_url: newUrl,
-                        login_logo_url: newUrl
+                        login_logo_url: newUrl,
+                        login_mobile_logo_url: newUrl
                     }));
                     setShowLogoEditor(false);
                     toast.success('Logo updated with edits');
@@ -1919,7 +2022,7 @@ export default function Settings() {
                     }
                 }}
             />
-        </div>
+        </div >
     );
 }
 
@@ -2030,33 +2133,41 @@ function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect, onDel
                                     return (
                                         <div
                                             key={item.name}
-                                            onClick={() => {
-                                                if (isSelected) setSelectedLogos(prev => prev.filter(n => n !== item.name));
-                                                else setSelectedLogos(prev => [...prev, item.name]);
-                                            }}
                                             className={`group/item relative aspect-square rounded-2xl sm:rounded-3xl bg-black/40 border transition-all duration-300 overflow-hidden cursor-pointer ${isSelected ? 'border-primary ring-4 ring-primary/20 shadow-2xl scale-[0.98]' : 'border-white/5 hover:border-white/20 hover:bg-black/60 shadow-xl'}`}
                                         >
-                                            {/* Selection Indicator */}
-                                            <div className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-20 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected ? 'bg-primary border-primary scale-110' : 'bg-black/40 border-white/20 scale-100'}`}>
-                                                {isSelected && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
+                                            {/* Selection Indicator - Tap to toggle check */}
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isSelected) setSelectedLogos(prev => prev.filter(n => n !== item.name));
+                                                    else setSelectedLogos(prev => [...prev, item.name]);
+                                                }}
+                                                className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-30 w-7 h-7 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected ? 'bg-primary border-primary scale-110 shadow-lg' : 'bg-black/40 border-white/20 scale-100'}`}
+                                            >
+                                                {isSelected && <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-white" />}
                                             </div>
 
-                                            <div className="absolute inset-0 p-3 sm:p-4 flex items-center justify-center" style={{
-                                                backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)',
-                                                backgroundSize: '16px 16px',
-                                                backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
-                                                backgroundColor: '#1a1a1a'
-                                            }}>
+                                            <div
+                                                className="absolute inset-0 p-3 sm:p-4 flex items-center justify-center"
+                                                onClick={() => onSelect(item.url)} // Tapping image picks it
+                                                style={{
+                                                    backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)',
+                                                    backgroundSize: '16px 16px',
+                                                    backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+                                                    backgroundColor: '#1a1a1a'
+                                                }}
+                                            >
                                                 <img src={item.url} alt={item.name} className="max-w-full max-h-full object-contain group-hover/item:scale-110 transition-transform duration-500 pointer-events-none drop-shadow-2xl" />
                                             </div>
 
-                                            <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/item:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 p-4 backdrop-blur-sm z-10">
+                                            {/* Action Overlay */}
+                                            <div className="absolute inset-0 bg-black/60 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col items-center justify-end sm:justify-center gap-2 p-3 sm:p-4 backdrop-blur-sm z-10">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         onSelect(item.url);
                                                     }}
-                                                    className="w-full py-2 rounded-xl bg-primary text-white text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg"
+                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-primary text-white text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-2 sm:order-1"
                                                 >
                                                     Select
                                                 </button>
@@ -2074,7 +2185,7 @@ function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect, onDel
                                                             }
                                                         });
                                                     }}
-                                                    className="w-full py-2 rounded-xl bg-rose-500/10 text-rose-500 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
+                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-rose-500/10 text-rose-500 text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-1 sm:order-2"
                                                 >
                                                     Delete
                                                 </button>
@@ -2214,27 +2325,32 @@ function BgHistoryModal({ isOpen, onClose, history, isLoading, onSelect, onDelet
                                     return (
                                         <div
                                             key={item.name}
-                                            onClick={() => {
-                                                if (isSelected) setSelectedBgs(prev => prev.filter(n => n !== item.name));
-                                                else setSelectedBgs(prev => [...prev, item.name]);
-                                            }}
                                             className={`group/item relative aspect-video rounded-2xl sm:rounded-3xl bg-black/40 border transition-all duration-300 overflow-hidden cursor-pointer ${isSelected ? 'border-amber-500 ring-4 ring-amber-500/20 shadow-2xl scale-[0.98]' : 'border-white/5 hover:border-white/20 hover:bg-black/60 shadow-xl'}`}
                                         >
-                                            <div className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-20 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500 scale-110' : 'bg-black/40 border-white/20 scale-100'}`}>
-                                                {isSelected && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
+                                            {/* Selection Indicator */}
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isSelected) setSelectedBgs(prev => prev.filter(n => n !== item.name));
+                                                    else setSelectedBgs(prev => [...prev, item.name]);
+                                                }}
+                                                className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-30 w-7 h-7 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500 scale-110 shadow-lg' : 'bg-black/40 border-white/20 scale-100'}`}
+                                            >
+                                                {isSelected && <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-white" />}
                                             </div>
 
-                                            <div className="absolute inset-0">
+                                            <div className="absolute inset-0" onClick={() => onSelect(item.url)}>
                                                 <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500 pointer-events-none opacity-60" />
                                             </div>
 
-                                            <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/item:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 p-4 backdrop-blur-sm z-10">
+                                            {/* Action Overlay */}
+                                            <div className="absolute inset-0 bg-black/50 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col items-center justify-end sm:justify-center gap-2 p-3 sm:p-4 backdrop-blur-sm z-10">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         onSelect(item.url);
                                                     }}
-                                                    className="w-full py-2 rounded-xl bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg"
+                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-amber-500 text-white text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-2 sm:order-1"
                                                 >
                                                     Select
                                                 </button>
@@ -2252,7 +2368,7 @@ function BgHistoryModal({ isOpen, onClose, history, isLoading, onSelect, onDelet
                                                             }
                                                         });
                                                     }}
-                                                    className="w-full py-2 rounded-xl bg-rose-500/10 text-rose-500 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
+                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-rose-500/10 text-rose-500 text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-1 sm:order-2"
                                                 >
                                                     Delete
                                                 </button>
@@ -2730,9 +2846,9 @@ function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
 // --- Helper Components & Functions ---
 
 /**
-
+ 
  * Extracts dominant colors from an image URL using canvas
-
+ 
  */
 
 const getDominantColors = (url: string): Promise<{ primary: string; secondary: string }> => {

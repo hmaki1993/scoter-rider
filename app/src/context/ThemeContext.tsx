@@ -51,6 +51,10 @@ export interface GymSettings {
     login_text_color?: string;
     login_accent_color?: string;
     login_logo_opacity?: number;
+    login_bg_fit?: 'cover' | 'contain' | 'fill';
+    login_bg_opacity?: number;
+    login_card_width?: number;
+    login_card_height?: number;
     // Mobile-specific login themes
     login_mobile_bg_url?: string;
     login_mobile_logo_url?: string;
@@ -72,6 +76,10 @@ export interface GymSettings {
     login_mobile_text_color?: string;
     login_mobile_accent_color?: string;
     login_mobile_logo_opacity?: number;
+    login_mobile_bg_fit?: 'cover' | 'contain' | 'fill';
+    login_mobile_bg_opacity?: number;
+    login_mobile_card_width?: number;
+    login_mobile_card_height?: number;
 }
 
 export const applySettingsToRoot = (settings: GymSettings) => {
@@ -221,10 +229,14 @@ export const defaultSettings: GymSettings = {
     login_bg_zoom: 1,
     login_bg_x_offset: 0,
     login_bg_y_offset: 0,
+    login_bg_fit: 'cover',
+    login_bg_opacity: 0.8,
     login_card_x_offset: 0,
     login_card_y_offset: 0,
     login_card_scale: 1,
     login_logo_opacity: 1,
+    login_card_width: 440,
+    login_card_height: 600,
     // Mobile Defaults (Matches Desktop initially)
     login_mobile_bg_url: '/Tom Roberton Images _ Balance-and-Form _ 2.jpg',
     login_mobile_logo_url: '/logo.png',
@@ -242,10 +254,14 @@ export const defaultSettings: GymSettings = {
     login_mobile_bg_zoom: 1,
     login_mobile_bg_x_offset: 0,
     login_mobile_bg_y_offset: 0,
+    login_mobile_bg_fit: 'cover',
+    login_mobile_bg_opacity: 0.8,
     login_mobile_card_x_offset: 0,
     login_mobile_card_y_offset: 0,
     login_mobile_card_scale: 1,
-    login_mobile_logo_opacity: 1
+    login_mobile_logo_opacity: 1,
+    login_mobile_card_width: 340,
+    login_mobile_card_height: 500
 };
 
 export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
@@ -255,15 +271,16 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'login_text_color', 'login_accent_color', 'login_logo_opacity',
     'login_logo_scale', 'login_logo_x_offset', 'login_logo_y_offset',
     'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
-    'login_bg_x_offset', 'login_bg_y_offset',
+    'login_bg_x_offset', 'login_bg_y_offset', 'login_bg_fit', 'login_bg_opacity',
     'login_card_x_offset', 'login_card_y_offset',
     'login_mobile_bg_url', 'login_mobile_logo_url', 'login_mobile_card_opacity', 'login_mobile_card_color',
     'login_mobile_card_border_color', 'login_mobile_card_scale', 'login_mobile_show_logo',
     'login_mobile_text_color', 'login_mobile_accent_color', 'login_mobile_logo_opacity',
     'login_mobile_logo_scale', 'login_mobile_logo_x_offset', 'login_mobile_logo_y_offset',
     'login_mobile_bg_blur', 'login_mobile_bg_brightness', 'login_mobile_bg_zoom',
-    'login_mobile_bg_x_offset', 'login_mobile_bg_y_offset',
+    'login_mobile_bg_x_offset', 'login_mobile_bg_y_offset', 'login_mobile_bg_fit', 'login_mobile_bg_opacity',
     'login_mobile_card_x_offset', 'login_mobile_card_y_offset',
+    'login_card_width', 'login_card_height', 'login_mobile_card_width', 'login_mobile_card_height',
     'text_color_base', 'text_color_muted'
 ];
 
