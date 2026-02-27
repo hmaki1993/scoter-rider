@@ -113,9 +113,9 @@ export default function Login() {
 
     return (
         <div
-            className="login-page-root min-h-screen bg-black flex items-center justify-center p-4 md:p-6 relative overflow-hidden font-cairo select-none"
+            className="login-page-root h-screen w-screen bg-black flex items-center justify-center relative overflow-hidden font-cairo select-none"
             style={{
-                '--fluid-scale': 'min(1, calc(100vh / 1100))',
+                '--fluid-scale': '1',
             } as React.CSSProperties}
         >
             {/* Dynamic Background */}
@@ -177,12 +177,12 @@ export default function Login() {
                 >
                     {/* Login Card Layer */}
                     <div
-                        className="group/card hover:!opacity-100 border-2 rounded-[3rem] p-8 md:p-12 h-full transition-all duration-700 ease-out flex flex-col justify-center overflow-hidden"
+                        className="group/card hover:!opacity-100 focus-within:!opacity-100 border rounded-[3rem] p-8 md:p-12 h-full transition-all duration-700 ease-out flex flex-col justify-center overflow-hidden shadow-[inset_0_0_80px_rgba(255,255,255,0.03)] relative before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.05] before:to-transparent before:pointer-events-none"
                         style={{
                             backgroundColor: getSetting('login_card_color') || '#000000',
-                            border: getSetting('login_card_border_color') ? `1px solid ${getSetting('login_card_border_color')}` : undefined,
-                            boxShadow: getSetting('login_card_border_color') ? `0 0 60px -15px color-mix(in srgb, ${getSetting('login_card_border_color')}, transparent 50%)` : undefined,
-                            opacity: 0.45,
+                            border: getSetting('login_card_border_color') ? `${getSetting('login_card_border_width') ?? 1}px solid ${getSetting('login_card_border_color')}` : undefined,
+                            boxShadow: getSetting('login_card_border_color') ? `0 0 ${getSetting('login_card_glow_size') ?? 60}px -15px color-mix(in srgb, ${getSetting('login_card_border_color')}, transparent ${100 - Number(getSetting('login_card_glow_opacity') ?? 50)}%)` : undefined,
+                            opacity: getSetting('login_card_opacity') ?? 0.45,
                             transform: `scale(${getSetting('login_card_scale') ?? 1.0}) translate(${getSetting('login_card_x_offset') ?? 0}px, ${getSetting('login_card_y_offset') ?? 0}px)`,
                             backdropFilter: 'blur(24px)',
                             WebkitBackdropFilter: 'blur(24px)'
@@ -190,12 +190,12 @@ export default function Login() {
                     >
                         {/* Header - Inside Card */}
                         <div className="text-center mb-6">
-                            <h1 className="text-xl font-black tracking-[0.3em] uppercase mb-1 drop-shadow-md" style={{ color: getSetting('login_text_color') || '#ffffff' }}>
+                            <h1 className="font-black tracking-[0.3em] uppercase mb-1 drop-shadow-md" style={{ color: getSetting('login_text_color') || '#ffffff', fontSize: getSetting('login_heading_size') ? `${getSetting('login_heading_size')}px` : '24px' }}>
                                 {settings.academy_name || 'Academy System'}
                             </h1>
                             <div className="flex items-center justify-center gap-4">
                                 <div className="h-[1px] w-8" style={{ backgroundColor: `${getSetting('login_accent_color') || '#D4AF37'}4d` }}></div>
-                                <span className="text-[9px] font-black uppercase tracking-[0.7em] opacity-80" style={{ color: getSetting('login_accent_color') || '#D4AF37' }}>
+                                <span className="font-black uppercase tracking-[0.5em] opacity-80" style={{ color: getSetting('login_accent_color') || '#D4AF37', fontSize: getSetting('login_label_size') ? `${getSetting('login_label_size')}px` : '11px' }}>
                                     Academy
                                 </span>
                                 <div className="h-[1px] w-8" style={{ backgroundColor: `${getSetting('login_accent_color') || '#D4AF37'}4d` }}></div>
@@ -210,30 +210,34 @@ export default function Login() {
 
                         <form onSubmit={handleLogin} className="space-y-6">
                             <div className="space-y-4">
-                                <div className="space-y-1.5 text-left group">
-                                    <label className="block text-[9px] font-black uppercase tracking-[0.4em] transition-colors text-left" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66` }}>Email Address</label>
-                                    <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 border border-white/10 focus-within:border-white/30 focus-within:bg-white/[0.05]">
+                                <div className="space-y-2.5 text-left group/email relative">
+                                    <label className="block font-black uppercase tracking-[0.4em] transition-all duration-500 text-left pl-2 group-focus-within/email:text-white group-hover/email:text-white/80" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66`, fontSize: getSetting('login_label_size') ? `${getSetting('login_label_size')}px` : '11px' }}>Email Address</label>
+                                    <div className="relative rounded-2xl overflow-hidden transition-all duration-500 border border-white/5 bg-white/[0.02] shadow-[inset_0_2px_15px_rgba(255,255,255,0.02)] group-focus-within/email:border-white/20 group-focus-within/email:bg-white/[0.06] group-focus-within/email:shadow-[inset_0_2px_20px_rgba(255,255,255,0.04),0_0_20px_rgba(255,255,255,0.05)] group-hover/email:border-white/10">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-white/[0.03] to-transparent opacity-0 group-focus-within/email:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                                         <input
                                             type="email"
                                             required
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full bg-white/[0.03] py-4 px-8 transition-all text-sm font-bold text-white !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
-                                            placeholder="email@domain.com"
+                                            className="relative w-full bg-transparent py-4 px-8 transition-all font-bold text-white tracking-widest !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
+                                            style={{ fontSize: getSetting('login_input_size') ? `${getSetting('login_input_size')}px` : '24px' }}
+                                            placeholder=""
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5 pt-2 text-left group">
-                                    <label className="block text-[9px] font-black uppercase tracking-[0.4em] transition-colors text-left" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66` }}>Password</label>
-                                    <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 border border-white/10 focus-within:border-white/30 focus-within:bg-white/[0.05]">
+                                <div className="space-y-2.5 pt-4 text-left group/pass relative">
+                                    <label className="block font-black uppercase tracking-[0.4em] transition-all duration-500 text-left pl-2 group-focus-within/pass:text-white group-hover/pass:text-white/80" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66`, fontSize: getSetting('login_label_size') ? `${getSetting('login_label_size')}px` : '11px' }}>Password</label>
+                                    <div className="relative rounded-2xl overflow-hidden transition-all duration-500 border border-white/5 bg-white/[0.02] shadow-[inset_0_2px_15px_rgba(255,255,255,0.02)] group-focus-within/pass:border-white/20 group-focus-within/pass:bg-white/[0.06] group-focus-within/pass:shadow-[inset_0_2px_20px_rgba(255,255,255,0.04),0_0_20px_rgba(255,255,255,0.05)] group-hover/pass:border-white/10">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-white/[0.03] to-transparent opacity-0 group-focus-within/pass:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                                         <input
                                             type="password"
                                             required
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full bg-white/[0.03] py-4 px-8 transition-all text-sm font-bold text-white !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
-                                            placeholder="••••••••"
+                                            className="relative w-full bg-transparent py-4 px-8 transition-all font-bold text-white tracking-widest !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
+                                            style={{ fontSize: getSetting('login_input_size') ? `${getSetting('login_input_size')}px` : '24px' }}
+                                            placeholder=""
                                         />
                                     </div>
                                 </div>
@@ -242,10 +246,11 @@ export default function Login() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black border shadow-xl transition-all active:scale-[0.98] group/btn overflow-hidden"
+                                className="w-full relative py-4 mt-4 rounded-2xl font-black uppercase tracking-[0.5em] bg-black/60 backdrop-blur-md border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-500 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:bg-black/80 hover:border-white/30 active:scale-[0.98] group/btn overflow-hidden"
                                 style={{
                                     color: getSetting('login_accent_color') || '#D4AF37',
-                                    borderColor: `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`
+                                    borderColor: `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`,
+                                    fontSize: getSetting('login_label_size') ? `${getSetting('login_label_size')}px` : '12px'
                                 }}
                                 onMouseEnter={(e) => {
                                     const accent = getSetting('login_accent_color') || '#D4AF37';
@@ -274,8 +279,8 @@ export default function Login() {
                         <div className="mt-4 md:mt-7 flex flex-col items-center gap-3">
                             <button
                                 onClick={toggleLanguage}
-                                className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 transition-all text-[9px] font-black uppercase tracking-[0.3em]"
-                                style={{ color: getSetting('login_text_color') || '#ffffff', borderColor: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}33` }}
+                                className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 transition-all font-black uppercase tracking-[0.3em]"
+                                style={{ color: getSetting('login_text_color') || '#ffffff', borderColor: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}33`, fontSize: getSetting('login_label_size') ? `${Math.max(9, getSetting('login_label_size') as number - 2)}px` : '9px' }}
                                 onMouseEnter={(e) => {
                                     const accent = getSetting('login_accent_color') || '#D4AF37';
                                     e.currentTarget.style.color = accent;
@@ -292,7 +297,7 @@ export default function Login() {
                             </button>
 
                             {/* Copyright Footer */}
-                            <span className="text-[9px] font-black uppercase tracking-[0.4em]" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}55` }}>
+                            <span className="font-black uppercase tracking-[0.4em]" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}55`, fontSize: getSetting('login_label_size') ? `${Math.max(9, getSetting('login_label_size') as number - 2)}px` : '9px' }}>
                                 © 2026 {settings.academy_name || 'Academy System'}
                             </span>
                         </div>
@@ -321,14 +326,13 @@ export default function Login() {
                             background-color: transparent !important;
                             box-shadow: none !important;
                             border-color: ${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}26 !important;
-                            font-size: 16px !important;
                             line-height: 1.5 !important;
                             height: auto !important;
                         }
 
                         /* Higher specificity for Login inputs to beat index.css */
                         .group/card input {
-                            font-size: 16px !important;
+                            
                         }
 
                         input:focus {

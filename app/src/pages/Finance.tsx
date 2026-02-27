@@ -116,7 +116,13 @@ export default function Finance() {
     const { data: payrollData, isLoading: payrollLoading } = useMonthlyPayroll(currentMonthStr);
 
     const payments = (paymentsData as Payment[]) || [];
-    const totalRevenue = payments.reduce((sum: number, p: Payment) => sum + Number(p.amount), 0);
+    const refunds = (refundsData as any[]) || [];
+    const expenses = (expensesData as any[]) || [];
+
+    // Overall stats (Lifetime)
+    const lifetimePayments = payments.reduce((sum: number, p: Payment) => sum + Number(p.amount), 0);
+    const lifetimeRefundsTotal = refunds.reduce((sum, r) => sum + Number(r.amount), 0);
+    const totalRevenue = lifetimePayments - lifetimeRefundsTotal;
 
     // Period Filtering Logic
     const currentMonth = selectedDate.getMonth();
@@ -127,20 +133,21 @@ export default function Finance() {
             const d = parseISO(p.payment_date);
             return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
-    const monthlyRevenue = monthlyPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const monthlyRevenueTotal = monthlyPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    // Calculate monthly refunds and expenses
-    const refunds = refundsData || [];
-    const expenses = expensesData || [];
     const monthlyRefunds = refunds.filter(r => {
         const d = parseISO(r.refund_date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
+    const totalMonthlyRefunds = monthlyRefunds.reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // Net Monthly Revenue (Payments - Refunds)
+    const monthlyRevenue = monthlyRevenueTotal - totalMonthlyRefunds;
+
     const monthlyGeneralExpenses = expenses.filter(e => {
         const d = parseISO(e.expense_date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
-    const totalMonthlyRefunds = monthlyRefunds.reduce((sum, r) => sum + Number(r.amount), 0);
     const totalMonthlyGeneralExpenses = monthlyGeneralExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
     // Separate PT earnings from base salaries
@@ -150,7 +157,8 @@ export default function Finance() {
     }, 0) || 0;
     const monthlyPayroll = payrollData?.totalPayroll || 0; // Total (Salaries + PT)
 
-    const monthlyExpenses = monthlyBaseSalaries + monthlyPTEarnings + totalMonthlyRefunds + totalMonthlyGeneralExpenses;
+    // Note: totalMonthlyRefunds is already subtracted from monthlyRevenue
+    const monthlyExpenses = monthlyBaseSalaries + monthlyPTEarnings + totalMonthlyGeneralExpenses;
     const netProfit = monthlyRevenue - monthlyExpenses;
 
     const [showAddModal, setShowAddModal] = useState(false);
@@ -491,7 +499,7 @@ export default function Finance() {
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="relative">
                                                 <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-primary font-black text-lg shadow-inner">
-                                                    {payment.students?.full_name?.[0] || (payment.notes?.split(' - ')[1]?.[0] || 'G')}
+                                                    {payment.students?.full_name?.[0] || (payment.notes?.split(' - ')[1]?.trim()?.[0] || 'G')}
                                                 </div>
                                                 <div className="absolute -top-1 -right-1">
                                                     <PremiumCheckbox
@@ -507,7 +515,7 @@ export default function Finance() {
                                                 </div>
                                             </div>
                                             <div className="min-w-0">
-                                                <h3 className="font-black text-white text-base truncate tracking-tight">{payment.students?.full_name || (payment.notes?.split(' - ')[1] || t('common.guest'))}</h3>
+                                                <h3 className="font-black text-white text-base truncate tracking-tight">{payment.students?.full_name || (payment.notes?.split(' - ')[1]?.split(' (')[0]?.trim() || t('common.guest'))}</h3>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${!isPT ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
                                                         {isPT ? t('pt.title') : t('common.student')}
@@ -519,8 +527,8 @@ export default function Finance() {
                                             </div>
                                         </div>
                                         <div className="text-right flex flex-col items-end">
-                                            <span className="text-xl font-black text-emerald-400 tracking-tighter">
-                                                +{Number(payment.amount).toLocaleString()}
+                                            <span className={`text-xl font-black tracking-tighter ${Number(payment.amount) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {Number(payment.amount) > 0 ? '+' : ''}{Number(payment.amount).toLocaleString()}
                                             </span>
                                             <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</span>
                                         </div>
@@ -599,11 +607,11 @@ export default function Finance() {
                                             <td className="px-4 py-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-black text-white/40 group-hover:bg-primary/20 group-hover:text-primary group-hover:scale-105 transition-all duration-500 shadow-inner shrink-0">
-                                                        {payment.students?.full_name?.[0] || (payment.notes?.split(' - ')[1]?.[0] || 'G')}
+                                                        {payment.students?.full_name?.[0] || (payment.notes?.split(' - ')[1]?.trim()?.[0] || 'G')}
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className="font-black text-white text-xs tracking-tight truncate group-hover:text-primary transition-colors">
-                                                            {payment.students?.full_name || (payment.notes?.split(' - ')[1] || t('common.guest'))}
+                                                            {payment.students?.full_name || (payment.notes?.split(' - ')[1]?.split(' (')[0]?.trim() || t('common.guest'))}
                                                         </div>
                                                         <div
                                                             className="text-[8px] font-black uppercase tracking-[0.1em] truncate"
@@ -638,8 +646,8 @@ export default function Finance() {
                                             </td>
                                             <td className="px-4 py-2 text-right">
                                                 <div className="flex flex-col items-end group-hover:scale-105 transition-transform duration-500 origin-right">
-                                                    <span className="text-lg font-black text-emerald-400 tracking-tighter">
-                                                        +{Number(payment.amount).toLocaleString()}
+                                                    <span className={`text-lg font-black tracking-tighter ${Number(payment.amount) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                        {Number(payment.amount) > 0 ? '+' : ''}{Number(payment.amount).toLocaleString()}
                                                     </span>
                                                     <span className="text-[7px] font-black text-white/10 uppercase tracking-[0.3em]">{currency.code}</span>
                                                 </div>

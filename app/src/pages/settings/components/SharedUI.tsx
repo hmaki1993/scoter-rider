@@ -60,11 +60,13 @@ export function PremiumSwitch({ label, description, checked, onChange }: { label
 export function PremiumColorPicker({ label, value, onChange, description }: { label: string; value: string; onChange: (val: string) => void; description?: string }) {
     const [opacity, setOpacity] = useState(hexToRgba(value || '#000000ff').a);
     const [baseColor, setBaseColor] = useState(stripAlpha(value || '#000000'));
+    const [inputValue, setInputValue] = useState(stripAlpha(value || '#000000').toUpperCase());
 
     useEffect(() => {
         const rgba = hexToRgba(value || '#000000ff');
         setOpacity(rgba.a);
         setBaseColor(stripAlpha(value || '#000000'));
+        setInputValue(stripAlpha(value || '#000000').toUpperCase());
     }, [value]);
 
     const handleBaseChange = (newHex: string) => {
@@ -77,6 +79,17 @@ export function PremiumColorPicker({ label, value, onChange, description }: { la
         setOpacity(newOpacity / 100);
         const { r: nr, g: ng, b: nb } = hexToRgba(baseColor);
         onChange(rgbaToHex8(nr, ng, nb, newOpacity / 100));
+    };
+
+    const commitInputChange = () => {
+        let val = inputValue.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val) || /^#[0-9A-F]{3}$/i.test(val)) {
+            handleBaseChange(val);
+        } else {
+            // Revert on invalid
+            setInputValue(baseColor.toUpperCase());
+        }
     };
 
     const { r, g, b } = hexToRgba(baseColor);
@@ -97,7 +110,18 @@ export function PremiumColorPicker({ label, value, onChange, description }: { la
                 </div>
                 <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex flex-col gap-0.5">
-                        <input type="text" value={baseColor.toUpperCase()} onChange={(e) => { const val = e.target.value; if (val.match(/^#?[0-9a-f]{0,6}$/i)) handleBaseChange(val.startsWith('#') ? val : `#${val}`); }} className="text-xs font-black text-white tracking-[0.15em] font-mono leading-none bg-transparent border-none outline-none focus:text-primary transition-colors w-24" />
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value.toUpperCase())}
+                            onBlur={commitInputChange}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                            className="text-xs font-black text-white tracking-[0.15em] font-mono leading-none bg-transparent border-none outline-none focus:text-primary transition-colors w-24"
+                        />
                         <div className="text-[6px] text-white/20 font-bold uppercase tracking-widest truncate">RGBA({r}, {g}, {b}, {opacity})</div>
                     </div>
                     <div className="relative group/slider pt-1">

@@ -53,9 +53,15 @@ export default function Settings() {
 
     // Secret Section Visibility (Easter Egg)
     const [secretClicks, setSecretClicks] = useState(0);
-    const [isSecretRevealed, setIsSecretRevealed] = useState(true);
+    const [isSecretRevealed, setIsSecretRevealed] = useState(() => {
+        const saved = localStorage.getItem('healy_settings_secret_revealed');
+        return saved === 'true';
+    });
     const [designMode, setDesignMode] = useState<'desktop' | 'mobile'>('desktop');
-    const [activeTab, setActiveTab] = useState<'appearance' | 'profile' | 'academy' | 'login'>('login');
+    const [activeTab, setActiveTab] = useState<'appearance' | 'profile' | 'academy' | 'login'>(() => {
+        const saved = localStorage.getItem('healy_settings_secret_revealed');
+        return saved === 'true' ? 'login' : 'appearance';
+    });
     const [previewScale, setPreviewScale] = useState(0.2);
     const previewParentRef = useRef<HTMLDivElement>(null);
     const [processingMagic, setProcessingMagic] = useState(false);
@@ -136,6 +142,7 @@ export default function Settings() {
             setSecretClicks(0);
             const newState = !isSecretRevealed;
             setIsSecretRevealed(newState);
+            localStorage.setItem('healy_settings_secret_revealed', String(newState));
 
             if (newState) {
                 setActiveTab('login');
@@ -687,73 +694,76 @@ export default function Settings() {
                 />
             )}
             {/* Premium Publishing Overlay */}
-            {isPublishing && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    {/* Dynamic Branded Backdrop */}
-                    <div className="absolute inset-0 bg-black animate-in fade-in duration-1000">
+            {isPublishing && createPortal(
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 overflow-hidden">
+                    {/* Ultra-Premium Full Screen Isolation */}
+                    <div className="absolute inset-0 bg-black/98 animate-in fade-in duration-1000">
+                        {/* Dynamic Branded Aura */}
                         <div
-                            className="absolute inset-0 opacity-40 blur-[120px] scale-150 transition-all duration-1000"
+                            className="absolute inset-0 opacity-60 blur-[180px] scale-150 transition-all duration-[3000ms] animate-pulse"
                             style={{
                                 background: `radial-gradient(circle at center, ${draftSettings.primary_color}, transparent 60%)`
                             }}
                         />
-                        <div className="absolute inset-0 backdrop-blur-[60px] bg-black/40" />
+                        {/* Micro-Noise Pattern for Texture */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+                        <div className="absolute inset-0 backdrop-blur-[150px] bg-black/40" />
                     </div>
 
                     {/* Centered Premium Card */}
-                    <div className="relative glass-card px-8 py-10 rounded-[3.5rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] max-w-sm w-full text-center animate-in zoom-in slide-in-from-bottom-8 duration-700 flex flex-col items-center">
-                        <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
-                            <div className="absolute inset-0 rounded-full blur-[30px] animate-pulse scale-90"
-                                style={{ backgroundColor: `${draftSettings.primary_color}33` }}
+                    <div className="relative glass-card px-8 md:px-12 py-12 md:py-16 rounded-[4rem] border border-white/10 shadow-[0_0_150px_rgba(0,0,0,0.8)] max-w-lg w-full text-center animate-in zoom-in slide-in-from-bottom-12 duration-1000 flex flex-col items-center">
+                        <div className="relative w-40 h-40 mb-10 flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full blur-[40px] animate-pulse scale-110"
+                                style={{ backgroundColor: `${draftSettings.primary_color}22` }}
                             />
                             <svg viewBox="0 0 192 192" className="absolute inset-0 w-full h-full transform -rotate-90">
-                                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/[0.05]" />
+                                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="1.5" fill="transparent" className="text-white/[0.03]" />
                                 <circle
-                                    cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="5" fill="transparent"
+                                    cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="4" fill="transparent"
                                     strokeDasharray={553} strokeDashoffset={553 - (553 * publishProgress) / 100}
-                                    className="transition-all duration-700 ease-out"
+                                    className="transition-all duration-1000 ease-in-out"
                                     style={{ color: draftSettings.primary_color }}
                                     strokeLinecap="round"
                                 />
                             </svg>
-                            <div className="relative z-10 flex items-center justify-center w-20 h-20">
+                            <div className="relative z-10 flex items-center justify-center w-24 h-24">
                                 {publishProgress === 100 ? (
-                                    <div className="bg-green-500/20 p-4 rounded-full border border-green-500/30 animate-in zoom-in spin-in-12 duration-500">
-                                        <CheckCircle2 className="w-8 h-8 text-green-400" />
+                                    <div className="bg-green-500/20 p-5 rounded-full border border-green-500/30 animate-in zoom-in spin-in-45 duration-700">
+                                        <CheckCircle2 className="w-10 h-10 text-green-400" />
                                     </div>
                                 ) : (
                                     <div className="relative flex items-center justify-center">
-                                        <div className="absolute w-12 h-12 border-2 rounded-full animate-ping duration-[1500ms]"
-                                            style={{ borderColor: `${draftSettings.primary_color}44` }}
+                                        <div className="absolute w-16 h-16 border-2 rounded-full animate-ping duration-[2000ms]"
+                                            style={{ borderColor: `${draftSettings.primary_color}33` }}
                                         />
-                                        <Sparkles className="w-8 h-8 animate-pulse shadow-primary" style={{ color: draftSettings.primary_color }} />
+                                        <Sparkles className="w-10 h-10 animate-pulse" style={{ color: draftSettings.primary_color }} />
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <div className="space-y-4 w-full">
-                            <div className="space-y-1">
-                                <p className="text-[7px] font-black uppercase tracking-[0.5em] animate-pulse"
+                        <div className="space-y-6 w-full">
+                            <div className="space-y-2">
+                                <p className="text-[8px] font-black uppercase tracking-[0.8em] animate-pulse"
                                     style={{ color: draftSettings.primary_color }}>
-                                    {publishProgress === 100 ? 'SUCCESS' : 'PUBLISHING'}
+                                    {publishProgress === 100 ? 'SUCCESSFULLY DEPLOYED' : 'SYSTEM DEPLOYMENT IN PROGRESS'}
                                 </p>
-                                <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter">
                                     {publishProgress === 100 ? t('settings.publishComplete') : t('settings.publishingDesign')}
                                 </h3>
                             </div>
 
-                            <div className="flex flex-col items-center gap-4">
-                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-4 py-1.5 bg-white/[0.03] rounded-full border border-white/[0.05]">
+                            <div className="flex flex-col items-center gap-6">
+                                <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] px-6 py-2 bg-white/[0.02] rounded-full border border-white/[0.05] backdrop-blur-md">
                                     {publishStep}
                                 </p>
-                                <div className="flex gap-2">
+                                <div className="flex gap-3">
                                     {[1, 2, 3].map((step) => (
                                         <div
                                             key={step}
-                                            className={`h-1 rounded-full transition-all duration-700 ${publishProgress >= (step * 33)
-                                                ? 'w-8 shadow-[0_0_10px_rgba(var(--color-primary),0.3)]'
-                                                : 'w-2 bg-white/10'}`}
+                                            className={`h-1.5 rounded-full transition-all duration-1000 ${publishProgress >= (step * 33)
+                                                ? 'w-12 shadow-[0_0_20px_rgba(var(--color-primary),0.5)]'
+                                                : 'w-3 bg-white/5'}`}
                                             style={{ backgroundColor: publishProgress >= (step * 33) ? draftSettings.primary_color : undefined }}
                                         ></div>
                                     ))}
@@ -761,23 +771,24 @@ export default function Settings() {
                             </div>
                         </div>
 
-                        {/* Note Blocks: Integrated cleaner */}
-                        <div className="mt-8 grid grid-cols-2 gap-2 w-full">
-                            <div className="p-3 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] flex flex-col items-center gap-1.5">
-                                <ShieldCheck className="w-3.5 h-3.5 opacity-40" style={{ color: draftSettings.primary_color }} />
-                                <span className="text-[6px] font-black text-white/20 uppercase tracking-[0.2em] text-center leading-relaxed">
+                        {/* Integration Note Blocks */}
+                        <div className="mt-12 grid grid-cols-2 gap-4 w-full">
+                            <div className="p-4 rounded-[2.5rem] bg-white/[0.01] border border-white/[0.03] flex flex-col items-center gap-2 group transition-all hover:bg-white/[0.02]">
+                                <ShieldCheck className="w-4 h-4 opacity-40 transition-transform group-hover:scale-110" style={{ color: draftSettings.primary_color }} />
+                                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.25em] text-center leading-relaxed">
                                     {t('settings.encryptionNote')}
                                 </span>
                             </div>
-                            <div className="p-3 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] flex flex-col items-center gap-1.5">
-                                <Zap className="w-3.5 h-3.5 opacity-40" style={{ color: draftSettings.primary_color }} />
-                                <span className="text-[6px] font-black text-white/20 uppercase tracking-[0.2em] text-center leading-relaxed">
+                            <div className="p-4 rounded-[2.5rem] bg-white/[0.01] border border-white/[0.03] flex flex-col items-center gap-2 group transition-all hover:bg-white/[0.02]">
+                                <Zap className="w-4 h-4 opacity-40 transition-transform group-hover:scale-110" style={{ color: draftSettings.primary_color }} />
+                                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.25em] text-center leading-relaxed">
                                     {t('settings.syncReadyNote')}
                                 </span>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             <div className="border-b border-white/5 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -1187,40 +1198,12 @@ export default function Settings() {
                                     </div>
                                     Login Page Customization
                                 </h2>
-                                <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl border border-white/10 w-fit">
-                                    <button
-                                        onClick={() => setDesignMode('desktop')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${designMode === 'desktop' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        <Monitor className="w-3 h-3" />
-                                        Desktop
-                                    </button>
-                                    <button
-                                        onClick={() => setDesignMode('mobile')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${designMode === 'mobile' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        <Smartphone className="w-3 h-3" />
-                                        Mobile
-                                    </button>
-                                    <div className="w-[1px] h-4 bg-white/10 mx-1"></div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowFullPreview(true);
-                                        }}
-                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 active:scale-95 border border-primary/20"
-                                        title="View Full Screen (1:1)"
-                                    >
-                                        <Maximize className="w-3 h-3" />
-                                        Full Screen
-                                    </button>
-                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                 {/* Live Preview Column */}
                                 <div
-                                    className={`flex flex-col gap-3 lg:col-span-5 lg:sticky lg:top-32 h-fit z-50 self-start transition-all duration-300 
+                                    className={`flex flex-col gap-3 lg:col-span-5 sticky top-20 lg:top-32 h-fit z-50 self-start transition-all duration-300 
                                         ${designMode === 'mobile' ? 'order-2' : 'order-1 lg:order-2'} 
                                         ${isMiniPreview && designMode === 'mobile' ? 'fixed z-[100] ring-2 ring-primary/30 backdrop-blur-md rounded-[3rem] p-1 shadow-2xl overflow-hidden' : 'relative'}`}
                                     style={isMiniPreview && designMode === 'mobile' ? {
@@ -1255,9 +1238,21 @@ export default function Settings() {
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                            <span className="text-[7px] font-black text-emerald-500/80 uppercase tracking-widest">Pixel Perfect</span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowFullPreview(true);
+                                                }}
+                                                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-[7px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                                            >
+                                                <Maximize className="w-2.5 h-2.5" />
+                                                Full Screen
+                                            </button>
+                                            <div className="flex items-center gap-2 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                <span className="text-[7px] font-black text-emerald-500/80 uppercase tracking-widest">Pixel Perfect</span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1283,44 +1278,14 @@ export default function Settings() {
                                         )}
 
                                         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none" ref={previewParentRef}>
-                                            <div
-                                                className={`${designMode === 'mobile' ? 'w-[390px] h-[844px]' : 'w-[1920px] h-[1080px]'} shrink-0 bg-[#020617] overflow-hidden absolute top-1/2 left-1/2 shadow-2xl transition-all duration-500`}
-                                                style={{
-                                                    transform: `translate(-50%, -50%) scale(${previewScale})`,
-                                                    transformOrigin: 'center center'
-                                                }}
-                                            >
-                                                {/* Preview Background */}
-                                                <div
-                                                    className="absolute inset-0 bg-no-repeat bg-black transition-all duration-1000"
-                                                    style={{
-                                                        backgroundImage: `url('${previewSettings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg"}')`,
-                                                        backgroundSize: (previewSettings.login_bg_fit === 'fill') ? '100% 100%' : (previewSettings.login_bg_fit as string || 'cover'),
-                                                        backgroundPosition: 'center',
-                                                        filter: `blur(${previewSettings.login_bg_blur ?? 0}px) brightness(${previewSettings.login_bg_brightness ?? 1.0})`,
-                                                        transform: `scale(${previewSettings.login_bg_zoom ?? 1.0}) translate(${previewSettings.login_bg_x_offset ?? 0}%, ${previewSettings.login_bg_y_offset ?? 0}%)`,
-                                                        opacity: (previewSettings.login_bg_opacity as number) ?? 0.8
-                                                    }}
-                                                ></div>
-
-                                                <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/90"></div>
-                                                <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
-
-                                                <div
-                                                    className="absolute inset-0 flex items-center justify-center pointer-events-none transition-transform duration-500 ease-out"
-                                                    style={{
-                                                        transformOrigin: 'center center',
-                                                    }}
-                                                >
-                                                    {/* Content inside fluid scale */}
-                                                    <LoginRenderer
-                                                        activeSettings={previewSettings}
-                                                        designMode={designMode}
-                                                        t={t}
-                                                        i18n={i18n}
-                                                        isPreview={true}
-                                                    />
-                                                </div>
+                                            <div className="w-full h-full relative">
+                                                <LoginRenderer
+                                                    activeSettings={previewSettings}
+                                                    designMode={designMode}
+                                                    t={t}
+                                                    i18n={i18n}
+                                                    isPreview={true}
+                                                />
                                                 <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500 text-[10px] font-black text-black z-[70] shadow-xl">LIVE</div>
                                             </div>
                                         </div>
@@ -1510,7 +1475,7 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_bg_zoom')]) || 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="0.5" max="2.0" step="0.05"
+                                                        type="range" min="0.05" max="3.0" step="0.01"
                                                         value={Number(draftSettings[getLoginKey('login_bg_zoom')]) ?? 1.0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_zoom')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -1522,7 +1487,7 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_bg_brightness')]) || 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="0.2" max="1.5" step="0.05"
+                                                        type="range" min="0.0" max="2.0" step="0.05"
                                                         value={Number(draftSettings[getLoginKey('login_bg_brightness')]) ?? 1.0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_brightness')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -1735,12 +1700,58 @@ export default function Settings() {
                                                         <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_card_scale')]) || 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
-                                                        type="range" min="0.5" max="1.5" step="0.05"
+                                                        type="range" min="0.1" max="1.5" step="0.05"
                                                         value={Number(draftSettings[getLoginKey('login_card_scale')]) ?? 1.0}
                                                         onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_scale')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* SECTION: CUSTOM TYPOGRAPHY */}
+                                    <div className="space-y-6 pt-6 border-t border-white/5">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="h-4 w-1 bg-emerald-500 rounded-full"></div>
+                                            <span className="text-[10px] font-black uppercase text-white tracking-[0.2em]">Custom Typography</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between">
+                                                    <span className="text-[8px] text-white/40 uppercase font-bold">Heading Size</span>
+                                                    <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_heading_size')]) || 24}px</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="12" max="72" step="1"
+                                                    value={Number(draftSettings[getLoginKey('login_heading_size')]) || 24}
+                                                    onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_heading_size')]: parseInt(e.target.value) })}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between">
+                                                    <span className="text-[8px] text-white/40 uppercase font-bold">Input Text Size</span>
+                                                    <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_input_size')]) || 24}px</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="12" max="48" step="1"
+                                                    value={Number(draftSettings[getLoginKey('login_input_size')]) || 24}
+                                                    onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_input_size')]: parseInt(e.target.value) })}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between">
+                                                    <span className="text-[8px] text-white/40 uppercase font-bold">Label Text Size</span>
+                                                    <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_label_size')]) || 11}px</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="8" max="24" step="1"
+                                                    value={Number(draftSettings[getLoginKey('login_label_size')]) || 11}
+                                                    onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_label_size')]: parseInt(e.target.value) })}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -1758,11 +1769,9 @@ export default function Settings() {
                                                     label="Card Color"
                                                     value={String(draftSettings[getLoginKey('login_card_color')]) || '#000000'}
                                                     onChange={(val) => {
-                                                        const rgba = hexToRgba(val);
                                                         setDraftSettings({
                                                             ...draftSettings,
-                                                            [getLoginKey('login_card_color')]: val,
-                                                            [getLoginKey('login_card_opacity')]: rgba.a
+                                                            [getLoginKey('login_card_color')]: val
                                                         });
                                                     }}
                                                 />
@@ -1772,6 +1781,33 @@ export default function Settings() {
                                                     label="Border Color"
                                                     value={String(draftSettings[getLoginKey('login_card_border_color')]) || '#ffffff33'}
                                                     onChange={(val) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_border_color')]: val })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between">
+                                                    <span className="text-[8px] text-white/40 uppercase font-bold flex items-center gap-1.5"><Sparkles className="w-2.5 h-2.5 text-amber-500" /> Glow Size</span>
+                                                    <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_glow_size')]) ?? 60}px</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="0" max="250" step="5"
+                                                    value={Number(draftSettings[getLoginKey('login_card_glow_size') ?? 60])}
+                                                    onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_glow_size')]: parseInt(e.target.value) })}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between">
+                                                    <span className="text-[8px] text-white/40 uppercase font-bold flex items-center gap-1.5"><Zap className="w-2.5 h-2.5 text-amber-500" /> Glow Opacity</span>
+                                                    <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_glow_opacity')]) ?? 50}%</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="0" max="100" step="5"
+                                                    value={Number(draftSettings[getLoginKey('login_card_glow_opacity') ?? 50])}
+                                                    onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_glow_opacity')]: parseInt(e.target.value) })}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                 />
                                             </div>
                                         </div>
@@ -1847,22 +1883,16 @@ export default function Settings() {
                                                     <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">{processingMagic ? 'Matching...' : 'Auto Match'}</span>
                                                 </button>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
-                                                        <span className="text-[8px] text-white/40 uppercase font-bold">Opacity</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_card_opacity ?? 0.6) * 100)}%</span>
+                                                        <span className="text-[8px] text-white/40 uppercase font-bold" title="Controls card transparency before hovering">Base Opacity</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_card_opacity ?? 0.45) * 100)}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="0" max="1" step="0.05"
-                                                        value={draftSettings.login_card_opacity ?? 0.6}
-                                                        onChange={(e) => {
-                                                            const newOpacity = parseFloat(e.target.value);
-                                                            const currentHex = draftSettings.login_card_color || '#000000';
-                                                            const { r, g, b } = hexToRgba(currentHex);
-                                                            const newColor = rgbaToHex8(r, g, b, newOpacity);
-                                                            setDraftSettings({ ...draftSettings, login_card_opacity: newOpacity, login_card_color: newColor });
-                                                        }}
+                                                        value={draftSettings.login_card_opacity ?? 0.45}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_card_opacity: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>

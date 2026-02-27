@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2, Plus, Trash2, UserPlus } from 'lucide-react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { addMonths, format } from 'date-fns';
 
 interface ImportStudentsModalProps {
     isOpen: boolean;
@@ -16,6 +17,7 @@ interface CSVRow {
     'Date of Birth'?: string;
     Gender?: string;
     Coach?: string;
+    'Subscription Plan'?: string;
     'Subscription Type'?: string;
     'Start Date'?: string;
     Notes?: string;
@@ -27,6 +29,7 @@ interface ParsedStudent {
     date_of_birth?: string;
     gender?: string;
     coach_name?: string;
+    subscription_plan_id?: string;
     subscription_type?: string;
     subscription_start?: string;
     notes?: string;
@@ -38,8 +41,27 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
     const [parsedData, setParsedData] = useState<ParsedStudent[]>([]);
     const [importing, setImporting] = useState(false);
     const [preview, setPreview] = useState(false);
-    const [importMode, setImportMode] = useState<'csv' | 'text'>('csv');
-    const [pastedText, setPastedText] = useState('');
+    const [importMode, setImportMode] = useState<'csv' | 'grid'>('csv');
+    const [plans, setPlans] = useState<any[]>([]);
+    const [gridRows, setGridRows] = useState<ParsedStudent[]>([
+        { full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', errors: [] }
+    ]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchPlans();
+        }
+    }, [isOpen]);
+
+    const fetchPlans = async () => {
+        const { data, error } = await supabase
+            .from('subscription_plans')
+            .select('*')
+            .order('name');
+        if (!error && data) {
+            setPlans(data);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -81,43 +103,42 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
         });
     };
 
-    const handleTextImport = () => {
-        if (!pastedText.trim()) {
-            toast.error('Please paste some text first');
+    const addGridRow = () => {
+        setGridRows([...gridRows, { full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', errors: [] }]);
+    };
+
+    const removeGridRow = (index: number) => {
+        if (gridRows.length > 1) {
+            setGridRows(gridRows.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateGridRow = (index: number, field: keyof ParsedStudent, value: string) => {
+        const newRows = [...gridRows];
+        newRows[index] = { ...newRows[index], [field]: value };
+        setGridRows(newRows);
+    };
+
+    const handleGridImport = () => {
+        // Filter out completely empty rows
+        const filledRows = gridRows.filter(row =>
+            row.full_name.trim() !== '' ||
+            row.phone.trim() !== '' ||
+            row.date_of_birth !== '' ||
+            row.subscription_plan_id !== ''
+        );
+
+        if (filledRows.length === 0) {
+            toast.error('Please enter at least one student');
             return;
         }
 
-        const lines = pastedText.split('\n').filter(line => line.trim());
-        if (lines.length === 0) {
-            toast.error('No valid lines found');
-            return;
-        }
-
-        const data: ParsedStudent[] = lines.map((line, index) => {
-            // Support "Name, Phone" or "Name Phone" (if phone is long enough) or just "Name"
-            let name = line.trim();
-            let phone = '';
-
-            // Try common separators
-            const parts = line.split(/[,\t|]/).map(p => p.trim());
-            if (parts.length >= 2) {
-                name = parts[0];
-                phone = parts.slice(1).join(' ').replace(/\D/g, ''); // Take everything after first separator
-            } else {
-                // Try to split by space if the last word looks like a phone number (10+ digits)
-                const words = line.trim().split(/\s+/);
-                if (words.length >= 2) {
-                    const lastWord = words[words.length - 1];
-                    if (/^\d{8,15}$/.test(lastWord)) {
-                        phone = lastWord;
-                        name = words.slice(0, -1).join(' ');
-                    }
-                }
-            }
-
+        const data: ParsedStudent[] = filledRows.map((row, index) => {
             return validateRow({
-                Name: name,
-                Phone: phone
+                Name: row.full_name,
+                Phone: row.phone,
+                'Date of Birth': row.date_of_birth,
+                'Subscription Plan': row.subscription_plan_id
             }, index);
         });
 
@@ -132,11 +153,8 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
         if (!row.Name?.trim()) errors.push('Name is required');
         // Phone is now optional for bulk text import to support manual entry more easily
 
-        // Phone validation (Egyptian format)
+        // Phone validation (Optional, no strict formatting required)
         const phone = row.Phone?.trim();
-        if (phone && !/^01[0-9]{9}$/.test(phone)) {
-            errors.push('Invalid phone format (should be 11 digits starting with 01)');
-        }
 
         // Date validation
         const dateOfBirth = row['Date of Birth']?.trim();
@@ -167,6 +185,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
             date_of_birth: dateOfBirth,
             gender: gender,
             coach_name: row.Coach?.trim(),
+            subscription_plan_id: row['Subscription Plan'],
             subscription_type: subType,
             subscription_start: startDate,
             notes: row.Notes?.trim(),
@@ -226,17 +245,25 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                         coachId = coach?.id;
                     }
 
+                    // Find plan if selected
+                    let planObj = null;
+                    if (student.subscription_plan_id) {
+                        // The plan ID might be a string (UUID) or a number depending on the schema
+                        planObj = plans.find(p => String(p.id) === String(student.subscription_plan_id));
+                    }
+
                     // Insert student
-                    const { error } = await supabase
+                    const { data: insertedStudent, error: insertError } = await supabase
                         .from('students')
                         .insert({
                             full_name: student.full_name,
-                            contact_number: student.phone,
-                            phone: student.phone,
+                            contact_number: student.phone || '',
                             birth_date: student.date_of_birth || null,
-                            date_of_birth: student.date_of_birth || null,
                             gender: student.gender || 'male',
                             coach_id: coachId,
+                            subscription_plan_id: student.subscription_plan_id?.trim() || null,
+                            subscription_expiry: planObj ? format(addMonths(new Date(), planObj.duration_months || 1), 'yyyy-MM-dd') : null,
+                            sessions_remaining: planObj ? planObj.sessions_limit : null,
                             notes: student.notes || null,
                             status: 'active',
                             is_active: true,
@@ -250,9 +277,33 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                 }
                                 return age;
                             })() : null
-                        });
+                        })
+                        .select('id')
+                        .single();
 
-                    if (error) throw error;
+                    if (insertError) throw insertError;
+
+                    // If a plan was selected, grab the plan price and automatically log a finance payment
+                    if (planObj && insertedStudent) {
+                        // We safely use 'plan?.price' assuming it has a valid number
+                        if (planObj.price) {
+                            const { error: financeError } = await supabase
+                                .from('payments')
+                                .insert({
+                                    student_id: insertedStudent.id,
+                                    amount: Number(planObj.price),
+                                    payment_method: 'cash',
+                                    notes: `Auto-generated payment from Quick Entry for Plan: ${planObj.name}`,
+                                    payment_date: format(new Date(), 'yyyy-MM-dd')
+                                });
+
+                            if (financeError) {
+                                console.error('Error logging finance:', financeError);
+                                // We don't throw here to avoid failing the whole import if just finance fails
+                            }
+                        }
+                    }
+                    if (insertError) throw insertError;
                     successCount++;
                 } catch (err) {
                     console.error('Error importing student:', err);
@@ -285,7 +336,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
 
     const handleClose = () => {
         setFile(null);
-        setPastedText('');
+        setGridRows([{ full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', errors: [] }]);
         setParsedData([]);
         setPreview(false);
         setImportMode('csv');
@@ -343,10 +394,10 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                     CSV Upload
                                 </button>
                                 <button
-                                    onClick={() => setImportMode('text')}
-                                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${importMode === 'text' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                    onClick={() => setImportMode('grid')}
+                                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${importMode === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                                 >
-                                    Paste Text
+                                    Quick Entry
                                 </button>
                             </div>
 
@@ -410,50 +461,106 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="p-8 rounded-[3rem] bg-white/[0.02] border border-white/10">
-                                        <div className="flex items-center justify-between mb-4 px-2">
+                                        <div className="flex items-center justify-between mb-8 px-2 border-b border-white/5 pb-4">
                                             <div className="flex items-center gap-3">
-                                                <Edit2 className="w-4 h-4 text-primary/60" />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Enter Student Details</span>
+                                                <Edit2 className="w-5 h-5 text-primary" />
+                                                <div>
+                                                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Quick Entry Grid</h3>
+                                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Add students individually</p>
+                                                </div>
                                             </div>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/20 italic">Format: Name, Phone (or just Name)</span>
-                                        </div>
-                                        <textarea
-                                            value={pastedText}
-                                            onChange={(e) => setPastedText(e.target.value)}
-                                            placeholder="Example:&#10;John Doe, 01012345678&#10;Jane Smith, 01122334455&#10;Ahmed Ali"
-                                            className="w-full h-64 bg-black/40 border border-white/5 rounded-2xl p-6 text-sm text-white focus:outline-none focus:border-primary/40 transition-all font-mono custom-scrollbar resize-none"
-                                        />
-                                        <div className="mt-6 flex justify-center">
                                             <button
-                                                onClick={handleTextImport}
-                                                disabled={!pastedText.trim()}
-                                                className="px-12 py-4 rounded-2xl bg-primary/20 hover:bg-primary/30 text-primary text-[10px] font-black uppercase tracking-[0.3em] border border-primary/20 transition-all active:scale-95 disabled:opacity-30"
+                                                onClick={addGridRow}
+                                                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-primary/20"
                                             >
-                                                Preview Import
+                                                <Plus className="w-4 h-4" />
+                                                Add Row
                                             </button>
                                         </div>
-                                    </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-start gap-4">
-                                            <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                                                <span className="text-primary font-black">1</span>
+                                        <div className="space-y-3">
+                                            {/* Header Row */}
+                                            <div className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_auto] gap-4 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/30 hidden md:grid">
+                                                <div>Full Name <span className="text-rose-500">*</span></div>
+                                                <div>WhatsApp Number</div>
+                                                <div>Birth Date</div>
+                                                <div>Plan</div>
+                                                <div className="w-10"></div>
                                             </div>
-                                            <div>
-                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1">Copy from your notes</h4>
-                                                <p className="text-[9px] font-medium text-white/20 leading-relaxed uppercase tracking-wider">Type each student on a new line</p>
-                                            </div>
+
+                                            {/* Data Rows */}
+                                            {gridRows.map((row, index) => (
+                                                <div key={index} className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_1fr_1.5fr_auto] gap-4 bg-white/[0.02] hover:bg-white/[0.04] p-4 rounded-3xl border border-white/5 transition-colors items-start">
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Full Name <span className="text-rose-500">*</span></label>
+                                                        <input
+                                                            type="text"
+                                                            value={row.full_name}
+                                                            onChange={(e) => updateGridRow(index, 'full_name', e.target.value)}
+                                                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                                            placeholder=""
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">WhatsApp Number</label>
+                                                        <input
+                                                            type="text"
+                                                            value={row.phone}
+                                                            onChange={(e) => updateGridRow(index, 'phone', e.target.value)}
+                                                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors font-mono tracking-wider"
+                                                            placeholder=""
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Birth Date</label>
+                                                        <input
+                                                            type="date"
+                                                            value={row.date_of_birth || ''}
+                                                            onChange={(e) => updateGridRow(index, 'date_of_birth', e.target.value)}
+                                                            className={`w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors [color-scheme:dark] ${!row.date_of_birth ? 'text-transparent' : 'text-white'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Plan</label>
+                                                        <div className="relative">
+                                                            <select
+                                                                value={row.subscription_plan_id || ''}
+                                                                onChange={(e) => updateGridRow(index, 'subscription_plan_id', e.target.value)}
+                                                                className={`w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none pr-10 ${!row.subscription_plan_id ? 'text-transparent' : 'text-white'}`}
+                                                            >
+                                                                <option value="" className="bg-[#0E1D21] text-white/50" disabled></option>
+                                                                {plans.map(plan => (
+                                                                    <option key={plan.id} value={plan.id} className="bg-[#0E1D21] text-white">
+                                                                        {plan.name} - {plan.price} LE
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex md:items-end h-full">
+                                                        <button
+                                                            onClick={() => removeGridRow(index)}
+                                                            className={`p-3 rounded-xl border transition-all h-[46px] w-full md:w-[46px] flex items-center justify-center ${gridRows.length > 1 ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 hover:text-rose-400 border-rose-500/20 hover:border-rose-500/40' : 'bg-white/5 text-white/20 border-white/10 cursor-not-allowed opacity-50'}`}
+                                                            disabled={gridRows.length <= 1}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                            <span className="md:hidden ml-2 text-[10px] font-black uppercase tracking-widest">Remove</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-start gap-4">
-                                            <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                                                <span className="text-primary font-black">2</span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1">Format is flexible</h4>
-                                                <p className="text-[9px] font-medium text-white/20 leading-relaxed uppercase tracking-wider">Use a comma to separate name and phone</p>
-                                            </div>
+
+                                        <div className="mt-8 flex justify-end">
+                                            <button
+                                                onClick={handleGridImport}
+                                                className="px-8 py-4 rounded-2xl bg-primary text-white hover:bg-primary/90 text-[10px] font-black uppercase tracking-[0.3em] transition-all active:scale-95 shadow-[0_10px_20px_rgba(var(--primary-rgb),0.2)] flex items-center gap-3 group"
+                                            >
+                                                Preview Import
+                                                <UserPlus className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

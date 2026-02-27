@@ -55,7 +55,13 @@ export interface GymSettings {
     login_bg_opacity?: number;
     login_card_width?: number;
     login_card_height?: number;
-    // Mobile-specific login themes
+    login_heading_size?: number;
+    login_input_size?: number;
+    login_label_size?: number;
+    login_card_border_width?: number;
+    login_card_glow_size?: number;
+    login_card_glow_opacity?: number;
+    // Mobile specific settings themes
     login_mobile_bg_url?: string;
     login_mobile_logo_url?: string;
     login_mobile_card_opacity?: number;
@@ -237,6 +243,12 @@ export const defaultSettings: GymSettings = {
     login_logo_opacity: 1,
     login_card_width: 440,
     login_card_height: 600,
+    login_heading_size: 24,
+    login_input_size: 24,
+    login_label_size: 11,
+    login_card_border_width: 1,
+    login_card_glow_size: 60,
+    login_card_glow_opacity: 50,
     // Mobile Defaults (Matches Desktop initially)
     login_mobile_bg_url: '/Tom Roberton Images _ Balance-and-Form _ 2.jpg',
     login_mobile_logo_url: '/logo.png',
@@ -272,7 +284,7 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'login_logo_scale', 'login_logo_x_offset', 'login_logo_y_offset',
     'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
     'login_bg_x_offset', 'login_bg_y_offset', 'login_bg_fit', 'login_bg_opacity',
-    'login_card_x_offset', 'login_card_y_offset',
+    'login_card_x_offset', 'login_card_y_offset', 'login_heading_size', 'login_input_size', 'login_label_size', 'login_card_border_width', 'login_card_glow_size', 'login_card_glow_opacity',
     'login_mobile_bg_url', 'login_mobile_logo_url', 'login_mobile_card_opacity', 'login_mobile_card_color',
     'login_mobile_card_border_color', 'login_mobile_card_scale', 'login_mobile_show_logo',
     'login_mobile_text_color', 'login_mobile_accent_color', 'login_mobile_logo_opacity',
@@ -649,17 +661,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 }
                 console.log('💾 USER SETTINGS SAVED SUCCESSFULLY');
             }
-
-            toast.success('Settings saved successfully');
         } catch (error: any) {
             console.error('Error updating theme:', error);
-            const msg = error.message || '';
-            if (msg.includes('column') || msg.includes('does not exist')) {
-                toast.error('Database sync error. Please run the provided SQL scripts in Supabase Editor.');
-            } else {
-                toast.error(`Update failed: ${msg || 'Unknown error'}`);
-            }
-            fetchSettings(); // Revert to server state on failure
+            throw error; // Rethrow to let caller handle if needed
         }
     };
 

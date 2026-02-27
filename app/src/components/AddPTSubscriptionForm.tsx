@@ -159,14 +159,26 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                 if (error) throw error;
             }
 
-            // Record payment for PT Subscription (only for new ones or if specifically requested - let's do only for new for now)
-            if (!editData?.id) {
-                try {
+            // Record payment for PT Subscription
+            try {
+                const currentPrice = Number(formData.price);
+                const previousPrice = Number(editData?.total_price || 0);
+                const priceDifference = currentPrice - previousPrice;
+
+                // Handle both new subscriptions and price updates for existing ones
+                if (!editData?.id || priceDifference !== 0) {
+                    const amountToRecord = editData?.id ? priceDifference : currentPrice;
+
+                    const { data: { user } } = await supabase.auth.getUser();
+
                     const paymentData: any = {
-                        amount: Number(formData.price),
-                        payment_date: formData.start_date || format(new Date(), 'yyyy-MM-dd'),
+                        amount: amountToRecord,
+                        payment_date: format(new Date(), 'yyyy-MM-dd'),
                         payment_method: 'cash',
-                        notes: `PT Subscription - ${isGuest ? formData.student_name : (students.find(s => s.id === formData.student_id)?.full_name)} - Coach ${selectedCoach?.full_name}`
+                        notes: editData?.id
+                            ? `PT Adjustment - ${isGuest ? formData.student_name : (students.find(s => s.id === formData.student_id)?.full_name)} (${previousPrice} -> ${currentPrice})`
+                            : `PT Subscription - ${isGuest ? formData.student_name : (students.find(s => s.id === formData.student_id)?.full_name)} (Coach ${selectedCoach?.full_name})`,
+                        created_by: user?.id
                     };
 
                     if (!isGuest && formData.student_id) {
@@ -174,17 +186,19 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                     }
 
                     const { error: paymentError } = await supabase.from('payments').insert(paymentData);
+
                     if (paymentError) {
                         console.error('PT Payment record failed:', paymentError);
-                        toast.error('Subscription created but payment record failed. Please add it manually in Finance.');
+                        toast.error('Subscription saved but finance entry failed.');
                     } else {
-                        console.log('PT Payment recorded successfully');
+                        console.log('PT Finance entry recorded successfully:', amountToRecord);
+                        queryClient.invalidateQueries({ queryKey: ['payments'] });
+                        queryClient.invalidateQueries({ queryKey: ['refunds'] });
+                        queryClient.invalidateQueries({ queryKey: ['expenses'] });
                     }
-                } catch (payErr) {
-                    console.error('Payment record failed:', payErr);
                 }
-
-
+            } catch (payErr) {
+                console.error('Payment record processing failed:', payErr);
             }
 
             // Invalidate queries to update Revenue UI and PT lists

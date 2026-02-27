@@ -506,7 +506,6 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
         const updated = [entry, ...saved].slice(0, 12);
         setSaved(updated); persist(updated);
         onApply(palette);
-        toast.success(`✨ "${name}" saved & applied!`, { duration: 2500 });
         onClose();
     };
 
@@ -517,7 +516,6 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
         const updated = saved.map(p => p.id === editTarget.id ? { ...p, name, colors: palette, extractedColors: editColors } : p);
         setSaved(updated); persist(updated);
         onApply(palette);
-        toast.success(`✨ "${name}" updated & applied!`, { duration: 2500 });
         onClose();
     };
 

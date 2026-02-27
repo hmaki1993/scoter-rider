@@ -104,9 +104,9 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-primary font-black text-sm group-hover:scale-110 transition-transform">
-                                                                {p.students?.full_name?.[0] || 'G'}
+                                                                {p.students?.full_name?.[0] || (p.notes?.split(' - ')[1]?.trim()?.[0] || 'G')}
                                                             </div>
-                                                            <div className="font-bold text-white group-hover:text-primary transition-colors">{p.students?.full_name || 'Guest Gymnast'}</div>
+                                                            <div className="font-bold text-white group-hover:text-primary transition-colors">{p.students?.full_name || (p.notes?.split(' - ')[1]?.split(' (')[0]?.trim() || 'Guest Gymnast')}</div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
@@ -118,8 +118,10 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
                                                     <td className="px-6 py-4">
                                                         <span className="px-2 py-0.5 rounded bg-white/5 text-[9px] font-black text-white/20 uppercase tracking-widest border border-white/5">{p.payment_method.replace('_', ' ')}</span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-black text-emerald-400 tracking-tight text-xl">
-                                                        +{Number(p.amount).toLocaleString()} <span className="text-[10px] text-white/10 uppercase tracking-widest">{currency.code}</span>
+                                                    <td className="px-6 py-4 text-right font-black tracking-tight text-xl">
+                                                        <span className={Number(p.amount) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                                            {Number(p.amount) > 0 ? '+' : ''}{Number(p.amount).toLocaleString()}
+                                                        </span> <span className="text-[10px] text-white/10 uppercase tracking-widest">{currency.code}</span>
                                                     </td>
                                                     {onDelete && (
                                                         <td className="px-6 py-4">
@@ -151,17 +153,19 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
                                             <div className="flex items-start justify-between">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-primary font-black text-lg">
-                                                        {p.students?.full_name?.[0] || (p.notes?.split(' - ')[1]?.[0] || 'G')}
+                                                        {p.students?.full_name?.[0] || (p.notes?.split(' - ')[1]?.trim()?.[0] || 'G')}
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-black text-white text-xs sm:text-sm">{p.students?.full_name || (p.notes?.split(' - ')[1] || 'Guest Gymnast')}</h3>
+                                                        <h3 className="font-black text-white text-xs sm:text-sm">{p.students?.full_name || (p.notes?.split(' - ')[1]?.split(' (')[0]?.trim() || 'Guest Gymnast')}</h3>
                                                         <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPT ? 'bg-primary/10 text-primary border-primary/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
                                                             {isPT ? 'Personal Training' : 'Gymnast'}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-lg sm:text-xl font-black text-emerald-400 tracking-tighter">+{Number(p.amount).toLocaleString()}</p>
+                                                    <p className={`text-lg sm:text-xl font-black tracking-tighter ${Number(p.amount) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                        {Number(p.amount) > 0 ? '+' : ''}{Number(p.amount).toLocaleString()}
+                                                    </p>
                                                     <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</p>
                                                 </div>
                                             </div>

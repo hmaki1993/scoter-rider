@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Layout, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LoginRenderer } from './LoginRenderer';
@@ -18,9 +19,20 @@ export const FullScreenPreview: React.FC<FullScreenPreviewProps> = ({
 }) => {
     const { t, i18n } = useTranslation();
 
+    useEffect(() => {
+        if (show) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [show]);
+
     if (!show) return null;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[1000] bg-black flex flex-col overflow-hidden">
             {/* Minimal Header Controls */}
             <div className="absolute top-6 left-6 z-[1001] flex items-center gap-4 bg-black/40 backdrop-blur-md p-2 pl-4 pr-4 rounded-2xl border border-white/5 shadow-2xl group transition-all hover:bg-black/60">
@@ -53,8 +65,10 @@ export const FullScreenPreview: React.FC<FullScreenPreviewProps> = ({
                     t={t}
                     i18n={i18n}
                     isPreview={true}
+                    isFullScreen={true}
                 />
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

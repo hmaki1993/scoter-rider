@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { X, Save, UserPlus, Upload, ChevronDown } from 'lucide-react';
 import { parseISO, addMonths, format } from 'date-fns';
@@ -19,7 +20,6 @@ const COUNTRIES = [
     { code: 'UK', dial_code: '+44', flag: '🇬🇧', name: 'UK' },
 ];
 
-import { useQueryClient } from '@tanstack/react-query';
 import { useSubscriptionPlans, useCoaches, useGroups } from '../hooks/useData';
 import { useCurrency } from '../context/CurrencyContext';
 
@@ -249,6 +249,51 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
             let studentId = initialData?.id;
 
             if (initialData) {
+                // Check if the plan was changed to calculate financial differences
+                if (initialData.subscription_plan_id !== formData.subscription_type) {
+                    try {
+                        const oldPlan = plans.find(p => String(p.id) === String(initialData.subscription_plan_id));
+                        const newPlan = plans.find(p => String(p.id) === String(formData.subscription_type));
+
+                        const oldPrice = oldPlan ? Number(oldPlan.price) : 0;
+                        const newPrice = newPlan ? Number(newPlan.price) : 0;
+                        const difference = newPrice - oldPrice;
+
+                        const { data: { user } } = await supabase.auth.getUser();
+                        const today = format(new Date(), 'yyyy-MM-dd');
+
+                        if (difference > 0) {
+                            // Upgrade or newly added plan - charge the difference
+                            await supabase.from('payments').insert({
+                                student_id: initialData.id,
+                                amount: difference,
+                                payment_method: 'cash',
+                                notes: `Plan Update (${oldPlan?.name || 'No Plan'} -> ${newPlan?.name || 'No Plan'})`,
+                                payment_date: today,
+                                created_by: user?.id
+                            });
+                        } else if (difference < 0) {
+                            // Downgrade or removed plan - log as negative payment (correction)
+                            // This ensures it shows up in Finance list and reduces revenue
+                            await supabase.from('payments').insert({
+                                student_id: initialData.id,
+                                amount: difference, // This is already negative
+                                payment_method: 'cash',
+                                notes: `Plan Downgrade Adjustment (${oldPlan?.name || 'No Plan'} -> ${newPlan?.name || 'No Plan'})`,
+                                payment_date: today,
+                                created_by: user?.id
+                            });
+                        }
+
+                        // Invalidate Finance queries so UI refreshes
+                        queryClient.invalidateQueries({ queryKey: ['payments'] });
+                        queryClient.invalidateQueries({ queryKey: ['refunds'] });
+                        queryClient.invalidateQueries({ queryKey: ['expenses'] });
+                    } catch (financeErr) {
+                        console.error('Failed to log plan change in Finance:', financeErr);
+                    }
+                }
+
                 // Update existing student
                 ({ error } = await supabase
                     .from('students')

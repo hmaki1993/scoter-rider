@@ -225,19 +225,25 @@ export function useDashboardStats() {
     return useQuery({
         queryKey: ['dashboardStats'],
         queryFn: async () => {
-            const [students, coaches, payments, groups, recent] = await Promise.all([
+            const startOfMonthDate = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+
+            const [students, coaches, payments, refunds, groups, recent] = await Promise.all([
                 supabase.from('students').select('*', { count: 'exact', head: true }),
                 supabase.from('coaches').select('*', { count: 'exact', head: true }),
-                supabase.from('payments').select('amount').gte('payment_date', format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')),
+                supabase.from('payments').select('amount').gte('payment_date', startOfMonthDate),
+                supabase.from('refunds').select('amount').gte('refund_date', startOfMonthDate),
                 supabase.from('training_groups').select('*', { count: 'exact', head: true }),
                 supabase.from('students').select('id, full_name, created_at').order('created_at', { ascending: false }).limit(5)
             ]);
+
+            const monthlyPaymentsTotal = (payments.data || []).reduce((acc, curr) => acc + Number(curr.amount), 0);
+            const monthlyRefundsTotal = (refunds.data || []).reduce((acc, curr) => acc + Number(curr.amount), 0);
 
             return {
                 totalStudents: students.count || 0,
                 activeCoaches: coaches.count || 0,
                 totalGroups: groups.count || 0,
-                monthlyRevenue: (payments.data || []).reduce((acc, curr) => acc + Number(curr.amount), 0),
+                monthlyRevenue: monthlyPaymentsTotal - monthlyRefundsTotal,
                 recentActivity: recent.data || []
             };
         }
