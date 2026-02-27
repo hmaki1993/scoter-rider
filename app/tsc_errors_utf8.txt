@@ -1,0 +1,24 @@
+﻿src/pages/settings/SettingsContainer.tsx(60,12): error TS2451: Cannot redeclare block-scoped variable 'processingMagic'.
+src/pages/settings/SettingsContainer.tsx(60,29): error TS2451: Cannot redeclare block-scoped variable 'setProcessingMagic'.
+src/pages/settings/SettingsContainer.tsx(79,21): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(140,17): error TS2304: Cannot find name 'setActiveTab'.
+src/pages/settings/SettingsContainer.tsx(147,21): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(147,44): error TS2304: Cannot find name 'setActiveTab'.
+src/pages/settings/SettingsContainer.tsx(269,12): error TS2451: Cannot redeclare block-scoped variable 'processingMagic'.
+src/pages/settings/SettingsContainer.tsx(269,29): error TS2451: Cannot redeclare block-scoped variable 'setProcessingMagic'.
+src/pages/settings/SettingsContainer.tsx(362,59): error TS2304: Cannot find name 'lum'.
+src/pages/settings/SettingsContainer.tsx(363,61): error TS2304: Cannot find name 'lum'.
+src/pages/settings/SettingsContainer.tsx(404,59): error TS2304: Cannot find name 'lum'.
+src/pages/settings/SettingsContainer.tsx(405,61): error TS2304: Cannot find name 'lum'.
+src/pages/settings/SettingsContainer.tsx(796,29): error TS2304: Cannot find name 'setActiveTab'.
+src/pages/settings/SettingsContainer.tsx(799,162): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(806,36): error TS2304: Cannot find name 'setActiveTab'.
+src/pages/settings/SettingsContainer.tsx(807,158): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(814,40): error TS2304: Cannot find name 'setActiveTab'.
+src/pages/settings/SettingsContainer.tsx(815,162): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(822,36): error TS2304: Cannot find name 'setActiveTab'.
+src/pages/settings/SettingsContainer.tsx(823,158): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(832,18): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(1096,18): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(1181,18): error TS2304: Cannot find name 'activeTab'.
+src/pages/settings/SettingsContainer.tsx(1901,21): error TS2304: Cannot find name 'activeTab'.

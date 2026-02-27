@@ -1,0 +1,4 @@
+﻿src/pages/settings/SettingsContainer.tsx(61,12): error TS2451: Cannot redeclare block-scoped variable 'processingMagic'.
+src/pages/settings/SettingsContainer.tsx(61,29): error TS2451: Cannot redeclare block-scoped variable 'setProcessingMagic'.
+src/pages/settings/SettingsContainer.tsx(270,12): error TS2451: Cannot redeclare block-scoped variable 'processingMagic'.
+src/pages/settings/SettingsContainer.tsx(270,29): error TS2451: Cannot redeclare block-scoped variable 'setProcessingMagic'.

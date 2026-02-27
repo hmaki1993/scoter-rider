@@ -14,7 +14,7 @@ const Finance = lazy(() => import('./pages/Finance'));
 const Schedule = lazy(() => import('./pages/Schedule'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Calculator = lazy(() => import('./pages/Calculator'));
-const Login = lazy(() => import('./pages/Login'));
+const Login = lazy(() => import('./pages/EpicLogin'));
 
 const Register = lazy(() => import('./pages/Register'));
 const PublicRegistration = lazy(() => import('./pages/PublicRegistration'));

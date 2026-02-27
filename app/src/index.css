@@ -174,6 +174,16 @@ textarea:focus {
   outline: none;
 }
 
+/* Force kill red validation rings injected by browsers */
+input:invalid,
+input:-moz-ui-invalid,
+input:-webkit-autofill:invalid,
+input:not(:placeholder-shown):invalid {
+  box-shadow: none !important;
+  outline: none !important;
+  border-color: transparent !important;
+}
+
 select {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -197,9 +207,11 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px var(--color-input-bg) inset !important;
-  -webkit-text-fill-color: var(--color-text-base) !important;
-  transition: background-color 5000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background-color: transparent !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+  caret-color: #ffffff !important;
 }
 
 @keyframes pulse-indigo {
@@ -374,4 +386,30 @@ input[type=number] {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
+}
+
+/* Global Login Glass Effect */
+.glass-effect {
+  background-color: color-mix(in srgb, var(--card-bg, #000000), transparent calc(100% - var(--card-opacity, 0.6) * 100%)) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border: 1px solid var(--card-accent, rgba(255, 255, 255, 0.1)) !important;
+  box-shadow: 0 0 100px -20px color-mix(in srgb, var(--card-accent, #ffffff), transparent 60%) !important;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-effect-hoverable {
+  background-color: color-mix(in srgb, var(--card-bg, #000000), transparent 95%) !important;
+  backdrop-filter: blur(5px) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 0 40px -20px rgba(0, 0, 0, 0.5) !important;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-effect-hoverable:hover,
+.glass-effect-hoverable:focus-within {
+  background-color: color-mix(in srgb, var(--card-bg, #000000), transparent calc(100% - var(--card-opacity, 0.6) * 100%)) !important;
+  backdrop-filter: blur(40px) !important;
+  border-color: var(--card-accent, rgba(255, 255, 255, 0.1)) !important;
+  box-shadow: 0 0 100px -20px color-mix(in srgb, var(--card-accent, #ffffff), transparent 60%) !important;
 }

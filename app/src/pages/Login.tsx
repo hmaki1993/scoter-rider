@@ -175,122 +175,131 @@ export default function Login() {
                         height: getSetting('login_card_height') ? `${getSetting('login_card_height')}px` : 'auto'
                     }}
                 >
-                    {/* Login Card */}
+                    {/* Login Card Layer */}
                     <div
-                        className="group/card border-2 rounded-[3rem] p-12 transition-all duration-700 ease-out glass-effect overflow-hidden h-full flex flex-col justify-center"
+                        className="group/card hover:!opacity-100 border-2 rounded-[3rem] p-8 md:p-12 h-full transition-all duration-700 ease-out flex flex-col justify-center overflow-hidden"
                         style={{
+                            backgroundColor: getSetting('login_card_color') || '#000000',
+                            border: getSetting('login_card_border_color') ? `1px solid ${getSetting('login_card_border_color')}` : undefined,
+                            boxShadow: getSetting('login_card_border_color') ? `0 0 60px -15px color-mix(in srgb, ${getSetting('login_card_border_color')}, transparent 50%)` : undefined,
+                            opacity: 0.45,
                             transform: `scale(${getSetting('login_card_scale') ?? 1.0}) translate(${getSetting('login_card_x_offset') ?? 0}px, ${getSetting('login_card_y_offset') ?? 0}px)`,
-                            '--card-accent': getSetting('login_accent_color') || '#D4AF37',
-                            '--card-bg': getSetting('login_card_color') || '#000000',
-                            '--card-opacity': getSetting('login_card_opacity') ?? 0.6
-                        } as React.CSSProperties}
+                            backdropFilter: 'blur(24px)',
+                            WebkitBackdropFilter: 'blur(24px)'
+                        }}
                     >
                         {/* Header - Inside Card */}
                         <div className="text-center mb-6">
-                            <h1
-                                className="text-xl font-black tracking-[0.3em] uppercase mb-1"
-                                style={{ color: getSetting('login_text_color') || '#ffffff' }}
-                            >
+                            <h1 className="text-xl font-black tracking-[0.3em] uppercase mb-1 drop-shadow-md" style={{ color: getSetting('login_text_color') || '#ffffff' }}>
                                 {settings.academy_name || 'Academy System'}
                             </h1>
-                            <p className="text-[9px] font-black uppercase tracking-[0.4em] mb-12" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}55` }}>Institutional Management Ecosystem</p>
-
-                            {error && (
-                                <div className="text-rose-400 text-[10px] font-black p-3 rounded-2xl mb-5 bg-rose-500/10 border border-rose-500/10 text-center uppercase tracking-widest">
-                                    {error}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleLogin} className="space-y-6">
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5 text-left">
-                                        <label className="block text-[9px] font-black uppercase tracking-[0.4em] transition-colors text-left" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66` }}>Email Address</label>
-                                        <div className="group relative">
-                                            <input
-                                                type="email"
-                                                required
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
-                                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-8 text-white text-[16px] font-bold focus:outline-none focus:border-primary/50 transition-all"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5 pt-2 text-left">
-                                        <label className="block text-[9px] font-black uppercase tracking-[0.4em] transition-colors text-left" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66` }}>Secure Pin</label>
-                                        <div className="group relative">
-                                            <input
-                                                type="password"
-                                                required
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-8 text-white text-[16px] font-bold focus:outline-none focus:border-primary/50 transition-all"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black border shadow-xl transition-all active:scale-[0.98] group/btn overflow-hidden"
-                                    style={{
-                                        color: getSetting('login_accent_color') || '#D4AF37',
-                                        borderColor: `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        const accent = getSetting('login_accent_color') || '#D4AF37';
-                                        e.currentTarget.style.backgroundColor = `${stripAlpha(accent)}1a`;
-                                        e.currentTarget.style.borderColor = accent;
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'black';
-                                        e.currentTarget.style.borderColor = `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`;
-                                    }}
-                                >
-                                    <span className="relative z-10 flex items-center justify-center gap-3">
-                                        {loading ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <>
-                                                {t('common.login')}
-                                                <Sparkles className="w-4 h-4 opacity-50" />
-                                            </>
-                                        )}
-                                    </span>
-                                </button>
-                            </form>
-
-                            {/* Pill Language Switcher */}
-                            <div className="mt-4 md:mt-7 flex flex-col items-center gap-3">
-                                <button
-                                    onClick={toggleLanguage}
-                                    className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 transition-all text-[9px] font-black uppercase tracking-[0.3em]"
-                                    style={{ color: getSetting('login_text_color') || '#ffffff', borderColor: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}33` }}
-                                    onMouseEnter={(e) => {
-                                        const accent = getSetting('login_accent_color') || '#D4AF37';
-                                        e.currentTarget.style.color = accent;
-                                        e.currentTarget.style.borderColor = accent;
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        const textColor = getSetting('login_text_color') || '#ffffff';
-                                        e.currentTarget.style.color = textColor;
-                                        e.currentTarget.style.borderColor = `${stripAlpha(textColor)}33`;
-                                    }}
-                                >
-                                    <Globe className="w-3.5 h-3.5" />
-                                    {i18n.language === 'en' ? 'Switch to Arabic' : 'Switch to English'}
-                                </button>
-
-                                {/* Copyright Footer */}
-                                <span className="text-[9px] font-black uppercase tracking-[0.4em]" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}55` }}>
-                                    © 2026 {settings.academy_name || 'Academy System'}
+                            <div className="flex items-center justify-center gap-4">
+                                <div className="h-[1px] w-8" style={{ backgroundColor: `${getSetting('login_accent_color') || '#D4AF37'}4d` }}></div>
+                                <span className="text-[9px] font-black uppercase tracking-[0.7em] opacity-80" style={{ color: getSetting('login_accent_color') || '#D4AF37' }}>
+                                    Academy
                                 </span>
+                                <div className="h-[1px] w-8" style={{ backgroundColor: `${getSetting('login_accent_color') || '#D4AF37'}4d` }}></div>
                             </div>
                         </div>
-                    </div>
 
-                    <style>{`
+                        {error && (
+                            <div className="text-rose-400 text-[10px] font-black p-3 rounded-2xl mb-5 bg-rose-500/10 border border-rose-500/10 text-center uppercase tracking-widest">
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-1.5 text-left group">
+                                    <label className="block text-[9px] font-black uppercase tracking-[0.4em] transition-colors text-left" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66` }}>Email Address</label>
+                                    <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 border border-white/10 focus-within:border-white/30 focus-within:bg-white/[0.05]">
+                                        <input
+                                            type="email"
+                                            required
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="w-full bg-white/[0.03] py-4 px-8 transition-all text-sm font-bold text-white !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
+                                            placeholder="email@domain.com"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5 pt-2 text-left group">
+                                    <label className="block text-[9px] font-black uppercase tracking-[0.4em] transition-colors text-left" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}66` }}>Password</label>
+                                    <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 border border-white/10 focus-within:border-white/30 focus-within:bg-white/[0.05]">
+                                        <input
+                                            type="password"
+                                            required
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full bg-white/[0.03] py-4 px-8 transition-all text-sm font-bold text-white !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black border shadow-xl transition-all active:scale-[0.98] group/btn overflow-hidden"
+                                style={{
+                                    color: getSetting('login_accent_color') || '#D4AF37',
+                                    borderColor: `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`
+                                }}
+                                onMouseEnter={(e) => {
+                                    const accent = getSetting('login_accent_color') || '#D4AF37';
+                                    e.currentTarget.style.backgroundColor = `${stripAlpha(accent)}1a`;
+                                    e.currentTarget.style.borderColor = accent;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'black';
+                                    e.currentTarget.style.borderColor = `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`;
+                                }}
+                            >
+                                <span className="relative z-10 flex items-center justify-center gap-3">
+                                    {loading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            {t('common.login')}
+                                            <Sparkles className="w-4 h-4 opacity-50" />
+                                        </>
+                                    )}
+                                </span>
+                            </button>
+                        </form>
+
+                        {/* Pill Language Switcher */}
+                        <div className="mt-4 md:mt-7 flex flex-col items-center gap-3">
+                            <button
+                                onClick={toggleLanguage}
+                                className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 transition-all text-[9px] font-black uppercase tracking-[0.3em]"
+                                style={{ color: getSetting('login_text_color') || '#ffffff', borderColor: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}33` }}
+                                onMouseEnter={(e) => {
+                                    const accent = getSetting('login_accent_color') || '#D4AF37';
+                                    e.currentTarget.style.color = accent;
+                                    e.currentTarget.style.borderColor = accent;
+                                }}
+                                onMouseLeave={(e) => {
+                                    const textColor = getSetting('login_text_color') || '#ffffff';
+                                    e.currentTarget.style.color = textColor;
+                                    e.currentTarget.style.borderColor = `${stripAlpha(textColor)}33`;
+                                }}
+                            >
+                                <Globe className="w-3.5 h-3.5" />
+                                {i18n.language === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+                            </button>
+
+                            {/* Copyright Footer */}
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em]" style={{ color: `${stripAlpha(getSetting('login_text_color') || '#ffffff')}55` }}>
+                                © 2026 {settings.academy_name || 'Academy System'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <style>{`
                         input:-webkit-autofill,
                         input:-webkit-autofill:hover, 
                         input:-webkit-autofill:focus {
@@ -307,22 +316,6 @@ export default function Login() {
                             letter-spacing: inherit !important;
                         }
 
-                        /* Universal Glass Effect - GHOST MODE ENHANCED */
-                        .glass-effect {
-                            background-color: color-mix(in srgb, var(--card-bg), transparent 95%) !important;
-                            backdrop-filter: blur(5px) !important;
-                            border-color: rgba(255, 255, 255, 0.05) !important;
-                            box-shadow: 0 0 40px -20px rgba(0,0,0,0.5) !important;
-                            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-                        }
-
-                        /* Ghost Mode Active: Make visible when interacting */
-                        .glass-effect:hover, .glass-effect:focus-within {
-                            background-color: color-mix(in srgb, var(--card-bg), transparent calc(100% - var(--card-opacity) * 100%)) !important;
-                            backdrop-filter: blur(40px) !important;
-                            border-color: var(--card-accent) !important;
-                            box-shadow: 0 0 100px -20px color-mix(in srgb, var(--card-accent), transparent 60%) !important;
-                        }
                         
                         input {
                             background-color: transparent !important;
@@ -349,7 +342,6 @@ export default function Login() {
                             outline: none !important;
                         }
                     `}</style>
-                </div>
             </div>
         </div>
     );
