@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import {
@@ -30,6 +30,16 @@ export default function LandingPage() {
         academy_name: 'Academy System',
         logo_url: '/logo.png',
         login_accent_color: '#D4AF37'
+    });
+
+    const [extractedPalette, setExtractedPalette] = useState<{
+        primary: string;
+        secondary: string;
+        tertiary: string;
+    }>({
+        primary: '#D4AF37',
+        secondary: '#FF8C00',
+        tertiary: '#D4145A'
     });
 
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -73,6 +83,114 @@ export default function LandingPage() {
         checkSession();
         fetchBranding();
     }, [navigate]);
+
+    useEffect(() => {
+        if (!branding.logo_url) return;
+
+        const extractColors = async () => {
+            console.log("🎨 [Color Extraction] Starting for:", branding.logo_url);
+            try {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = branding.logo_url!;
+
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = (e) => {
+                        console.error("🎨 [Color Extraction] Image load error:", e);
+                        reject(e);
+                    };
+                });
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                canvas.width = 50;
+                canvas.height = 50;
+                ctx.drawImage(img, 0, 0, 50, 50);
+
+                const imageData = ctx.getImageData(0, 0, 50, 50).data;
+                const colors: { r: number, g: number, b: number, score: number, s: number, l: number }[] = [];
+
+                for (let i = 0; i < imageData.length; i += 4) {
+                    const r = imageData[i];
+                    const g = imageData[i + 1];
+                    const b = imageData[i + 2];
+                    const a = imageData[i + 3];
+
+                    if (a < 50) continue; // Skip very transparent
+
+                    const max = Math.max(r, g, b);
+                    const min = Math.min(r, g, b);
+                    const l = (max + min) / 2;
+                    const s = max === min ? 0 : (max - min) / (255 - Math.abs(2 * l - 255));
+
+                    // Very relaxed filters: skip only extremely dark/light/desaturated
+                    if (l < 20 || l > 245) continue;
+
+                    // Score favors saturation but allows muted colors if they are prominent
+                    const score = (s * 5) + (max / 255);
+                    colors.push({ r, g, b, score, s, l });
+                }
+
+                console.log("🎨 [Color Extraction] Sampled pixel count:", colors.length);
+
+                if (colors.length === 0) {
+                    console.warn("🎨 [Color Extraction] No suitable colors found in logo.");
+                    return;
+                }
+
+                // Sort by score (vibrancy + prominence)
+                colors.sort((a, b) => b.score - a.score);
+
+                const rgbToHex = (r: number, g: number, b: number) =>
+                    '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+
+                // Pick colors that are visually different
+                const primary = branding.login_accent_color;
+
+                // Color 1: Most vibrant
+                const c1 = colors[0];
+                let secondary = rgbToHex(c1.r, c1.g, c1.b);
+
+                // Color 2: Try to find something different from Color 1
+                let tertiary = secondary;
+                for (let i = 1; i < colors.length; i++) {
+                    const c2 = colors[i];
+                    const diff = Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b);
+                    if (diff > 100) { // Enough visual difference
+                        tertiary = rgbToHex(c2.r, c2.g, c2.b);
+                        break;
+                    }
+                }
+
+                // If only one color found, generate a variation
+                if (tertiary === secondary && colors.length > 0) {
+                    // Lighter or darker version of secondary
+                    const shift = c1.l > 128 ? -40 : 40;
+                    tertiary = rgbToHex(
+                        Math.max(0, Math.min(255, c1.r + shift)),
+                        Math.max(0, Math.min(255, c1.g + shift)),
+                        Math.max(0, Math.min(255, c1.b + shift))
+                    );
+                }
+
+                console.log("🎨 [Color Extraction] Final Palette:", { primary, secondary, tertiary });
+
+                setExtractedPalette({
+                    primary,
+                    secondary,
+                    tertiary
+                });
+
+            } catch (err) {
+                console.warn("🎨 [Color Extraction] Process failed:", err);
+            }
+        };
+
+        extractColors();
+    }, [branding.logo_url, branding.login_accent_color]);
 
     const features = [
         {
@@ -125,15 +243,60 @@ export default function LandingPage() {
             style={{
                 zoom: '0.9',
                 // @ts-ignore
-                '--brand-primary': branding.login_accent_color,
-                '--brand-secondary': '#FF8C00', // Deep Orange from logo
-                '--brand-tertiary': '#D4145A',  // Pink/Purple from logo
-                '--brand-primary-rgb': branding.login_accent_color.startsWith('#')
-                    ? `${parseInt(branding.login_accent_color.slice(1, 3), 16)}, ${parseInt(branding.login_accent_color.slice(3, 5), 16)}, ${parseInt(branding.login_accent_color.slice(5, 7), 16)}`
-                    : '212, 175, 55'
+                '--color-brand-primary': extractedPalette.primary,
+                '--color-brand-secondary': extractedPalette.secondary,
+                '--color-brand-tertiary': extractedPalette.tertiary,
+                '--brand-primary-rgb': extractedPalette.primary.startsWith('#')
+                    ? `${parseInt(extractedPalette.primary.slice(1, 3), 16)}, ${parseInt(extractedPalette.primary.slice(3, 5), 16)}, ${parseInt(extractedPalette.primary.slice(5, 7), 16)}`
+                    : '212, 175, 55',
+                '--mouse-x': `${mousePos.x}px`,
+                '--mouse-y': `${mousePos.y}px`
             } as React.CSSProperties}
         >
+            {/* Cinematic "Spotlight Reveal" Layer - Hidden Branding & Gymnastics Discovery */}
+            <div
+                className="fixed inset-0 pointer-events-none z-[10]"
+                style={{
+                    maskImage: 'radial-gradient(circle 250px at var(--mouse-x) var(--mouse-y), black 0%, transparent 100%)',
+                    WebkitMaskImage: 'radial-gradient(circle 250px at var(--mouse-x) var(--mouse-y), black 0%, transparent 100%)',
+                }}
+            >
+                {/* Gymnastics Energy Marks - High-Performance Discovery Icons */}
+                <div className="absolute top-[18%] right-[12%] opacity-60 transition-all duration-1000">
+                    <div className="relative w-48 h-48 flex items-center justify-center animate-bounce-slow">
+                        <div className="absolute inset-0 bg-brand-secondary/30 blur-3xl rounded-full scale-110"></div>
+                        <Activity className="w-24 h-24 text-brand-secondary relative z-10" style={{ filter: `drop-shadow(0 0 20px ${extractedPalette.secondary})` }} />
+                        <span className="absolute -bottom-4 text-[10px] font-black tracking-[0.5em] text-brand-secondary/60">AGILITY</span>
+                    </div>
+                </div>
 
+                <div className="absolute top-[45%] left-[8%] opacity-50 transition-all duration-1000 scale-125">
+                    <div className="relative w-56 h-56 flex items-center justify-center animate-pulse">
+                        <div className="absolute inset-0 bg-brand-tertiary/20 blur-3xl rounded-full"></div>
+                        <Trophy className="w-32 h-32 text-brand-tertiary relative z-10" style={{ filter: `drop-shadow(0 0 25px ${extractedPalette.tertiary})` }} />
+                        <span className="absolute -bottom-6 text-[10px] font-black tracking-[0.5em] text-brand-tertiary/60">EXCELLENCE</span>
+                    </div>
+                </div>
+
+                <div className="absolute bottom-[25%] right-[15%] opacity-60 transition-all duration-1000">
+                    <div className="relative w-64 h-64 flex items-center justify-center animate-spin-slow">
+                        <div className="absolute inset-0 bg-brand-primary/20 blur-[60px] rounded-full"></div>
+                        <Sparkles className="w-32 h-32 text-brand-primary relative z-10" style={{ filter: `drop-shadow(0 0 30px ${extractedPalette.primary})` }} />
+                        <span className="absolute -bottom-8 text-[10px] font-black tracking-[0.5em] text-brand-primary/60">PRECISION</span>
+                    </div>
+                </div>
+
+                {/* Logo Fragments */}
+                <div className="absolute top-[15%] left-[10%] opacity-20 rotate-[-15deg]">
+                    <img src={branding.logo_url || "/logo.png"} alt="" className="w-64 h-64 object-contain blur-[2px]" />
+                </div>
+                <div className="absolute top-[40%] right-[15%] opacity-15 rotate-[20deg] scale-150">
+                    <img src={branding.logo_url || "/logo.png"} alt="" className="w-80 h-80 object-contain blur-[4px]" />
+                </div>
+                {/* Branding Glows localized to reveal layer */}
+                <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-brand-secondary/20 blur-[100px] rounded-full"></div>
+                <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-brand-tertiary/15 blur-[120px] rounded-full"></div>
+            </div>
 
             {/* Ultra-Premium Noise Texture Overlay */}
             <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.04] mix-blend-overlay">
@@ -146,7 +309,7 @@ export default function LandingPage() {
             </div>
 
             {/* Cinematic Layered Lighting System - Multi-Color Gradient Pulse */}
-            <div className="fixed inset-0 pointer-events-none z-0">
+            <div className="fixed inset-0 pointer-events-none z-0" >
                 <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[80%] bg-brand-secondary/15 blur-[180px] rounded-full animate-pulse-slow"></div>
                 <div className="absolute bottom-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-tertiary/12 blur-[180px] rounded-full animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
                 <div className="absolute top-[20%] left-[10%] w-[40%] h-[40%] bg-brand-primary/8 blur-[150px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
@@ -192,7 +355,7 @@ export default function LandingPage() {
             </nav>
 
             {/* Hero Section - The Apex */}
-            <section className="relative pt-40 pb-32 px-6 max-w-7xl mx-auto text-center flex flex-col items-center">
+            <section className="relative pt-40 pb-32 px-6 max-w-7xl mx-auto text-center flex flex-col items-center" >
                 <div className="relative inline-flex items-center gap-4 px-8 py-3 rounded-full bg-white/[0.02] border border-brand-secondary/30 mb-16 animate-in fade-in slide-in-from-bottom-12 duration-1000">
                     <div className="absolute inset-0 bg-brand-secondary/10 blur-xl rounded-full opacity-50"></div>
                     <Sparkles className="w-4 h-4 text-brand-secondary animate-pulse" />
@@ -231,7 +394,7 @@ export default function LandingPage() {
             </section>
 
             {/* Features Section - Bento Masterpiece */}
-            <section id="features" className="py-32 px-6 max-w-7xl mx-auto relative">
+            <section id="features" className="py-32 px-6 max-w-7xl mx-auto relative" >
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-48 bg-gradient-to-b from-brand-secondary/80 to-transparent"></div>
 
                 <div className="text-center mb-32 relative group">
@@ -286,7 +449,7 @@ export default function LandingPage() {
             </section>
 
             {/* Legacy Section - Dynasty Reimagined */}
-            <section id="solutions" className="py-60 relative overflow-hidden">
+            <section id="solutions" className="py-60 relative overflow-hidden" >
                 <div className="absolute inset-0 bg-[#020202]"></div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] aspect-square bg-brand-tertiary/5 blur-[250px] rounded-full"></div>
 
@@ -343,7 +506,7 @@ export default function LandingPage() {
             </section>
 
             {/* CTA - The Grand Finale (Cinematic High) */}
-            <section id="about" className="py-64 px-10 max-w-7xl mx-auto text-center relative">
+            <section id="about" className="py-64 px-10 max-w-7xl mx-auto text-center relative" >
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-[2px] bg-gradient-to-r from-transparent via-brand-secondary/40 to-transparent"></div>
 
                 <div className="group relative bg-[#050505]/40 backdrop-blur-3xl border border-white/[0.05] p-24 md:p-32 rounded-[5rem] overflow-hidden shadow-[0_120px_250px_rgba(0,0,0,0.9)] transition-all duration-1000 hover:border-brand-secondary/20">
@@ -371,7 +534,7 @@ export default function LandingPage() {
             </section>
 
             {/* Footer - Final Elegance */}
-            <footer className="py-32 border-t border-white/[0.03] bg-black">
+            < footer className="py-32 border-t border-white/[0.03] bg-black" >
                 <div className="max-w-7xl mx-auto px-10">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-16 mb-24">
                         <div className="flex items-center gap-6 group cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
@@ -404,7 +567,7 @@ export default function LandingPage() {
                         </div>
                     </div>
                 </div>
-            </footer>
+            </footer >
 
             <style>{`
                 @keyframes pulse-slow {
