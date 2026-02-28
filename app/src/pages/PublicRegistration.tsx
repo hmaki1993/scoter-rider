@@ -10,6 +10,104 @@ import { sendToN8n } from '../services/n8nService';
 import { COUNTRIES } from '../constants/countries';
 import { formatDynamicPhone } from '../utils/phoneUtils';
 
+// Premium Select Component for a high-end feel
+function PremiumSelect({
+    label,
+    value,
+    options,
+    onChange,
+    placeholder = "Select an option",
+    secondaryColor,
+    primaryColor,
+    accentColor,
+    textColor,
+    textColorMuted,
+    icon: Icon
+}: {
+    label: string,
+    value: string,
+    options: { id: string, name: string }[],
+    onChange: (val: string) => void,
+    placeholder?: string,
+    secondaryColor: string,
+    primaryColor: string,
+    accentColor: string,
+    textColor: string,
+    textColorMuted: string,
+    icon?: any
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const selectedOption = options.find(o => o.id === value);
+
+    // Close on click outside
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClick = () => setIsOpen(false);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, [isOpen]);
+
+    return (
+        <div className="group relative" onClick={(e) => e.stopPropagation()}>
+            <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">
+                {label}
+            </label>
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`input-mind flex items-center justify-between text-left transition-all duration-300 ${isOpen ? 'ring-2' : ''}`}
+                    style={{
+                        borderColor: isOpen ? primaryColor : 'rgba(255, 255, 255, 0.05)',
+                        '--focus-shadow': `${primaryColor}33`
+                    } as any}
+                >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        {Icon && <Icon className="w-4 h-4 shrink-0" style={{ color: isOpen ? primaryColor : textColorMuted }} />}
+                        <span className={`truncate ${!selectedOption ? 'opacity-40' : ''}`}>
+                            {selectedOption ? selectedOption.name : placeholder}
+                        </span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`} style={{ color: primaryColor }} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isOpen && (
+                    <div
+                        className="absolute top-[110%] left-0 w-full backdrop-blur-2xl border border-white/10 rounded-[1.5rem] overflow-hidden shadow-2xl z-[100] animate-in fade-in slide-in-from-top-2 duration-300 max-h-64 overflow-y-auto no-scrollbar"
+                        style={{ backgroundColor: `${secondaryColor}f2` }}
+                    >
+                        {options.length === 0 ? (
+                            <div className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-center" style={{ color: textColorMuted }}>
+                                No options available
+                            </div>
+                        ) : (
+                            options.map((opt) => (
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(opt.id);
+                                        setIsOpen(false);
+                                    }}
+                                    className="flex items-center justify-between w-full px-6 py-4 hover:bg-white/[0.03] transition-all text-left border-b border-white/[0.03] last:border-0 group/opt"
+                                >
+                                    <span className={`text-xs font-bold tracking-wide transition-colors ${value === opt.id ? 'text-white' : ''}`} style={{ color: value === opt.id ? textColor : textColorMuted }}>
+                                        {opt.name}
+                                    </span>
+                                    {value === opt.id && (
+                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: primaryColor }}></div>
+                                    )}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function PublicRegistration() {
     const { t } = useTranslation();
     const { settings } = useTheme();
@@ -25,7 +123,7 @@ export default function PublicRegistration() {
     const surfaceColor = settings.surface_color || 'rgba(255, 255, 255, 0.05)';
     const textColor = settings.text_color_base || '#ffffff';
     const textColorMuted = settings.text_color_muted || 'rgba(255, 255, 255, 0.6)';
-    const [logoUrl, setLogoUrl] = useState<string>('/logo_recovered.png');
+    const logoUrl = settings.logo_url || '/logo_recovered.png';
 
     // Form State
     const [formData, setFormData] = useState({
@@ -49,14 +147,12 @@ export default function PublicRegistration() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [coachesRes, plansRes, settingsRes] = await Promise.all([
+            const [coachesRes, plansRes] = await Promise.all([
                 supabase.from('coaches').select('id, full_name, specialty').order('full_name'),
-                supabase.from('subscription_plans').select('*'),
-                supabase.from('gym_settings').select('logo_url').maybeSingle()
+                supabase.from('subscription_plans').select('*')
             ]);
             if (coachesRes.data) setCoaches(coachesRes.data);
             if (plansRes.data) setPlans(plansRes.data);
-            if (settingsRes.data?.logo_url) setLogoUrl(settingsRes.data.logo_url);
         };
         fetchData();
     }, []);
@@ -251,7 +347,15 @@ export default function PublicRegistration() {
 
         } catch (error: any) {
             console.error('Registration error:', error);
-            toast.error('Something went wrong. Please try again.');
+
+            // Refined error messaging for RLS/Permission issues
+            if (error.code === '42501' || error.status === 401 || error.message?.includes('permission denied')) {
+                toast.error('Database Permission Error. Please contact admin to enable public registration.');
+            } else if (error.code === 'PGRST116') {
+                toast.error('Registration partially failed (ID retrieval). Please check student records.');
+            } else {
+                toast.error('Something went wrong. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -497,42 +601,51 @@ export default function PublicRegistration() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-                                    <div className="group">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Discipline</label>
-                                        <div className="relative">
-                                            <select value={formData.training_type} onChange={e => setFormData({ ...formData, training_type: e.target.value })} className="input-mind appearance-none" required>
-                                                <option value="" style={{ backgroundColor: secondaryColor }}></option>
-                                                <option value="Artistic Gymnastics" style={{ backgroundColor: secondaryColor }}>Artistic Gymnastics</option>
-                                                <option value="Rhythmic Gymnastics" style={{ backgroundColor: secondaryColor }}>Rhythmic Gymnastics</option>
-                                                <option value="Parkour" style={{ backgroundColor: secondaryColor }}>Parkour</option>
-                                                <option value="Fitness" style={{ backgroundColor: secondaryColor }}>Fitness</option>
-                                            </select>
-                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none rotate-90" style={{ color: primaryColor }} />
-                                        </div>
-                                    </div>
-                                    <div className="group">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Membership Tier</label>
-                                        <div className="relative">
-                                            <select value={formData.subscription_type} onChange={e => setFormData({ ...formData, subscription_type: e.target.value })} className="input-mind appearance-none" required>
-                                                <option value="" style={{ backgroundColor: secondaryColor }}></option>
-                                                {plans.map(plan => (
-                                                    <option key={plan.id} value={plan.id} style={{ backgroundColor: secondaryColor }} className="font-bold">{plan.name}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none rotate-90" style={{ color: primaryColor }} />
-                                        </div>
-                                    </div>
-                                    <div className="group md:col-span-2">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Guided By (Coach Picker)</label>
-                                        <div className="relative">
-                                            <select value={formData.coach_id} onChange={e => setFormData({ ...formData, coach_id: e.target.value })} className="input-mind appearance-none">
-                                                <option value="" style={{ backgroundColor: secondaryColor }}></option>
-                                                {coaches.map(coach => (
-                                                    <option key={coach.id} value={coach.id} style={{ backgroundColor: secondaryColor }} className="font-bold">Coach / {coach.full_name}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none rotate-90" style={{ color: primaryColor }} />
-                                        </div>
+                                    <PremiumSelect
+                                        label="Discipline"
+                                        value={formData.training_type}
+                                        placeholder="Select Discipline"
+                                        options={[
+                                            { id: "Artistic Gymnastics", name: "Artistic Gymnastics" },
+                                            { id: "Rhythmic Gymnastics", name: "Rhythmic Gymnastics" },
+                                            { id: "Parkour", name: "Parkour" },
+                                            { id: "Fitness", name: "Fitness" }
+                                        ]}
+                                        onChange={(val) => setFormData({ ...formData, training_type: val })}
+                                        secondaryColor={secondaryColor}
+                                        primaryColor={primaryColor}
+                                        accentColor={accentColor}
+                                        textColor={textColor}
+                                        textColorMuted={textColorMuted}
+                                        icon={TrendingUp}
+                                    />
+                                    <PremiumSelect
+                                        label="Membership Tier"
+                                        value={formData.subscription_type}
+                                        placeholder="Select Membership"
+                                        options={plans.map(p => ({ id: p.id, name: p.name }))}
+                                        onChange={(val) => setFormData({ ...formData, subscription_type: val })}
+                                        secondaryColor={secondaryColor}
+                                        primaryColor={primaryColor}
+                                        accentColor={accentColor}
+                                        textColor={textColor}
+                                        textColorMuted={textColorMuted}
+                                        icon={CheckCircle}
+                                    />
+                                    <div className="md:col-span-2">
+                                        <PremiumSelect
+                                            label="Guided By (Coach Picker)"
+                                            value={formData.coach_id}
+                                            placeholder="Assign a Coach (Optional)"
+                                            options={coaches.map(c => ({ id: c.id, name: `Coach / ${c.full_name}` }))}
+                                            onChange={(val) => setFormData({ ...formData, coach_id: val })}
+                                            secondaryColor={secondaryColor}
+                                            primaryColor={primaryColor}
+                                            accentColor={accentColor}
+                                            textColor={textColor}
+                                            textColorMuted={textColorMuted}
+                                            icon={Users}
+                                        />
                                     </div>
                                 </div>
                             </div>

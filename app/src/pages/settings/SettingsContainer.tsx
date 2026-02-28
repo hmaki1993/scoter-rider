@@ -32,14 +32,13 @@ import PaletteImportModal from '../../components/PaletteImportModal';
 
 export default function Settings() {
     const { currency, setCurrency } = useCurrency();
-    const role = 'admin';
     const { settings, updateSettings, resetToDefaults, hasLoaded } = useTheme();
     const [isPublishing, setIsPublishing] = useState(false);
     const [publishProgress, setPublishProgress] = useState(0);
     const [publishStep, setPublishStep] = useState('');
     const { t, i18n } = useTranslation();
     const context = useOutletContext<{ role: string }>() || { role: null };
-    // const role = context.role?.toLowerCase()?.trim(); // Commented out to avoid collision with hardcoded admin role for verification
+    const role = context.role?.toLowerCase()?.trim();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -59,8 +58,9 @@ export default function Settings() {
     });
     const [designMode, setDesignMode] = useState<'desktop' | 'mobile'>('desktop');
     const [activeTab, setActiveTab] = useState<'appearance' | 'profile' | 'academy' | 'login'>(() => {
-        const saved = localStorage.getItem('healy_settings_secret_revealed');
-        return saved === 'true' ? 'login' : 'appearance';
+        const savedSecret = localStorage.getItem('healy_settings_secret_revealed');
+        if (role !== 'admin') return 'appearance';
+        return savedSecret === 'true' ? 'login' : 'appearance';
     });
     const [previewScale, setPreviewScale] = useState(0.2);
     const previewParentRef = useRef<HTMLDivElement>(null);
@@ -249,11 +249,9 @@ export default function Settings() {
         setPublishStep(t('settings.syncingDatabase'));
 
         try {
-            // Filter out gym-wide settings to prevent unauthorized update attempts by non-admins
-            // This prevents the "403 Forbidden" error when Coaches save their theme
-            const { academy_name, gym_phone, gym_address, logo_url, ...themeOnlySettings } = settingsToSave as any;
-
-            await updateSettings(themeOnlySettings);
+            // Pass all settings to updateSettings. ThemeContext will handle 
+            // the separation between gym-wide and user-specific persistence.
+            await updateSettings(settingsToSave);
             setPublishProgress(100);
             setPublishStep(t('settings.publishSuccess'));
 

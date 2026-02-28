@@ -278,6 +278,8 @@ export const defaultSettings: GymSettings = {
 
 export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'academy_name', 'logo_url', 'gym_address', 'gym_phone',
+    'primary_color', 'secondary_color', 'accent_color', 'surface_color',
+    'input_bg_color', 'text_color_base', 'text_color_muted',
     'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color',
     'login_card_border_color', 'login_card_scale', 'login_show_logo',
     'login_text_color', 'login_accent_color', 'login_logo_opacity',
@@ -292,8 +294,7 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'login_mobile_bg_blur', 'login_mobile_bg_brightness', 'login_mobile_bg_zoom',
     'login_mobile_bg_x_offset', 'login_mobile_bg_y_offset', 'login_mobile_bg_fit', 'login_mobile_bg_opacity',
     'login_mobile_card_x_offset', 'login_mobile_card_y_offset',
-    'login_card_width', 'login_card_height', 'login_mobile_card_width', 'login_mobile_card_height',
-    'text_color_base', 'text_color_muted'
+    'login_card_width', 'login_card_height', 'login_mobile_card_width', 'login_mobile_card_height'
 ];
 
 // Keys that can be customized per user

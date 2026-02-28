@@ -1,573 +1,348 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import {
-    Mic,
-    Users,
-    CreditCard,
-    Calendar,
     ArrowRight,
-    CheckCircle2,
     Sparkles,
-    Smartphone,
-    BarChart3,
-    Bot,
-    ChevronDown,
-    Zap,
     Shield,
-    Infinity,
+    Zap,
+    Activity,
     Trophy,
-    Activity
+    Crown,
+    LayoutDashboard,
+    CalendarDays,
+    UserCheck,
+    ChevronLeft,
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
 
 export default function LandingPage() {
     const navigate = useNavigate();
-    const [branding, setBranding] = useState<{
-        academy_name: string;
-        logo_url: string | null;
-        login_accent_color: string;
-    }>({
+    const [branding, setBranding] = useState({
         academy_name: 'Academy System',
         logo_url: '/logo.png',
         login_accent_color: '#D4AF37'
     });
 
-    const [extractedPalette, setExtractedPalette] = useState<{
-        primary: string;
-        secondary: string;
-        tertiary: string;
-    }>({
+    const [extractedPalette, setExtractedPalette] = useState({
         primary: '#D4AF37',
-        secondary: '#FF8C00',
-        tertiary: '#D4145A'
+        secondary: '#111827',
+        accent: '#FF8C00'
     });
 
+    const [activeSlide, setActiveSlide] = useState(0);
+    const [isLoaded, setIsLoaded] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    const previews = [
+        {
+            title: "Master Intelligence",
+            subtitle: "Unified Academy Command",
+            description: "Seamless orchestration of students, coaches, and financials in a single cinematic interface.",
+            image: "/assets/previews/dashboard.png",
+            icon: <LayoutDashboard className="w-5 h-5" />
+        },
+        {
+            title: "Royal Logistics",
+            subtitle: "Precision Scheduling",
+            description: "Dynamic training coordination across multiple arenas with automated conflict detection.",
+            image: "/assets/previews/schedule.png",
+            icon: <CalendarDays className="w-5 h-5" />
+        },
+        {
+            title: "Elite Attendance",
+            subtitle: "Biometric Precision",
+            description: "Real-time occupancy analytics and performance tracking for every athlete.",
+            image: "/assets/previews/attendance.png",
+            icon: <UserCheck className="w-5 h-5" />
+        }
+    ];
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             setMousePos({ x: e.clientX, y: e.clientY });
         };
-
         window.addEventListener('mousemove', handleMouseMove);
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                navigate('/app');
-            }
-        };
-
         const fetchBranding = async () => {
             try {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('gym_settings')
                     .select('academy_name, logo_url, login_accent_color')
                     .single();
 
-                if (data && !error) {
+                if (data) {
                     setBranding({
                         academy_name: data.academy_name || 'Academy System',
                         logo_url: data.logo_url || '/logo.png',
                         login_accent_color: data.login_accent_color || '#D4AF37'
                     });
                 }
+                setIsLoaded(true);
             } catch (err) {
                 console.error("Error fetching branding:", err);
+                setIsLoaded(true);
             }
         };
-
-        checkSession();
         fetchBranding();
-    }, [navigate]);
+    }, []);
 
+    // Color extraction logic (Simplified for performance)
     useEffect(() => {
         if (!branding.logo_url) return;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = branding.logo_url;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                canvas.width = 10;
+                canvas.height = 10;
+                ctx.drawImage(img, 0, 0, 10, 10);
+                const data = ctx.getImageData(0, 0, 10, 10).data;
+                let colors: { r: number, g: number, b: number, dist: number }[] = [];
 
-        const extractColors = async () => {
-            console.log("🎨 [Color Extraction] Starting for:", branding.logo_url);
-            try {
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.src = branding.logo_url!;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+                    // Skip transparent or near-white/near-black pixels
+                    if (a < 128) continue;
+                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                    if (brightness > 240 || brightness < 15) continue;
 
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = (e) => {
-                        console.error("🎨 [Color Extraction] Image load error:", e);
-                        reject(e);
-                    };
-                });
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return;
-
-                canvas.width = 50;
-                canvas.height = 50;
-                ctx.drawImage(img, 0, 0, 50, 50);
-
-                const imageData = ctx.getImageData(0, 0, 50, 50).data;
-                const colors: { r: number, g: number, b: number, score: number, s: number, l: number }[] = [];
-
-                for (let i = 0; i < imageData.length; i += 4) {
-                    const r = imageData[i];
-                    const g = imageData[i + 1];
-                    const b = imageData[i + 2];
-                    const a = imageData[i + 3];
-
-                    if (a < 50) continue; // Skip very transparent
-
-                    const max = Math.max(r, g, b);
-                    const min = Math.min(r, g, b);
-                    const l = (max + min) / 2;
-                    const s = max === min ? 0 : (max - min) / (255 - Math.abs(2 * l - 255));
-
-                    // Very relaxed filters: skip only extremely dark/light/desaturated
-                    if (l < 20 || l > 245) continue;
-
-                    // Score favors saturation but allows muted colors if they are prominent
-                    const score = (s * 5) + (max / 255);
-                    colors.push({ r, g, b, score, s, l });
+                    colors.push({ r, g, b, dist: Math.sqrt(r * r + g * g + b * b) });
                 }
 
-                console.log("🎨 [Color Extraction] Sampled pixel count:", colors.length);
-
-                if (colors.length === 0) {
-                    console.warn("🎨 [Color Extraction] No suitable colors found in logo.");
-                    return;
+                if (colors.length > 0) {
+                    // Sort by "vibrancy" (distance from black) and pick the most vibrant
+                    colors.sort((a, b) => b.dist - a.dist);
+                    const best = colors[0];
+                    const vibrantHex = `#${best.r.toString(16).padStart(2, '0')}${best.g.toString(16).padStart(2, '0')}${best.b.toString(16).padStart(2, '0')}`;
+                    setExtractedPalette(prev => ({
+                        ...prev,
+                        primary: vibrantHex,
+                        accent: branding.login_accent_color
+                    }));
+                } else {
+                    setExtractedPalette(prev => ({ ...prev, primary: branding.login_accent_color }));
                 }
-
-                // Sort by score (vibrancy + prominence)
-                colors.sort((a, b) => b.score - a.score);
-
-                const rgbToHex = (r: number, g: number, b: number) =>
-                    '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
-
-                // Pick colors that are visually different
-                const primary = branding.login_accent_color;
-
-                // Color 1: Most vibrant
-                const c1 = colors[0];
-                let secondary = rgbToHex(c1.r, c1.g, c1.b);
-
-                // Color 2: Try to find something different from Color 1
-                let tertiary = secondary;
-                for (let i = 1; i < colors.length; i++) {
-                    const c2 = colors[i];
-                    const diff = Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b);
-                    if (diff > 100) { // Enough visual difference
-                        tertiary = rgbToHex(c2.r, c2.g, c2.b);
-                        break;
-                    }
-                }
-
-                // If only one color found, generate a variation
-                if (tertiary === secondary && colors.length > 0) {
-                    // Lighter or darker version of secondary
-                    const shift = c1.l > 128 ? -40 : 40;
-                    tertiary = rgbToHex(
-                        Math.max(0, Math.min(255, c1.r + shift)),
-                        Math.max(0, Math.min(255, c1.g + shift)),
-                        Math.max(0, Math.min(255, c1.b + shift))
-                    );
-                }
-
-                console.log("🎨 [Color Extraction] Final Palette:", { primary, secondary, tertiary });
-
-                setExtractedPalette({
-                    primary,
-                    secondary,
-                    tertiary
-                });
-
-            } catch (err) {
-                console.warn("🎨 [Color Extraction] Process failed:", err);
             }
         };
-
-        extractColors();
     }, [branding.logo_url, branding.login_accent_color]);
 
-    const features = [
-        {
-            title: "Hoki Toki Protocol",
-            description: "Military-grade encrypted instant voice communication. Zero latency for elite synchronization.",
-            icon: <Mic className="w-6 h-6 text-black" />,
-            color: "from-brand-primary/80 via-brand-primary to-brand-primary/60",
-            span: "md:col-span-6 lg:col-span-4"
-        },
-        {
-            title: "Royal Attendance",
-            description: "Biometric and occupancy analytics for students and master coaches. Precision tracking reimagined.",
-            icon: <Users className="w-6 h-6 text-black" />,
-            color: "from-brand-primary/90 via-brand-primary/70 to-brand-primary/50",
-            span: "md:col-span-6 lg:col-span-8"
-        },
-        {
-            title: "Elite Financials",
-            description: "Sophisticated revenue forecasting, payroll automation, and automated institutional reporting.",
-            icon: <CreditCard className="w-6 h-6 text-black" />,
-            color: "from-brand-primary/70 via-brand-primary/50 to-brand-primary/30",
-            span: "md:col-span-12 lg:col-span-8"
-        },
-        {
-            title: "Epic AI Oracle",
-            description: "Neural-assisted academy optimization. AI that anticipates staff needs and athlete progression.",
-            icon: <Bot className="w-6 h-6 text-black" />,
-            color: "from-brand-primary/60 via-brand-primary/80 to-brand-primary/90",
-            span: "md:col-span-6 lg:col-span-4"
-        },
-        {
-            title: "Unified Logistics",
-            description: "Dynamic schedule orchestration across multiple batches, levels, and training arenas.",
-            icon: <Calendar className="w-6 h-6 text-black" />,
-            color: "from-brand-primary/80 via-brand-primary to-brand-primary/70",
-            span: "md:col-span-6 lg:col-span-4"
-        },
-        {
-            title: "Master Dashboards",
-            description: "Cinematic data visualization providing 360-degree visibility into academy operations.",
-            icon: <BarChart3 className="w-6 h-6 text-black" />,
-            color: "from-brand-primary/50 via-brand-primary/90 to-brand-primary/60",
-            span: "md:col-span-12 lg:col-span-8"
-        }
-    ];
+    if (!isLoaded) return (
+        <div className="h-screen bg-black flex items-center justify-center">
+            <Loader2 className="w-10 h-10 text-white/20 animate-spin" />
+        </div>
+    );
 
     return (
         <div
-            className="min-h-screen bg-[#020202] text-white selection:bg-brand-primary/30 overflow-x-hidden font-inter border-t-2 border-brand-primary/20 origin-top scroll-smooth"
+            className="h-screen w-full overflow-hidden bg-black text-white selection:bg-white/20 font-cairo"
             style={{
-                zoom: '0.9',
-                // @ts-ignore
-                '--color-brand-primary': extractedPalette.primary,
-                '--color-brand-secondary': extractedPalette.secondary,
-                '--color-brand-tertiary': extractedPalette.tertiary,
-                '--brand-primary-rgb': extractedPalette.primary.startsWith('#')
-                    ? `${parseInt(extractedPalette.primary.slice(1, 3), 16)}, ${parseInt(extractedPalette.primary.slice(3, 5), 16)}, ${parseInt(extractedPalette.primary.slice(5, 7), 16)}`
-                    : '212, 175, 55',
+                '--brand-primary': extractedPalette.primary,
+                '--brand-accent': extractedPalette.accent,
                 '--mouse-x': `${mousePos.x}px`,
                 '--mouse-y': `${mousePos.y}px`
-            } as React.CSSProperties}
+            } as any}
         >
-            {/* Cinematic "Spotlight Reveal" Layer - Hidden Branding & Gymnastics Discovery */}
-            <div
-                className="fixed inset-0 pointer-events-none z-[10]"
-                style={{
-                    maskImage: 'radial-gradient(circle 250px at var(--mouse-x) var(--mouse-y), black 0%, transparent 100%)',
-                    WebkitMaskImage: 'radial-gradient(circle 250px at var(--mouse-x) var(--mouse-y), black 0%, transparent 100%)',
-                }}
-            >
-                {/* Gymnastics Energy Marks - High-Performance Discovery Icons */}
-                <div className="absolute top-[18%] right-[12%] opacity-60 transition-all duration-1000">
-                    <div className="relative w-48 h-48 flex items-center justify-center animate-bounce-slow">
-                        <div className="absolute inset-0 bg-brand-secondary/30 blur-3xl rounded-full scale-110"></div>
-                        <Activity className="w-24 h-24 text-brand-secondary relative z-10" style={{ filter: `drop-shadow(0 0 20px ${extractedPalette.secondary})` }} />
-                        <span className="absolute -bottom-4 text-[10px] font-black tracking-[0.5em] text-brand-secondary/60">AGILITY</span>
-                    </div>
-                </div>
-
-                <div className="absolute top-[45%] left-[8%] opacity-50 transition-all duration-1000 scale-125">
-                    <div className="relative w-56 h-56 flex items-center justify-center animate-pulse">
-                        <div className="absolute inset-0 bg-brand-tertiary/20 blur-3xl rounded-full"></div>
-                        <Trophy className="w-32 h-32 text-brand-tertiary relative z-10" style={{ filter: `drop-shadow(0 0 25px ${extractedPalette.tertiary})` }} />
-                        <span className="absolute -bottom-6 text-[10px] font-black tracking-[0.5em] text-brand-tertiary/60">EXCELLENCE</span>
-                    </div>
-                </div>
-
-                <div className="absolute bottom-[25%] right-[15%] opacity-60 transition-all duration-1000">
-                    <div className="relative w-64 h-64 flex items-center justify-center animate-spin-slow">
-                        <div className="absolute inset-0 bg-brand-primary/20 blur-[60px] rounded-full"></div>
-                        <Sparkles className="w-32 h-32 text-brand-primary relative z-10" style={{ filter: `drop-shadow(0 0 30px ${extractedPalette.primary})` }} />
-                        <span className="absolute -bottom-8 text-[10px] font-black tracking-[0.5em] text-brand-primary/60">PRECISION</span>
-                    </div>
-                </div>
-
-                {/* Logo Fragments */}
-                <div className="absolute top-[15%] left-[10%] opacity-20 rotate-[-15deg]">
-                    <img src={branding.logo_url || "/logo.png"} alt="" className="w-64 h-64 object-contain blur-[2px]" />
-                </div>
-                <div className="absolute top-[40%] right-[15%] opacity-15 rotate-[20deg] scale-150">
-                    <img src={branding.logo_url || "/logo.png"} alt="" className="w-80 h-80 object-contain blur-[4px]" />
-                </div>
-                {/* Branding Glows localized to reveal layer */}
-                <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-brand-secondary/20 blur-[100px] rounded-full"></div>
-                <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-brand-tertiary/15 blur-[120px] rounded-full"></div>
+            {/* Cinematic Lighting */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[var(--brand-primary)]/10 blur-[150px] rounded-full animate-pulse-slow"></div>
+                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[var(--brand-accent)]/10 blur-[150px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--mouse-x)_var(--mouse-y),rgba(255,255,255,0.03)_0%,transparent_50%)]"></div>
             </div>
 
-            {/* Ultra-Premium Noise Texture Overlay */}
-            <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.04] mix-blend-overlay">
-                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                    <filter id="noiseFilter">
-                        <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch" />
-                    </filter>
-                    <rect width="100%" height="100%" filter="url(#noiseFilter)" />
-                </svg>
-            </div>
-
-            {/* Cinematic Layered Lighting System - Multi-Color Gradient Pulse */}
-            <div className="fixed inset-0 pointer-events-none z-0" >
-                <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[80%] bg-brand-secondary/15 blur-[180px] rounded-full animate-pulse-slow"></div>
-                <div className="absolute bottom-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-tertiary/12 blur-[180px] rounded-full animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
-                <div className="absolute top-[20%] left-[10%] w-[40%] h-[40%] bg-brand-primary/8 blur-[150px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
-                <div className="absolute top-[60%] right-[20%] w-[30%] h-[30%] bg-brand-secondary/5 blur-[120px] rounded-full opacity-50"></div>
-            </div>
-
-            {/* Navigation - Ultra-Refined Floating Glass */}
-            <nav className="sticky top-6 z-[100] px-6" style={{ perspective: '1200px' }}>
-                <div className="max-w-5xl mx-auto flex items-center justify-between px-10 py-5 bg-black/40 backdrop-blur-3xl border border-white/[0.08] rounded-full shadow-[0_30px_60px_rgba(0,0,0,0.6)] sidebar-3d-item translate-z-[40px]">
-                    <div className="flex items-center gap-6 group cursor-pointer sidebar-3d-item hover:translate-x-1 transition-all duration-500">
-                        <div className="relative w-12 h-12 flex items-center justify-center p-1.5 overflow-hidden transition-all duration-700 group-hover:scale-110 group-hover:rotate-3 rounded-full bg-white/5 border border-white/10 group-hover:border-brand-primary/50 shadow-2xl">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-brand-secondary/30 via-brand-tertiary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity blur-md"></div>
-                            <img src={branding.logo_url || "/logo.png"} alt="Logo" className="relative z-10 w-full h-full object-contain mix-blend-screen" style={{ clipPath: 'circle(50%)' }} />
+            {/* Content Layer */}
+            <div className="relative z-10 h-full flex flex-col p-6 md:p-12">
+                {/* Header */}
+                <header className="flex items-center justify-between mb-auto animate-in fade-in slide-in-from-top-4 duration-1000">
+                    <div className="flex items-center gap-4 group">
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 p-2 group-hover:border-[var(--brand-primary)]/50 transition-all duration-500 shadow-2xl overflow-hidden relative">
+                            <img src={branding.logo_url} className="w-full h-full object-contain mix-blend-screen relative z-10" alt="Logo" />
+                            <div className="absolute inset-0 bg-gradient-to-tr from-[var(--brand-primary)]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[13px] font-black tracking-[0.35em] leading-tight text-white/90 group-hover:text-white transition-colors">{branding.academy_name.split(' ')[0]} <span className="bg-gradient-to-r from-brand-secondary to-brand-tertiary bg-clip-text text-fill-transparent italic font-black">{branding.academy_name.split(' ').slice(1).join(' ') || 'SYSTEM'}</span></span>
-                            <span className="text-[8px] font-extrabold text-white/20 uppercase tracking-[0.6em] mt-0.5 group-hover:text-brand-secondary transition-colors">Excellence Preferred</span>
+                            <span className="text-[14px] font-black uppercase tracking-[0.2em] leading-tight">
+                                {branding.academy_name.split(' ')[0]} <span className="text-[var(--brand-primary)]">{branding.academy_name.split(' ').slice(1).join(' ')}</span>
+                            </span>
+                            <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.4em]">Excellence Defined</span>
                         </div>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-12 text-[10px] font-black uppercase tracking-[0.45em] text-white/30">
-                        {["Infrastructure", "Royal Solutions", "Our Legacy"].map((item, i) => (
-                            <a
-                                key={i}
-                                href={`#${item.toLowerCase().split(' ')[item.toLowerCase().split(' ').length - 1]}`}
-                                className="hover:text-brand-secondary transition-all relative group py-2 sidebar-3d-item hover:translate-z-[10px]"
+                    <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
+                        {[
+                            { label: 'Systems', index: 0 },
+                            { label: 'Experience', index: 1 },
+                            { label: 'Contact', index: 2 }
+                        ].map(item => (
+                            <button
+                                key={item.label}
+                                onClick={() => setActiveSlide(item.index)}
+                                className={`hover:text-[var(--brand-primary)] transition-all relative group ${activeSlide === item.index ? 'text-[var(--brand-primary)]' : ''}`}
                             >
-                                {item}
-                                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-gradient-to-r from-brand-secondary via-brand-tertiary to-transparent transition-all group-hover:w-full shadow-[0_0_15px_var(--brand-secondary)]"></span>
-                            </a>
+                                {item.label}
+                                <span className={`absolute -bottom-1 left-0 h-px bg-[var(--brand-primary)] transition-all ${activeSlide === item.index ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                            </button>
                         ))}
                     </div>
 
-                    <div className="w-[100px] flex justify-end">
+                    <div className="w-32 flex justify-end">
                         <div className="relative group/access cursor-pointer" onClick={() => navigate('/login')}>
-                            {/* High Intensity Glow for Login Trigger */}
-                            <div className="absolute -inset-4 bg-brand-secondary/40 blur-2xl rounded-full opacity-0 group-hover/access:opacity-100 transition-opacity duration-500 animate-pulse"></div>
-                            <div className="absolute -inset-1 border border-brand-secondary/30 rounded-full animate-ping opacity-50"></div>
-                            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-brand-secondary to-brand-tertiary shadow-[0_0_20px_var(--brand-secondary),0_0_40px_var(--brand-tertiary)] group-hover/access:scale-150 transition-transform duration-500"></div>
+                            <div className="absolute -inset-4 bg-[var(--brand-primary)]/30 blur-2xl rounded-full opacity-0 group-hover/access:opacity-100 transition-opacity duration-500"></div>
+                            <div className="h-2 w-2 rounded-full bg-[var(--brand-primary)] shadow-[0_0_20px_var(--brand-primary)]"></div>
                         </div>
                     </div>
-                </div>
-            </nav>
+                </header>
 
-            {/* Hero Section - The Apex */}
-            <section className="relative pt-40 pb-32 px-6 max-w-7xl mx-auto text-center flex flex-col items-center" >
-                <div className="relative inline-flex items-center gap-4 px-8 py-3 rounded-full bg-white/[0.02] border border-brand-secondary/30 mb-16 animate-in fade-in slide-in-from-bottom-12 duration-1000">
-                    <div className="absolute inset-0 bg-brand-secondary/10 blur-xl rounded-full opacity-50"></div>
-                    <Sparkles className="w-4 h-4 text-brand-secondary animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/60 relative z-10">THE STANDARD OF GLOBAL EXCELLENCE • EST. 1886</span>
-                </div>
-
-                <h1 className="text-5xl md:text-[6rem] font-black tracking-[-0.04em] mb-10 leading-[0.9] max-w-5xl animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-200">
-                    <span className="block opacity-90">THE ELITE</span>
-                    <span className="bg-gradient-to-r from-brand-secondary via-brand-tertiary to-brand-secondary bg-clip-text text-fill-transparent italic font-black">ACADEMY</span>
-                    <br /> <span className="opacity-90">PLATFORM</span>
-                </h1>
-
-                <p className="text-lg md:text-xl text-white/30 max-w-3xl mb-12 leading-relaxed font-light animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-500 tracking-wide">
-                    Beyond digital management. A handcrafted institutional infrastructure for the globally distinguished <span className="text-brand-secondary font-black tracking-normal px-1">{branding.academy_name}.</span>
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-center gap-8 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-700">
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="group relative px-16 py-6 overflow-hidden rounded-[2.5rem] transition-all duration-500 hover:scale-105 active:scale-95 shadow-[0_30px_70px_rgba(255,140,0,0.4)] bg-gradient-to-r from-brand-secondary to-brand-tertiary"
-                    >
-                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="relative z-10 flex items-center gap-5 text-white font-black uppercase tracking-[0.3em] text-[13px]">
-                            Master Access
-                            <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-500" />
+                {/* Main Split Layout */}
+                <main className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-24 mb-auto">
+                    {/* Left: Branding & Action */}
+                    <div className="flex-1 max-w-xl text-center lg:text-left animate-in fade-in slide-in-from-left-8 duration-1000 delay-300">
+                        <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/[0.03] border border-white/10 mb-8 border-l-[var(--brand-primary)] border-l-2">
+                            <Sparkles className="w-3 h-3 text-[var(--brand-primary)]" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">Next-Generation Infrastructure</span>
                         </div>
-                        {/* Shimmer effect */}
-                        <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[25deg] group-hover:left-[100%] transition-all duration-1000 ease-in-out"></div>
-                    </button>
-                </div>
 
-                {/* Animated Scroll Indicator */}
-                <div className="mt-20 animate-bounce opacity-20">
-                    <ChevronDown className="w-8 h-8 text-brand-secondary" />
-                </div>
-            </section>
+                        <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tight leading-[0.9] uppercase">
+                            THE <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-accent)] italic">ACADEMY</span> <br />
+                            OS PLATFORM
+                        </h1>
 
-            {/* Features Section - Bento Masterpiece */}
-            <section id="features" className="py-32 px-6 max-w-7xl mx-auto relative" >
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-48 bg-gradient-to-b from-brand-secondary/80 to-transparent"></div>
+                        <p className="text-lg text-white/30 mb-12 max-w-lg mx-auto lg:mx-0 font-medium leading-relaxed uppercase tracking-tight">
+                            Cinematic management for the distinguished. <br />
+                            <span className="text-white/60">Built for precision. Defined by glory.</span>
+                        </p>
 
-                <div className="text-center mb-32 relative group">
-                    {/* Cinematic Brand Logo - Maximum Detail Focus */}
-                    <div className="flex justify-center mb-12 opacity-60 transition-all duration-700 ease-out group-hover:scale-110 group-hover:opacity-100">
-                        <div className="relative">
-                            {/* Central Logo - High Detail Focus */}
-                            <img
-                                src={branding.logo_url || "/logo.png"}
-                                className="w-64 h-64 object-contain relative z-10 transition-all duration-500 drop-shadow-[0_0_30px_rgba(var(--brand-primary-rgb),0.2)]"
-                                alt="Logo"
-                            />
-
-                            {/* Focus Glow Aura - Multi-Color Bloom */}
-                            <div className="absolute inset-[-60px] bg-brand-secondary/15 blur-[80px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-                            <div className="absolute inset-[-40px] bg-brand-tertiary/10 blur-[60px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 delay-150"></div>
-                        </div>
-                    </div>
-
-                    <h2 className="text-5xl md:text-7xl font-black mb-8 tracking-[-0.04em] opacity-90 leading-tight uppercase">ROYAL <br /><span className="bg-gradient-to-r from-brand-secondary to-brand-tertiary bg-clip-text text-fill-transparent italic font-black">INFRASTRUCTURE</span></h2>
-                    <div className="flex flex-wrap items-center justify-center gap-6 opacity-40 italic font-black tracking-[0.3em] text-[10px] uppercase grayscale group hover:grayscale-0 transition-all duration-1000">
-                        <span>Work To Shine</span>
-                        <div className="w-2 h-2 rounded-full bg-brand-secondary"></div>
-                        <span>Shine To Inspire</span>
-                        <div className="w-2 h-2 rounded-full bg-brand-tertiary"></div>
-                        <span>Manifest</span>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-                    {features.map((f, i) => (
-                        <div
-                            key={i}
-                            className={`group relative overflow-hidden rounded-[4rem] bg-gradient-to-br from-white/[0.04] to-transparent border border-white/[0.07] hover:border-brand-secondary/40 transition-all duration-1000 hover:-translate-y-6 hover:shadow-[0_60px_120px_rgba(0,0,0,0.9)] backdrop-blur-2xl p-16 ${f.span}`}
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-br from-brand-secondary/10 to-brand-tertiary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-
-                            <div className={`w-16 h-16 rounded-[2rem] bg-gradient-to-br ${f.color} flex items-center justify-center mb-12 shadow-[0_20px_40px_rgba(0,0,0,0.5)] group-hover:scale-110 group-hover:rotate-6 transition-all duration-700`}>
-                                {f.icon}
-                            </div>
-
-                            <h3 className="text-2xl font-black mb-6 tracking-tighter text-white/90 group-hover:text-brand-secondary transition-all duration-700">{f.title}</h3>
-                            <p className="text-white/30 text-lg leading-relaxed font-medium group-hover:text-white/60 transition-all duration-700 max-w-lg">
-                                {f.description}
-                            </p>
-
-                            {/* Corner Accent */}
-                            <div className="absolute top-10 right-10 w-4 h-4 rounded-full border border-white/10 group-hover:border-brand-secondary transition-colors duration-1000"></div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* Legacy Section - Dynasty Reimagined */}
-            <section id="solutions" className="py-60 relative overflow-hidden" >
-                <div className="absolute inset-0 bg-[#020202]"></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] aspect-square bg-brand-tertiary/5 blur-[250px] rounded-full"></div>
-
-                <div className="max-w-7xl mx-auto px-10 relative z-10 flex flex-col lg:flex-row items-center gap-40">
-                    <div className="flex-1 w-full text-center lg:text-left">
-                        <div className="w-20 h-[2px] bg-gradient-to-r from-brand-secondary via-brand-tertiary to-transparent mb-16 mx-auto lg:mx-0"></div>
-                        <h2 className="text-5xl md:text-8xl font-black tracking-tight mb-16 leading-[0.85] opacity-90">
-                            A DYNASTY <br />
-                            <span className="bg-gradient-to-r from-brand-secondary to-brand-tertiary bg-clip-text text-fill-transparent italic font-black uppercase">EVOLVED</span>.
-                        </h2>
-                        <div className="space-y-12 inline-block text-left w-full max-w-2xl">
-                            {[
-                                { text: "Native Synchronization across Institutional Nodes", icon: <Infinity className="w-6 h-6" /> },
-                                { text: "End-to-End Cryptographic Communication Architecture", icon: <Shield className="w-6 h-6" /> },
-                                { text: "Predictive Athlete Growth & Performance Modeling", icon: <Zap className="w-6 h-6" /> },
-                                { text: "Algorithmic Logistics & Arena Coordination", icon: <Users className="w-6 h-6" /> },
-                                { text: "Royal Institutional Financial Forensic Reporting", icon: <Trophy className="w-6 h-6" /> }
-                            ].map((item, i) => (
-                                <div key={i} className="flex items-center gap-10 group cursor-default">
-                                    <div className="relative w-12 h-12 rounded-2xl border border-white/10 flex items-center justify-center shrink-0 group-hover:border-brand-secondary group-hover:bg-brand-secondary transition-all duration-700 group-hover:scale-110">
-                                        <CheckCircle2 className="w-6 h-6 text-white/20 group-hover:text-black transition-colors" />
-                                    </div>
-                                    <span className="font-bold text-2xl text-white/30 group-hover:text-white transition-all duration-700 tracking-tight leading-tight"> {item.text}</span>
+                        <div className="flex flex-col sm:flex-row items-center gap-8 justify-center lg:justify-start">
+                            <button
+                                onClick={() => navigate('/login')}
+                                className="group relative px-14 py-6 bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-primary)]/80 rounded-full overflow-hidden transition-all duration-500 hover:scale-105 active:scale-95 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] hover:shadow-[0_25px_80px_-10px_var(--brand-primary)]/40 border border-white/20"
+                            >
+                                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div className="relative z-10 flex items-center gap-5 text-white filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                                    <span className="font-black uppercase tracking-[0.3em] text-[13px]">Master Access</span>
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-all duration-500" />
                                 </div>
-                            ))}
-                        </div>
-                    </div>
 
-                    <div className="flex-1 w-full flex justify-center">
-                        <div className="relative w-full max-w-xl aspect-square">
-                            <div className="absolute inset-0 bg-gradient-to-br from-brand-secondary/15 via-brand-tertiary/10 to-transparent blur-3xl opacity-60"></div>
-                            <div className="relative z-10 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 p-24 rounded-[5rem] flex flex-col items-center justify-center text-center shadow-[0_80px_160px_rgba(0,0,0,0.9)] overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-secondary/40 to-transparent"></div>
-                                <div className="p-10 bg-brand-secondary/5 rounded-[3rem] mb-16 border border-brand-secondary/10 group hover:border-brand-secondary/30 transition-all duration-700">
-                                    <Smartphone className="w-20 h-20 text-brand-secondary transition-transform duration-700 group-hover:scale-110" />
+                                {/* Inner Glow */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.4)_0%,transparent_70%)]"></div>
+
+                                {/* Shimmer */}
+                                <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 group-hover:left-full transition-all duration-1000 ease-in-out"></div>
+                            </button>
+
+                            <div className="flex items-center gap-6">
+                                <div className="flex -space-x-3">
+                                    {[...Array(3)].map((_, i) => (
+                                        <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-white/10 flex items-center justify-center text-[10px] font-black">
+                                            {i + 1}
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="text-9xl font-black mb-6 tracking-tighter text-white group-hover:text-brand-secondary transition-colors duration-700"> 138+</div>
-                                <p className="text-brand-secondary/40 font-black uppercase tracking-[0.6em] text-[11px] mb-20 whitespace-nowrap">Years of Unrivaled Excellence</p>
-
-                                <div className="w-full grid grid-cols-2 gap-10">
-                                    <div className="text-left">
-                                        <div className="text-5xl font-black mb-2 tracking-tighter text-white/80 italic">100%</div>
-                                        <p className="text-white/20 font-black uppercase tracking-[0.3em] text-[8px]"> Sovereignty</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-5xl font-black mb-2 tracking-tighter text-white/80 italic">GLOBAL</div>
-                                        <p className="text-white/20 font-black uppercase tracking-[0.3em] text-[8px]"> Reach</p>
-                                    </div>
+                                <div className="text-left leading-none">
+                                    <span className="text-[12px] font-black block">ELITE STATUS</span>
+                                    <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">Global Deployments</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            {/* CTA - The Grand Finale (Cinematic High) */}
-            <section id="about" className="py-64 px-10 max-w-7xl mx-auto text-center relative" >
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-[2px] bg-gradient-to-r from-transparent via-brand-secondary/40 to-transparent"></div>
+                    {/* Right: Cinematic Showcase */}
+                    <div className="flex-1 w-full max-w-2xl relative animate-in fade-in zoom-in-95 duration-1000 delay-500">
+                        <div className="aspect-[16/10] bg-white/[0.02] rounded-[3rem] border border-white/5 p-4 relative group">
+                            {/* Inner Screen */}
+                            <div className="w-full h-full rounded-[2rem] overflow-hidden relative shadow-2xl">
+                                {previews.map((preview, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`absolute inset-0 transition-all duration-700 ease-out ${idx === activeSlide ? 'opacity-100 scale-100' : 'opacity-0 scale-110 pointer-events-none'}`}
+                                    >
+                                        <img src={preview.image} className="w-full h-full object-cover" alt={preview.title} />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
 
-                <div className="group relative bg-[#050505]/40 backdrop-blur-3xl border border-white/[0.05] p-24 md:p-32 rounded-[5rem] overflow-hidden shadow-[0_120px_250px_rgba(0,0,0,0.9)] transition-all duration-1000 hover:border-brand-secondary/20">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-brand-secondary/5 via-brand-tertiary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-                    <div className="absolute -top-48 -right-48 w-[500px] h-[500px] bg-brand-secondary/10 blur-[180px] rounded-full group-hover:opacity-100 transition-opacity"></div>
-                    <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] bg-brand-tertiary/10 blur-[180px] rounded-full group-hover:opacity-100 transition-opacity"></div>
-
-                    <h2 className="text-5xl md:text-8xl font-black mb-12 relative z-10 tracking-[-0.06em] leading-[0.85] italic opacity-90 group-hover:scale-[1.02] transition-transform duration-1000 uppercase">
-                        THE FUTURE <br />
-                        <span className="bg-gradient-to-r from-brand-secondary to-brand-tertiary bg-clip-text text-fill-transparent not-italic font-black">OF GYMNASTICS.</span>
-                    </h2>
-
-                    <p className="text-white/30 mb-20 text-2xl max-w-2xl mx-auto relative z-10 leading-relaxed italic font-light tracking-tight group-hover:text-white/50 transition-colors duration-1000">
-                        "Work to Shine • Shine to Inspire • Manifest"
-                    </p>
-
-                    <div className="flex justify-center">
-                        <div className="h-[2px] w-64 bg-gradient-to-r from-transparent via-white/10 to-transparent mb-16"></div>
-                    </div>
-
-                    <div className="text-[11px] font-black uppercase tracking-[0.8em] text-white/10 relative z-10 hover:text-brand-secondary/40 transition-colors duration-500 cursor-default">
-                        Institutional Grade Infrastructure // Ahmed Hmaki
-                    </div>
-                </div>
-            </section>
-
-            {/* Footer - Final Elegance */}
-            < footer className="py-32 border-t border-white/[0.03] bg-black" >
-                <div className="max-w-7xl mx-auto px-10">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-16 mb-24">
-                        <div className="flex items-center gap-6 group cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-                            <div className="relative w-14 h-14 rounded-full overflow-hidden flex items-center justify-center bg-white/5 border border-white/10 group-hover:border-brand-secondary/50 transition-all duration-700">
-                                <img src={branding.logo_url || "/logo.png"} alt="" className="w-full h-full object-contain mix-blend-screen opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" style={{ clipPath: 'circle(50%)' }} />
-                                <div className="absolute inset-0 bg-brand-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity blur-md"></div>
+                                        {/* Preview Details */}
+                                        <div className="absolute bottom-8 left-8 right-8 text-left">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className="p-2 bg-[var(--brand-primary)]/80 backdrop-blur-md rounded-xl text-white">
+                                                    {preview.icon}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--brand-primary)]">{preview.subtitle}</span>
+                                                    <h3 className="text-2xl font-black tracking-tight">{preview.title}</h3>
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] text-white/50 max-w-sm font-medium leading-relaxed uppercase tracking-tight">
+                                                {preview.description}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-xl font-black tracking-[0.4em] uppercase text-white/80 group-hover:text-white transition-colors">{branding.academy_name.split(' ')[0]} <span className="text-brand-secondary">{branding.academy_name.split(' ').slice(1).join(' ') || 'SYSTEM'}</span></span>
-                                <span className="text-[8px] font-bold text-white/20 tracking-[0.5em] uppercase">Ecosystem Standard</span>
-                            </div>
-                        </div>
 
-                        <div className="flex gap-16 text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
-                            {["Transparency", "Sovereignty", "Excellence"].map((t, i) => (
-                                <span key={i} className="cursor-default hover:text-brand-secondary/50 transition-colors">{t}</span>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="text-center">
-                        <div className="text-white/10 text-[10px] font-black tracking-[0.6em] uppercase flex flex-col items-center gap-6">
-                            <span>© 2026 {branding.academy_name} Ecosystem • Designed for Absolute Distinction</span>
-                            <span className="text-brand-secondary/80 tracking-[0.4em] font-black uppercase text-[8px] drop-shadow-[0_0_8px_rgba(255,140,0,0.4)] cursor-default">
-                                Articulated by Ahmed Hmaki
-                            </span>
-                            <div className="flex gap-4">
-                                {[1, 2, 3].map(i => <div key={i} className="w-[1.5px] h-4 bg-white/5"></div>)}
+                            {/* Controls */}
+                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/5 backdrop-blur-3xl border border-white/10 p-2 rounded-2xl">
+                                <button
+                                    onClick={() => setActiveSlide(prev => prev === 0 ? previews.length - 1 : prev - 1)}
+                                    className="p-3 hover:bg-white/10 rounded-xl transition-all"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <div className="flex gap-2 px-2">
+                                    {previews.map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className={`h-1 rounded-full transition-all duration-500 ${i === activeSlide ? 'w-8 bg-[var(--brand-primary)]' : 'w-2 bg-white/10'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => setActiveSlide(prev => prev === previews.length - 1 ? 0 : prev + 1)}
+                                    className="p-3 hover:bg-white/10 rounded-xl transition-all"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
                             </div>
+
+                            {/* Floating Floating Elements */}
+                            <div className="absolute top-1/4 -right-12 w-24 h-24 bg-gradient-to-tr from-[var(--brand-primary)] to-[var(--brand-accent)] rounded-3xl blur-3xl opacity-20 animate-pulse"></div>
+                            <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-[var(--brand-accent)] rounded-full blur-3xl opacity-10 animate-pulse delay-1000"></div>
                         </div>
                     </div>
-                </div>
-            </footer >
+                </main>
+
+                {/* Footer Badges */}
+                <footer className="mt-auto pt-12 border-t border-white/[0.03] flex flex-col md:flex-row items-center justify-between gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
+                    <div className="flex items-center gap-12 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-700">
+                        <div className="flex items-center gap-3">
+                            <Shield className="w-4 h-4" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em]">Sovereign Defense</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Activity className="w-4 h-4" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em]">Real-time Ecosystem</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Crown className="w-4 h-4" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em]">Elite Standard</span>
+                        </div>
+                    </div>
+
+                    <div className="text-right flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+                            Powered by <span className="text-white/40 italic">Academy Systems</span> • Excellence Since Day One
+                        </span>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/5">
+                            <span className="text-[8px] font-bold text-white/20 uppercase tracking-[0.2em]">Master Architect:</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--brand-primary)]">Ahmed Hmaki</span>
+                        </div>
+                    </div>
+                </footer>
+            </div>
 
             <style>{`
                 @keyframes pulse-slow {
@@ -575,23 +350,13 @@ export default function LandingPage() {
                     50% { opacity: 0.25; transform: scale(1.1); }
                 }
                 .animate-pulse-slow {
-                    animation: pulse-slow 10s infinite ease-in-out;
+                    animation: pulse-slow 8s infinite ease-in-out;
                 }
                 .text-fill-transparent {
                     -webkit-text-fill-color: transparent;
                 }
                 ::-webkit-scrollbar {
-                    width: 6px;
-                }
-                ::-webkit-scrollbar-track {
-                    background: #020202;
-                }
-                ::-webkit-scrollbar-thumb {
-                    background: #202020;
-                    border-radius: 10px;
-                }
-                ::-webkit-scrollbar-thumb:hover {
-                    background: #303030;
+                    display: none;
                 }
             `}</style>
         </div>

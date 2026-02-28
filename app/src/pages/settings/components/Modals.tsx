@@ -139,34 +139,37 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
                                                 <img src={item.url} alt={item.name} className="max-w-full max-h-full object-contain group-hover/item:scale-110 transition-transform duration-500 pointer-events-none drop-shadow-2xl" />
                                             </div>
 
-                                            <div className="absolute inset-0 bg-black/60 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col items-center justify-end sm:justify-center gap-2 p-3 sm:p-4 backdrop-blur-sm z-10">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onSelect(item.url);
-                                                    }}
-                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-primary text-white text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-2 sm:order-1"
-                                                >
-                                                    Select
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setConfirmModal({
-                                                            isOpen: true,
-                                                            title: 'Delete Asset',
-                                                            message: 'Delete this image permanently?',
-                                                            type: 'destructive',
-                                                            onConfirm: () => {
-                                                                handleDeleteLogo(item.name);
-                                                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                                                            }
-                                                        });
-                                                    }}
-                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-rose-500/10 text-rose-500 text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-1 sm:order-2"
-                                                >
-                                                    Delete
-                                                </button>
+                                            {/* Action Overlay: Bottom-weighted for visibility */}
+                                            <div className="absolute inset-0 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col justify-end z-10">
+                                                <div className="p-1.5 sm:p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent sm:from-transparent backdrop-blur-[2px] sm:backdrop-blur-sm flex flex-col gap-1 sm:gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onSelect(item.url);
+                                                        }}
+                                                        className="w-full py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-primary text-white text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-1"
+                                                    >
+                                                        Select
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setConfirmModal({
+                                                                isOpen: true,
+                                                                title: 'Delete Asset',
+                                                                message: 'Delete this image permanently?',
+                                                                type: 'destructive',
+                                                                onConfirm: () => {
+                                                                    handleDeleteLogo(item.name);
+                                                                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="w-full py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-rose-500/20 text-rose-500 text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-2"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -314,34 +317,37 @@ export function BgHistoryModal({ isOpen, onClose, history, isLoading, onSelect, 
                                                 <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500 pointer-events-none opacity-60" />
                                             </div>
 
-                                            <div className="absolute inset-0 bg-black/50 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col items-center justify-end sm:justify-center gap-2 p-3 sm:p-4 backdrop-blur-sm z-10">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onSelect(item.url);
-                                                    }}
-                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-amber-500 text-white text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-2 sm:order-1"
-                                                >
-                                                    Select
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setConfirmModal({
-                                                            isOpen: true,
-                                                            title: 'Delete Asset',
-                                                            message: 'Delete this background permanently?',
-                                                            type: 'destructive',
-                                                            onConfirm: () => {
-                                                                handleDeleteBg(item.name);
-                                                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                                                            }
-                                                        });
-                                                    }}
-                                                    className="w-full py-2.5 sm:py-2 rounded-xl bg-rose-500/10 text-rose-500 text-[10px] sm:text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-1 sm:order-2"
-                                                >
-                                                    Delete
-                                                </button>
+                                            {/* Action Overlay for Backgrounds */}
+                                            <div className="absolute inset-0 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col justify-end z-10">
+                                                <div className="p-3 sm:p-4 bg-gradient-to-t from-black/90 to-transparent sm:from-transparent backdrop-blur-[2px] sm:backdrop-blur-sm flex flex-col sm:flex-row gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onSelect(item.url);
+                                                        }}
+                                                        className="flex-1 py-2 sm:py-2 rounded-xl bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-1"
+                                                    >
+                                                        Select
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setConfirmModal({
+                                                                isOpen: true,
+                                                                title: 'Delete Asset',
+                                                                message: 'Delete this background permanently?',
+                                                                type: 'destructive',
+                                                                onConfirm: () => {
+                                                                    handleDeleteBg(item.name);
+                                                                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="flex-1 py-2 sm:py-2 rounded-xl bg-rose-500/20 text-rose-500 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-2"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -589,7 +595,7 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
                 </div>
                 {/* ... (full body content) ... */}
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                    <div className="flex-1 bg-black/60 p-4 md:p-12 flex items-center justify-center relative overflow-hidden group min-h-[40vh] lg:min-h-0">
+                    <div className="flex-1 bg-black/60 p-4 md:p-12 flex items-center justify-center relative overflow-hidden group min-h-[35vh] lg:min-h-0">
                         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
                         <div className="relative z-10 w-full h-full flex items-center justify-center">
                             {isProcessing && (
@@ -600,8 +606,8 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
                                     </div>
                                 </div>
                             )}
-                            <div className={`relative p-4 md:p-8 border border-white/5 bg-white/[0.02] rounded-[2rem] shadow-inner transition-all duration-500 overflow-hidden ${isPickingColor ? 'cursor-crosshair' : 'cursor-move'}`} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onClick={handleCanvasClick}>
-                                <canvas ref={canvasRef} className="max-w-full max-h-[50vh] lg:max-h-[60vh] object-contain shadow-2xl rounded-lg" style={{ filter: 'drop-shadow(0 0 60px rgba(0,0,0,0.8))', backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px', backgroundColor: '#1a1a1a' }} />
+                            <div className={`relative p-2 sm:p-4 md:p-8 border border-white/5 bg-white/[0.02] rounded-[2rem] shadow-inner transition-all duration-500 overflow-hidden ${isPickingColor ? 'cursor-crosshair' : 'cursor-move'}`} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onClick={handleCanvasClick}>
+                                <canvas ref={canvasRef} className="max-w-full max-h-[30vh] sm:max-h-[50vh] lg:max-h-[60vh] object-contain shadow-2xl rounded-lg" style={{ filter: 'drop-shadow(0 0 60px rgba(0,0,0,0.8))', backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px', backgroundColor: '#1a1a1a' }} />
                                 {isPickingColor && <div className="absolute top-4 left-4 right-4 p-3 bg-primary rounded-xl text-white text-[9px] font-black uppercase tracking-widest text-center shadow-xl animate-bounce">Click a color to remove it</div>}
                             </div>
                         </div>
