@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Phone, MapPin, TrendingUp, ChevronDown, CheckCircle, Clock, ChevronRight, Globe, AlertCircle, Trash2, UserPlus, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, GymSettings } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
 import { format, parseISO, addMonths } from 'date-fns';
 import { sendToN8n } from '../services/n8nService';
@@ -110,20 +110,41 @@ function PremiumSelect({
 
 export default function PublicRegistration() {
     const { t } = useTranslation();
-    const { settings } = useTheme();
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [coaches, setCoaches] = useState<{ id: string, full_name: string }[]>([]);
     const [plans, setPlans] = useState<{ id: string, name: string, price: number, duration_months: number }[]>([]);
 
-    // Theme Helpers for dynamic UI
-    const primaryColor = settings.primary_color;
-    const secondaryColor = settings.secondary_color;
-    const accentColor = settings.accent_color || settings.primary_color;
-    const surfaceColor = settings.surface_color || 'rgba(255, 255, 255, 0.05)';
-    const textColor = settings.text_color_base || '#ffffff';
-    const textColorMuted = settings.text_color_muted || 'rgba(255, 255, 255, 0.6)';
-    const logoUrl = settings.logo_url || '/logo_recovered.png';
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const { settings } = useTheme();
+
+    // Detect viewport on mount and resize
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Helper to pick the correct setting based on current viewport
+    const getSetting = useMemo(() => {
+        return function <K extends keyof GymSettings>(key: K): GymSettings[K] {
+            if (isMobile) {
+                const mobileKey = `login_mobile_${(key as string).replace('login_', '')}` as K;
+                // Fallback to desktop setting if mobile one is explicitly null/empty
+                return (settings[mobileKey] ?? settings[key]) as GymSettings[K];
+            }
+            return settings[key];
+        };
+    }, [isMobile, settings]);
+
+    // Theme Helpers for dynamic UI - Synced with Login Design
+    const primaryColor = (getSetting('login_accent_color') as string) || settings.primary_color || '#D4AF37';
+    const secondaryColor = (getSetting('login_card_color') as string) || settings.secondary_color || '#000000';
+    const accentColor = (getSetting('login_accent_color') as string) || settings.primary_color || '#D4AF37';
+    const surfaceColor = 'rgba(255, 255, 255, 0.05)';
+    const textColor = (getSetting('login_text_color') as string) || '#ffffff';
+    const textColorMuted = 'rgba(255, 255, 255, 0.6)';
+    const logoUrl = settings.logo_url || (getSetting('login_logo_url') as string) || '/logo.png';
 
     // Form State
     const [formData, setFormData] = useState({
@@ -397,8 +418,9 @@ export default function PublicRegistration() {
             {/* Background Effects - Premium Atmosphere */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%]" style={{ backgroundColor: secondaryColor }}></div>
-                <div className="absolute top-[10%] right-[10%] w-[60%] h-[60%] rounded-full blur-[180px] animate-pulse" style={{ backgroundColor: `${primaryColor}1a` }}></div>
-                <div className="absolute bottom-[20%] left-[5%] w-[50%] h-[50%] rounded-full blur-[150px] transition-all duration-1000" style={{ backgroundColor: `${accentColor}1a` }}></div>
+
+                <div className="absolute top-[10%] right-[10%] w-[60%] h-[60%] rounded-full blur-[180px] animate-pulse" style={{ backgroundColor: `${primaryColor}26` }}></div>
+                <div className="absolute bottom-[20%] left-[5%] w-[50%] h-[50%] rounded-full blur-[150px] transition-all duration-1000" style={{ backgroundColor: `${accentColor}26` }}></div>
 
                 {/* Subtle Moving Particles Overlay */}
                 <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>

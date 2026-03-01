@@ -13,16 +13,48 @@
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <title>Academy System</title>
   <script>
-    // Immediate title sync to prevent ghost branding on refresh
-    const savedSettings = localStorage.getItem('gym_settings');
-    if (savedSettings) {
+    // Immediate theme application to prevent flash of default colors on refresh
+    (function () {
       try {
-        const settings = JSON.parse(savedSettings);
-        if (settings.academy_name) {
-          document.title = settings.academy_name;
+        const saved = localStorage.getItem('gym_settings');
+        if (!saved) return;
+        const s = JSON.parse(saved);
+
+        if (s.academy_name) document.title = s.academy_name;
+
+        const root = document.documentElement;
+        if (s.primary_color) root.style.setProperty('--color-primary', s.primary_color);
+        if (s.secondary_color) {
+          root.style.setProperty('--color-secondary', s.secondary_color);
+          root.style.setProperty('--color-background', s.secondary_color);
+
+          // Fast luminance check for text colors
+          const hex = s.secondary_color;
+          if (typeof hex === 'string' && hex.startsWith('#')) {
+            const c = hex.substring(1);
+            const rgb = parseInt(c.length === 3 ? c[0] + c[0] + c[1] + c[1] + c[2] + c[2] : c, 16);
+            const r = (rgb >> 16) & 0xff;
+            const g = (rgb >> 8) & 0xff;
+            const b = (rgb >> 0) & 0xff;
+            const lum = 0.2126 * (r / 255) + 0.7152 * (g / 255) + 0.0722 * (b / 255);
+            if (lum > 0.6) {
+              root.style.setProperty('--color-text-base', s.text_color_base || '#0a0a0f');
+              root.style.setProperty('--color-text-muted', s.text_color_muted || '#475569');
+              root.style.setProperty('--is-light-mode', '1');
+            } else {
+              root.style.setProperty('--color-text-base', s.text_color_base || '#f8fafc');
+              root.style.setProperty('--color-text-muted', s.text_color_muted || 'rgba(255, 255, 255, 0.6)');
+              root.style.setProperty('--is-light-mode', '0');
+            }
+          }
         }
+        if (s.accent_color) root.style.setProperty('--color-accent', s.accent_color);
+        if (s.surface_color) root.style.setProperty('--color-surface', s.surface_color);
+        if (s.input_bg_color) root.style.setProperty('--color-input-bg', s.input_bg_color);
+        if (s.font_family && s.font_family !== 'Cairo') root.style.setProperty('font-family', '"' + s.font_family + '", sans-serif');
+        if (s.font_scale) root.style.setProperty('font-size', (s.font_scale * 100) + '%');
       } catch (e) { }
-    }
+    })();
   </script>
 </head>
 

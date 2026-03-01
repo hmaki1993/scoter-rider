@@ -3,14 +3,18 @@ import { createPortal } from 'react-dom';
 import {
     History, X, Loader2, Upload, Check, Wand2,
     Sparkles, Scissors, Circle, Maximize,
-    MousePointer2, Layout
+    MousePointer2, Layout, Eye, Sparkle,
+    MoreVertical, Trash2, Image as ImageIcon
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import toast from 'react-hot-toast';
 import { PremiumConfirmModal } from './SharedUI';
 
-export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect, onDelete }: any) {
-    const [selectedLogos, setSelectedLogos] = useState<string[]>([]);
+export function MediaLibraryModal({ isOpen, onClose, history, isLoading, onSelectLogo, onSelectBg, onEdit, onDelete, onUpload }: any) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [menuOpen, setMenuOpen] = useState<string | null>(null);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         title: '',
@@ -21,20 +25,32 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
 
     useEffect(() => {
         if (!isOpen) {
-            setSelectedLogos([]);
+            setSelectedItems([]);
+            setMenuOpen(null);
         }
     }, [isOpen]);
 
-    const handleDeleteLogo = async (logoName: string) => {
-        await onDelete(logoName);
-        setSelectedLogos(prev => prev.filter(name => name !== logoName));
+    // Close menu on click away or scroll
+    useEffect(() => {
+        const closeMenu = () => setMenuOpen(null);
+        window.addEventListener('click', closeMenu);
+        window.addEventListener('scroll', closeMenu, true);
+        return () => {
+            window.removeEventListener('click', closeMenu);
+            window.removeEventListener('scroll', closeMenu, true);
+        };
+    }, []);
+
+    const handleDelete = async (name: string) => {
+        await onDelete(name);
+        setSelectedItems(prev => prev.filter(n => n !== name));
     };
 
-    const handleBulkDeleteLogos = async (logoNames: string[]) => {
-        for (const name of logoNames) {
+    const handleBulkDelete = async (names: string[]) => {
+        for (const name of names) {
             await onDelete(name);
         }
-        setSelectedLogos([]);
+        setSelectedItems([]);
     };
 
     if (!isOpen) return null;
@@ -42,32 +58,67 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
     return createPortal(
         <div className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}></div>
-            <div className="relative glass-card w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[85vh] overflow-hidden border-0 sm:border sm:border-white/10 sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-5 duration-300">
+            <div className="relative glass-card w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[85vh] overflow-hidden border-0 sm:border sm:border-white/10 sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-5 duration-300">
                 <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-primary/20 rounded-xl text-primary">
                             <History className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">Logo Library</h3>
-                            <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest">Manage previously uploaded assets</p>
+                            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">Media Library</h3>
+                            <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest">Unified Assets Management</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-95">
-                        <X className="w-5 h-5 text-white/40" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all active:scale-95 border border-primary/20 disabled:opacity-50"
+                        >
+                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                            <span className="text-[10px] font-black uppercase tracking-widest">Upload New</span>
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={async (e) => {
+                                console.log('MediaLibrary: File input change detected');
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    console.log('MediaLibrary: Selected file:', file.name, file.size);
+                                    setIsUploading(true);
+                                    try {
+                                        await onUpload(file);
+                                    } catch (err) {
+                                        console.error('MediaLibrary: Upload callback error:', err);
+                                    } finally {
+                                        setIsUploading(false);
+                                        if (e.target) e.target.value = '';
+                                        console.log('MediaLibrary: Upload cycle complete');
+                                    }
+                                } else {
+                                    console.log('MediaLibrary: No file selected');
+                                }
+                            }}
+                        />
+                        <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-95">
+                            <X className="w-5 h-5 text-white/40" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-hide">
                     {isLoading ? (
                         <div className="h-64 flex flex-col items-center justify-center gap-4">
                             <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Syncing Storage...</span>
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Syncing Library...</span>
                         </div>
                     ) : history.length === 0 ? (
                         <div className="h-64 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/5 rounded-[2rem]">
                             <Upload className="w-8 h-8 text-white/10" />
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">No images found in library</span>
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">No assets in library</span>
                         </div>
                     ) : (
                         <>
@@ -75,27 +126,27 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
                                 <div className="flex items-center gap-4">
                                     <button
                                         onClick={() => {
-                                            if (selectedLogos.length === history.length) setSelectedLogos([]);
-                                            else setSelectedLogos(history.map((h: any) => h.name));
+                                            if (selectedItems.length === history.length) setSelectedItems([]);
+                                            else setSelectedItems(history.map((h: any) => h.name));
                                         }}
                                         className="text-[9px] font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
                                     >
-                                        {selectedLogos.length === history.length ? 'Deselect All' : 'Select All'}
+                                        {selectedItems.length === history.length ? 'Deselect All' : 'Select All'}
                                     </button>
                                     <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">|</span>
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedLogos.length} Selected</span>
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedItems.length} Selected</span>
                                 </div>
 
-                                {selectedLogos.length > 0 && (
+                                {selectedItems.length > 0 && (
                                     <button
                                         onClick={() => {
                                             setConfirmModal({
                                                 isOpen: true,
                                                 title: 'Bulk Delete',
-                                                message: `Are you sure you want to delete ${selectedLogos.length} assets? This cannot be undone.`,
+                                                message: `Are you sure you want to delete ${selectedItems.length} assets? This cannot be undone.`,
                                                 type: 'destructive',
                                                 onConfirm: () => {
-                                                    handleBulkDeleteLogos(selectedLogos);
+                                                    handleBulkDelete(selectedItems);
                                                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                                 }
                                             });
@@ -107,28 +158,40 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                                 {history.map((item: any) => {
-                                    const isSelected = selectedLogos.includes(item.name);
+                                    const isSelected = selectedItems.includes(item.name);
+                                    const isMenuOpen = menuOpen === item.name;
                                     return (
                                         <div
                                             key={item.name}
-                                            className={`group/item relative aspect-square rounded-2xl sm:rounded-3xl bg-black/40 border transition-all duration-300 overflow-hidden cursor-pointer ${isSelected ? 'border-primary ring-4 ring-primary/20 shadow-2xl scale-[0.98]' : 'border-white/5 hover:border-white/20 hover:bg-black/60 shadow-xl'}`}
+                                            className={`group/item relative aspect-square rounded-3xl bg-black/40 border transition-all duration-500 hover:shadow-[0_0_50px_rgba(var(--primary-rgb),0.1)] ${isSelected ? 'border-primary ring-4 ring-primary/20 scale-[0.98]' : 'border-white/5 hover:border-white/20 hover:bg-black/60 shadow-xl'}`}
                                         >
+                                            {/* Selection Checkmark - Move to Left */}
                                             <div
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (isSelected) setSelectedLogos(prev => prev.filter(n => n !== item.name));
-                                                    else setSelectedLogos(prev => [...prev, item.name]);
+                                                    if (isSelected) setSelectedItems(prev => prev.filter(n => n !== item.name));
+                                                    else setSelectedItems(prev => [...prev, item.name]);
                                                 }}
-                                                className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-30 w-7 h-7 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected ? 'bg-primary border-primary scale-110 shadow-lg' : 'bg-black/40 border-white/20 scale-100'}`}
+                                                className={`absolute top-3 left-3 z-30 w-6 h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center cursor-pointer ${isSelected ? 'bg-primary border-primary scale-110 shadow-lg' : 'bg-black/40 border-white/20 scale-100 opacity-0 group-hover/item:opacity-100'}`}
                                             >
-                                                {isSelected && <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-white" />}
+                                                {isSelected && <Check className="w-3 h-3 text-white" />}
                                             </div>
 
+                                            {/* Premium Dropdown Trigger */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMenuOpen(isMenuOpen ? null : item.name);
+                                                }}
+                                                className={`absolute top-3 right-3 z-40 p-2 rounded-xl transition-all duration-300 backdrop-blur-md border shadow-xl ${isMenuOpen ? 'bg-primary border-primary text-white scale-110' : 'bg-black/40 border-white/10 text-white/50 hover:text-white hover:border-white/30 opacity-0 group-hover/item:opacity-100 scale-90 group-hover/item:scale-100'}`}
+                                            >
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+
                                             <div
-                                                className="absolute inset-0 p-3 sm:p-4 flex items-center justify-center"
-                                                onClick={() => onSelect(item.url)}
+                                                className="absolute inset-0 p-4 flex items-center justify-center pointer-events-none"
                                                 style={{
                                                     backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)',
                                                     backgroundSize: '16px 16px',
@@ -136,41 +199,75 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
                                                     backgroundColor: '#1a1a1a'
                                                 }}
                                             >
-                                                <img src={item.url} alt={item.name} className="max-w-full max-h-full object-contain group-hover/item:scale-110 transition-transform duration-500 pointer-events-none drop-shadow-2xl" />
+                                                <img src={item.url} alt={item.name} className="max-w-[75%] max-h-[75%] object-contain group-hover/item:scale-110 transition-transform duration-700 pointer-events-none drop-shadow-2xl" />
                                             </div>
 
-                                            {/* Action Overlay: Bottom-weighted for visibility */}
-                                            <div className="absolute inset-0 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col justify-end z-10">
-                                                <div className="p-1.5 sm:p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent sm:from-transparent backdrop-blur-[2px] sm:backdrop-blur-sm flex flex-col gap-1 sm:gap-2">
+                                            {/* Premium Glass Dropdown */}
+                                            {isMenuOpen && (
+                                                <div
+                                                    className="absolute top-14 right-3 z-[100] w-48 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-1.5 animate-in zoom-in-95 fade-in slide-in-from-top-2 duration-200"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onSelect(item.url);
+                                                        onClick={() => {
+                                                            onSelectLogo(item.url);
+                                                            onClose();
                                                         }}
-                                                        className="w-full py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-primary text-white text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-1"
+                                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-primary/20 text-white/70 hover:text-primary transition-all group/btn"
                                                     >
-                                                        Select
+                                                        <div className="p-2 rounded-lg bg-white/5 group-hover/btn:bg-primary/20 transition-colors">
+                                                            <Sparkles className="w-4 h-4" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Set as Logo</span>
                                                     </button>
+
                                                     <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
+                                                        onClick={() => {
+                                                            onSelectBg(item.url);
+                                                            onClose();
+                                                        }}
+                                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-amber-500/20 text-white/70 hover:text-amber-500 transition-all group/btn"
+                                                    >
+                                                        <div className="p-2 rounded-lg bg-white/5 group-hover/btn:bg-amber-500/20 transition-colors">
+                                                            <Layout className="w-4 h-4" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Set as Background</span>
+                                                    </button>
+
+                                                    <div className="h-px bg-white/5 my-1.5 mx-2" />
+
+                                                    <button
+                                                        onClick={() => onEdit(item)}
+                                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all group/btn"
+                                                    >
+                                                        <div className="p-2 rounded-lg bg-white/5 group-hover/btn:bg-white/10 transition-colors">
+                                                            <Wand2 className="w-4 h-4" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Edit Image</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => {
                                                             setConfirmModal({
                                                                 isOpen: true,
                                                                 title: 'Delete Asset',
-                                                                message: 'Delete this image permanently?',
+                                                                message: 'Delete this asset permanently?',
                                                                 type: 'destructive',
                                                                 onConfirm: () => {
-                                                                    handleDeleteLogo(item.name);
+                                                                    handleDelete(item.name);
                                                                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                                                 }
                                                             });
                                                         }}
-                                                        className="w-full py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-rose-500/20 text-rose-500 text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-2"
+                                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-rose-500/20 text-white/40 hover:text-rose-500 transition-all group/btn"
                                                     >
-                                                        Delete
+                                                        <div className="p-2 rounded-lg bg-white/5 group-hover/btn:bg-rose-500/20 transition-colors">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
                                                     </button>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -180,185 +277,7 @@ export function LogoHistoryModal({ isOpen, onClose, history, isLoading, onSelect
                 </div>
 
                 <div className="p-4 bg-white/[0.01] border-t border-white/5 flex items-center justify-center">
-                    <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest">Master Logo sync is enabled globally</p>
-                </div>
-            </div>
-            <PremiumConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                type={confirmModal.type}
-                onConfirm={confirmModal.onConfirm}
-            />
-        </div>,
-        document.body
-    );
-}
-
-export function BgHistoryModal({ isOpen, onClose, history, isLoading, onSelect, onDelete }: any) {
-    const [selectedBgs, setSelectedBgs] = useState<string[]>([]);
-    const [confirmModal, setConfirmModal] = useState({
-        isOpen: false,
-        title: '',
-        message: '',
-        type: 'default',
-        onConfirm: () => { }
-    });
-
-    useEffect(() => {
-        if (!isOpen) {
-            setSelectedBgs([]);
-        }
-    }, [isOpen]);
-
-    const handleDeleteBg = async (bgName: string) => {
-        await onDelete(bgName);
-        setSelectedBgs(prev => prev.filter(name => name !== bgName));
-    };
-
-    const handleBulkDeleteBgs = async (bgNames: string[]) => {
-        for (const name of bgNames) {
-            await onDelete(name);
-        }
-        setSelectedBgs([]);
-    };
-
-    if (!isOpen) return null;
-
-    return createPortal(
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}></div>
-            <div className="relative glass-card w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[85vh] overflow-hidden border-0 sm:border sm:border-white/10 sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-5 duration-300">
-                <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-500/20 rounded-xl text-amber-500">
-                            <History className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">Background Library</h3>
-                            <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest">Manage login page environments</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-95">
-                        <X className="w-5 h-5 text-white/40" />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-hide">
-                    {isLoading ? (
-                        <div className="h-64 flex flex-col items-center justify-center gap-4">
-                            <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Loading History...</span>
-                        </div>
-                    ) : history.length === 0 ? (
-                        <div className="h-64 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/5 rounded-[2rem]">
-                            <Layout className="w-8 h-8 text-white/10" />
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">No backgrounds in library</span>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="flex items-center justify-between mb-6 px-2 sticky top-0 z-10 bg-black/20 backdrop-blur-sm py-2 rounded-xl">
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={() => {
-                                            if (selectedBgs.length === history.length) setSelectedBgs([]);
-                                            else setSelectedBgs(history.map((h: any) => h.name));
-                                        }}
-                                        className="text-[9px] font-black uppercase tracking-widest text-amber-500 hover:text-amber-400 transition-colors"
-                                    >
-                                        {selectedBgs.length === history.length ? 'Deselect All' : 'Select All'}
-                                    </button>
-                                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">|</span>
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedBgs.length} Selected</span>
-                                </div>
-
-                                {selectedBgs.length > 0 && (
-                                    <button
-                                        onClick={() => {
-                                            setConfirmModal({
-                                                isOpen: true,
-                                                title: 'Bulk Delete',
-                                                message: `Are you sure you want to delete ${selectedBgs.length} backgrounds? This cannot be undone.`,
-                                                type: 'destructive',
-                                                onConfirm: () => {
-                                                    handleBulkDeleteBgs(selectedBgs);
-                                                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                                                }
-                                            });
-                                        }}
-                                        className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/30 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
-                                    >
-                                        Delete
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {history.map((item: any) => {
-                                    const isSelected = selectedBgs.includes(item.name);
-                                    return (
-                                        <div
-                                            key={item.name}
-                                            className={`group/item relative aspect-video rounded-2xl sm:rounded-3xl bg-black/40 border transition-all duration-300 overflow-hidden cursor-pointer ${isSelected ? 'border-amber-500 ring-4 ring-amber-500/20 shadow-2xl scale-[0.98]' : 'border-white/5 hover:border-white/20 hover:bg-black/60 shadow-xl'}`}
-                                        >
-                                            <div
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (isSelected) setSelectedBgs(prev => prev.filter(n => n !== item.name));
-                                                    else setSelectedBgs(prev => [...prev, item.name]);
-                                                }}
-                                                className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-30 w-7 h-7 sm:w-6 sm:h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500 scale-110 shadow-lg' : 'bg-black/40 border-white/20 scale-100'}`}
-                                            >
-                                                {isSelected && <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-white" />}
-                                            </div>
-
-                                            <div className="absolute inset-0" onClick={() => onSelect(item.url)}>
-                                                <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500 pointer-events-none opacity-60" />
-                                            </div>
-
-                                            {/* Action Overlay for Backgrounds */}
-                                            <div className="absolute inset-0 sm:bg-black/80 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-all duration-300 flex flex-col justify-end z-10">
-                                                <div className="p-3 sm:p-4 bg-gradient-to-t from-black/90 to-transparent sm:from-transparent backdrop-blur-[2px] sm:backdrop-blur-sm flex flex-col sm:flex-row gap-2">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onSelect(item.url);
-                                                        }}
-                                                        className="flex-1 py-2 sm:py-2 rounded-xl bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg order-1"
-                                                    >
-                                                        Select
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setConfirmModal({
-                                                                isOpen: true,
-                                                                title: 'Delete Asset',
-                                                                message: 'Delete this background permanently?',
-                                                                type: 'destructive',
-                                                                onConfirm: () => {
-                                                                    handleDeleteBg(item.name);
-                                                                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                                                                }
-                                                            });
-                                                        }}
-                                                        className="flex-1 py-2 sm:py-2 rounded-xl bg-rose-500/20 text-rose-500 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all order-2"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="p-4 bg-white/[0.01] border-t border-white/5 flex items-center justify-center">
-                    <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest">Backgrounds prefix: login_bg_</p>
+                    <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest">Assign any asset as Logo or Background instantly</p>
                 </div>
             </div>
             <PremiumConfirmModal
@@ -381,19 +300,32 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
         sensitivity: 30,
         zoom: 1,
         pan: { x: 0, y: 0 },
-        feathering: 0,
-        targetColor: null as { r: number, g: number, b: number } | null
+        feathering: 10,
+        targetColor: null as { r: number, g: number, b: number } | null,
+        bgColor: 'transparent',
+        isContiguous: true,
+        erosion: 0,
+        showMask: true,
+        shadowBlur: 0,
+        shadowOpacity: 0.5,
+        shadowColor: '#000000'
     });
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const processedCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const originalImgRef = useRef<HTMLImageElement | null>(null);
+    const aiResultRef = useRef<HTMLImageElement | null>(null); // Stores the AI-removed result
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isAIRemoving, setIsAIRemoving] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [drawTick, setDrawTick] = useState(0);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [isPickingColor, setIsPickingColor] = useState(false);
 
     useEffect(() => {
         if (!isOpen || !logo) return;
+        // Reset AI result when new logo is loaded
+        aiResultRef.current = null;
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = logo.url;
@@ -404,70 +336,282 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
     }, [isOpen, logo?.url]);
 
     const updateProcessedImage = () => {
-        const img = originalImgRef.current;
-        if (!img) return;
+        // Use AI result if available, otherwise use the original image
+        const sourceImg = aiResultRef.current ?? originalImgRef.current;
+        if (!sourceImg) return;
 
-        if (!offscreenCanvasRef.current) {
-            offscreenCanvasRef.current = document.createElement('canvas');
-        }
-
+        if (!offscreenCanvasRef.current) offscreenCanvasRef.current = document.createElement('canvas');
+        if (!processedCanvasRef.current) processedCanvasRef.current = document.createElement('canvas');
         const buffer = offscreenCanvasRef.current;
         const ctx = buffer.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
         buffer.width = 1200;
         buffer.height = 1200;
-
         ctx.clearRect(0, 0, buffer.width, buffer.height);
 
-        const imgAspect = img.height / img.width;
+        const imgAspect = sourceImg.height / sourceImg.width;
         const drawWidth = 800;
         const drawHeight = drawWidth * imgAspect;
-        ctx.drawImage(img, (buffer.width - drawWidth) / 2, (buffer.height - drawHeight) / 2, drawWidth, drawHeight);
+        ctx.drawImage(sourceImg, (buffer.width - drawWidth) / 2, (buffer.height - drawHeight) / 2, drawWidth, drawHeight);
 
-        if (canvasState.isRemovingBg) {
+        if (canvasState.isRemovingBg && !aiResultRef.current) {
+            // Only do manual removal if there's no AI result
             const imageData = ctx.getImageData(0, 0, buffer.width, buffer.height);
             const data = imageData.data;
+            const w = imageData.width;
+            const h = imageData.height;
             const sens = canvasState.sensitivity;
-            const feather = canvasState.feathering;
+            const eros = canvasState.erosion;
             const matchR = canvasState.targetColor?.r ?? 255;
             const matchG = canvasState.targetColor?.g ?? 255;
             const matchB = canvasState.targetColor?.b ?? 255;
+            const threshold = sens * 2.5;
 
-            for (let i = 0; i < data.length; i += 4) {
-                if (data[i + 3] === 0) continue;
+            // Save a clean copy BEFORE modification for mask preview
+            const originalPixels = new Uint8ClampedArray(data);
 
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
+            const getColorDist = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
+                const rMean = (r1 + r2) / 2;
+                const dr = r1 - r2;
+                const dg = g1 - g2;
+                const db = b1 - b2;
+                return Math.sqrt((2 + rMean / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMean) / 256) * db * db);
+            };
 
-                const dist = Math.sqrt(
-                    Math.pow(r - matchR, 2) +
-                    Math.pow(g - matchG, 2) +
-                    Math.pow(b - matchB, 2)
-                );
+            if (canvasState.isContiguous) {
+                const visited = new Uint8Array(w * h);
+                const stack: [number, number][] = [];
+                for (let x = 0; x < w; x++) { stack.push([x, 0]); stack.push([x, h - 1]); }
+                for (let y = 0; y < h; y++) { stack.push([0, y]); stack.push([w - 1, y]); }
 
-                if (dist < sens * 2) {
-                    const threshold = sens * 2;
-                    if (feather > 0) {
-                        const softEdge = feather * 2;
-                        const alpha = Math.max(0, Math.min(1, (dist - (threshold - softEdge)) / softEdge));
-                        data[i + 3] = data[i + 3] * alpha;
-                    } else {
-                        data[i + 3] = 0;
+                while (stack.length > 0) {
+                    const [x, y] = stack.pop()!;
+                    const idx = y * w + x;
+                    if (visited[idx]) continue;
+                    visited[idx] = 1;
+                    const p = idx * 4;
+                    const dist = getColorDist(data[p], data[p + 1], data[p + 2], matchR, matchG, matchB);
+                    if (dist < threshold) {
+                        data[p + 3] = 0;
+                        if (x > 0) stack.push([x - 1, y]);
+                        if (x < w - 1) stack.push([x + 1, y]);
+                        if (y > 0) stack.push([x, y - 1]);
+                        if (y < h - 1) stack.push([x, y + 1]);
+                    }
+                }
+            } else {
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i + 3] === 0) continue;
+                    const dist = getColorDist(data[i], data[i + 1], data[i + 2], matchR, matchG, matchB);
+                    if (dist < threshold) data[i + 3] = 0;
+                }
+            }
+
+            // ALPHA EROSION
+            if (eros > 0) {
+                const tempData = new Uint8ClampedArray(data);
+                for (let y = eros; y < h - eros; y++) {
+                    for (let x = eros; x < w - eros; x++) {
+                        const i = (y * w + x) * 4;
+                        if (tempData[i + 3] === 0) continue;
+                        let shouldErode = false;
+                        for (let dy = -eros; dy <= eros && !shouldErode; dy++) {
+                            for (let dx = -eros; dx <= eros && !shouldErode; dx++) {
+                                if (tempData[((y + dy) * w + (x + dx)) * 4 + 3] === 0) shouldErode = true;
+                            }
+                        }
+                        if (shouldErode) data[i + 3] = 0;
                     }
                 }
             }
+
+            // MASK PREVIEW using clean copy
+            if (canvasState.showMask) {
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i + 3] === 0) {
+                        // Was removed -> show in red
+                        data[i] = 255;
+                        data[i + 1] = 0;
+                        data[i + 2] = 0;
+                        data[i + 3] = 150;
+                    } else {
+                        // Kept -> show original
+                        data[i] = originalPixels[i];
+                        data[i + 1] = originalPixels[i + 1];
+                        data[i + 2] = originalPixels[i + 2];
+                        data[i + 3] = originalPixels[i + 3];
+                    }
+                }
+            }
+
             ctx.putImageData(imageData, 0, 0);
+        }
+
+        const processedCanvas = processedCanvasRef.current;
+        const processedCtx = processedCanvas?.getContext('2d', { willReadFrequently: true });
+        if (processedCanvas && processedCtx) {
+            processedCanvas.width = buffer.width;
+            processedCanvas.height = buffer.height;
+            processedCtx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+
+            const feather = canvasState.feathering;
+            if (feather > 0) {
+                processedCtx.filter = `blur(${feather}px)`;
+                processedCtx.drawImage(buffer, 0, 0);
+                processedCtx.filter = 'none';
+            } else {
+                processedCtx.drawImage(buffer, 0, 0);
+            }
         }
 
         draw();
     };
 
+    const handleAIRemove = async () => {
+        if (!originalImgRef.current || isAIRemoving) return;
+
+        setIsAIRemoving(true);
+        const loadingToast = toast.loading('✨ Removing background with remove.bg AI...', {
+            style: {
+                background: '#1e1e2f',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.1)'
+            }
+        });
+
+        try {
+            // Step 1: Fetch the original image as a blob
+            const imgResponse = await fetch(originalImgRef.current.src);
+            if (!imgResponse.ok) throw new Error('Failed to fetch logo image');
+            const imageBlob = await imgResponse.blob();
+
+            // Step 2: Send to our Supabase Edge Function (which calls remove.bg server-side)
+            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            const formData = new FormData();
+            formData.append('image_file', imageBlob, 'logo.png');
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/remove-bg`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(errData.error ?? `API error ${response.status}`);
+            }
+
+            // Step 3: Get clean transparent PNG back
+            const resultBlob = await response.blob();
+
+            // Load the result blob as an image
+            const url = URL.createObjectURL(resultBlob);
+            const aiImg = new Image();
+            aiImg.src = url;
+            await new Promise<void>((resolve, reject) => {
+                aiImg.onload = () => resolve();
+                aiImg.onerror = reject;
+            });
+
+            // Store the AI result separately — do NOT overwrite the original
+            aiResultRef.current = aiImg;
+
+            // Now directly render the AI result to processedCanvasRef
+            if (!processedCanvasRef.current) processedCanvasRef.current = document.createElement('canvas');
+            const pc = processedCanvasRef.current;
+            const pCtx = pc.getContext('2d', { willReadFrequently: true });
+            if (pc && pCtx) {
+                pc.width = 1200;
+                pc.height = 1200;
+                pCtx.clearRect(0, 0, pc.width, pc.height);
+
+                // Center the AI result
+                const aspect = aiImg.height / aiImg.width;
+                const drawW = 800;
+                const drawH = drawW * aspect;
+                pCtx.drawImage(aiImg, (pc.width - drawW) / 2, (pc.height - drawH) / 2, drawW, drawH);
+
+                // === POST-AI CLEANUP PASSES ===
+                const imageData = pCtx.getImageData(0, 0, pc.width, pc.height);
+                const data = imageData.data;
+                const w = pc.width;
+                const h = pc.height;
+
+                // PASS 1: Kill near-invisible pixels
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i + 3] < 15) data[i + 3] = 0;
+                }
+
+                // PASS 2: White Matte Despill (Professional Defringe)
+                // The AI model composites the logo over a white background internally.
+                // This means edge pixels are contaminated with white: pixel = logo + white*(1-a)
+                // We REVERSE this: logo_color = (pixel - white*(1-alpha)) / alpha
+                for (let i = 0; i < data.length; i += 4) {
+                    const a = data[i + 3];
+                    if (a === 0 || a === 255) continue; // skip fully transparent or fully opaque
+                    const fa = a / 255; // normalized alpha 0..1
+                    // Background assumed white (255, 255, 255)
+                    // Despill: true_color = (composited - bg * (1 - fa)) / fa
+                    data[i] = Math.max(0, Math.min(255, (data[i] - 255 * (1 - fa)) / fa));
+                    data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] - 255 * (1 - fa)) / fa));
+                    data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] - 255 * (1 - fa)) / fa));
+                }
+
+                if (canvasState.erosion > 0) {
+                    const eros = canvasState.erosion;
+                    const tempData = new Uint8ClampedArray(data);
+                    for (let y = eros; y < h - eros; y++) {
+                        for (let x = eros; x < w - eros; x++) {
+                            const i = (y * w + x) * 4;
+                            if (tempData[i + 3] === 0) continue;
+                            let shouldErode = false;
+                            for (let dy = -eros; dy <= eros && !shouldErode; dy++) {
+                                for (let dx = -eros; dx <= eros && !shouldErode; dx++) {
+                                    if (tempData[((y + dy) * w + (x + dx)) * 4 + 3] === 0) shouldErode = true;
+                                }
+                            }
+                            if (shouldErode) data[i + 3] = 0;
+                        }
+                    }
+                }
+
+                pCtx.putImageData(imageData, 0, 0);
+            }
+
+            // Also copy to offscreenCanvasRef so feathering pipeline works
+            if (!offscreenCanvasRef.current) offscreenCanvasRef.current = document.createElement('canvas');
+            const buf = offscreenCanvasRef.current;
+            const bufCtx = buf.getContext('2d', { willReadFrequently: true });
+            if (buf && bufCtx) {
+                buf.width = pc.width;
+                buf.height = pc.height;
+                bufCtx.clearRect(0, 0, buf.width, buf.height);
+                bufCtx.drawImage(pc, 0, 0);
+            }
+
+            // Trigger a redraw
+            draw();
+            setDrawTick(t => t + 1);
+
+            toast.success('✨ Background removed by AI!', { id: loadingToast });
+        } catch (error) {
+            console.error('[AI Remove Error]', error);
+            toast.error('AI removal failed. Please try manual mode.', { id: loadingToast });
+        } finally {
+            setIsAIRemoving(false);
+        }
+    };
+
     const draw = () => {
-        const canvas = canvasRef.current;
-        const buffer = offscreenCanvasRef.current;
-        if (!canvas || !buffer) return;
+        const canvas = canvasRef.current; // This is the visible canvas
+        const processedCanvas = processedCanvasRef.current; // This holds the processed image data
+        if (!canvas || !processedCanvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
@@ -476,10 +620,35 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Draw background if not transparent
+        if (canvasState.bgColor !== 'transparent') {
+            ctx.fillStyle = canvasState.bgColor.replace('#primary', '#6366f1');
+            if (canvasState.isCircle) {
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, 400, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
         ctx.save();
         ctx.translate(canvas.width / 2 + canvasState.pan.x, canvas.height / 2 + canvasState.pan.y);
         ctx.scale(canvasState.zoom, canvasState.zoom);
-        ctx.drawImage(buffer, -buffer.width / 2, -buffer.height / 2);
+
+        // APPLY STUDIO SHADOWS
+        if (canvasState.shadowBlur > 0) {
+            ctx.shadowBlur = canvasState.shadowBlur;
+            // Convert hex to rgba for shadowColor
+            const r = parseInt(canvasState.shadowColor.slice(1, 3), 16);
+            const g = parseInt(canvasState.shadowColor.slice(3, 5), 16);
+            const b = parseInt(canvasState.shadowColor.slice(5, 7), 16);
+            ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${canvasState.shadowOpacity})`;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4; // A slight offset for a more natural shadow
+        }
+
+        ctx.drawImage(processedCanvas, -processedCanvas.width / 2, -processedCanvas.height / 2);
         ctx.restore();
 
         if (canvasState.isCircle) {
@@ -494,15 +663,15 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
 
     useEffect(() => {
         if (isOpen && originalImgRef.current) {
+            // Reset AI result on setting changes so manual controls work
+            aiResultRef.current = null;
             updateProcessedImage();
         }
-    }, [canvasState.isRemovingBg, canvasState.sensitivity, canvasState.feathering, canvasState.targetColor]);
+    }, [canvasState.isRemovingBg, canvasState.sensitivity, canvasState.feathering, canvasState.targetColor, canvasState.isContiguous, canvasState.erosion, canvasState.showMask]);
 
     useEffect(() => {
-        if (isOpen && offscreenCanvasRef.current) {
-            draw();
-        }
-    }, [canvasState.zoom, canvasState.pan, canvasState.isCircle]);
+        if (isOpen) draw();
+    }, [canvasState.zoom, canvasState.pan, canvasState.isCircle, canvasState.bgColor, canvasState.shadowBlur, canvasState.shadowOpacity, canvasState.shadowColor, drawTick]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (isPickingColor) return;
@@ -522,6 +691,29 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
     };
 
     const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (isPickingColor || e.touches.length !== 1) return;
+        setIsDragging(true);
+        const touch = e.touches[0];
+        setDragStart({ x: touch.clientX - canvasState.pan.x, y: touch.clientY - canvasState.pan.y });
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging || isPickingColor || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        setCanvasState(prev => ({
+            ...prev,
+            pan: {
+                x: touch.clientX - dragStart.x,
+                y: touch.clientY - dragStart.y
+            }
+        }));
+    };
+
+    const handleTouchEnd = () => {
         setIsDragging(false);
     };
 
@@ -606,7 +798,7 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
                                     </div>
                                 </div>
                             )}
-                            <div className={`relative p-2 sm:p-4 md:p-8 border border-white/5 bg-white/[0.02] rounded-[2rem] shadow-inner transition-all duration-500 overflow-hidden ${isPickingColor ? 'cursor-crosshair' : 'cursor-move'}`} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onClick={handleCanvasClick}>
+                            <div className={`relative p-2 sm:p-4 md:p-8 border border-white/5 bg-white/[0.02] rounded-[2rem] shadow-inner transition-all duration-500 overflow-hidden ${isPickingColor ? 'cursor-crosshair' : 'cursor-move'}`} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={handleCanvasClick}>
                                 <canvas ref={canvasRef} className="max-w-full max-h-[30vh] sm:max-h-[50vh] lg:max-h-[60vh] object-contain shadow-2xl rounded-lg" style={{ filter: 'drop-shadow(0 0 60px rgba(0,0,0,0.8))', backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px', backgroundColor: '#1a1a1a' }} />
                                 {isPickingColor && <div className="absolute top-4 left-4 right-4 p-3 bg-primary rounded-xl text-white text-[9px] font-black uppercase tracking-widest text-center shadow-xl animate-bounce">Click a color to remove it</div>}
                             </div>
@@ -649,22 +841,133 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
-                                                        <span className="text-white/40">Tolerance</span>
-                                                        <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{canvasState.sensitivity}%</span>
+                                                <div className="space-y-4">
+                                                    <button
+                                                        onClick={handleAIRemove}
+                                                        disabled={isAIRemoving}
+                                                        className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between group relative overflow-hidden ${isAIRemoving ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-indigo-500/30 hover:border-indigo-400 hover:scale-[1.02]'}`}
+                                                    >
+                                                        {isAIRemoving && (
+                                                            <div className="absolute inset-0 bg-indigo-500/10 animate-pulse pointer-events-none" />
+                                                        )}
+                                                        <div className="flex items-center gap-3 relative z-10">
+                                                            <div className={`p-2 rounded-xl ${isAIRemoving ? 'bg-indigo-500/40 animate-spin' : 'bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/20'}`}>
+                                                                {isAIRemoving ? <Loader2 className="w-4 h-4 text-white" /> : <Sparkle className="w-4 h-4 text-white" />}
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <span className="block text-[10px] font-black uppercase tracking-widest text-white">✨ Magic AI Remove</span>
+                                                                <span className="block text-[7px] font-bold text-white/40 uppercase tracking-wider">World-Class (remove.bg quality)</span>
+                                                            </div>
+                                                        </div>
+                                                        {!isAIRemoving && <Check className="w-4 h-4 text-indigo-400 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0" />}
+                                                    </button>
+
+                                                    <div className="h-px bg-white/5 my-2" />
+                                                    <div className="flex items-center justify-between">
+                                                        <button
+                                                            onClick={() => setCanvasState(prev => ({ ...prev, isContiguous: !prev.isContiguous }))}
+                                                            className={`flex-1 mr-2 p-3 rounded-xl border transition-all flex items-center justify-between group ${canvasState.isContiguous ? 'bg-indigo-500/20 border-indigo-500/30' : 'bg-white/5 border-white/10'}`}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <MousePointer2 className={`w-3 h-3 ${canvasState.isContiguous ? 'text-indigo-400' : 'text-white/20'}`} />
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-white">Contiguous</span>
+                                                            </div>
+                                                            <div className={`w-6 h-3 rounded-full relative transition-all ${canvasState.isContiguous ? 'bg-indigo-500/40' : 'bg-white/10'}`}>
+                                                                <div className={`absolute top-0.5 w-2 h-2 bg-white rounded-full transition-all ${canvasState.isContiguous ? 'left-3.5 shadow-lg' : 'left-0.5'}`}></div>
+                                                            </div>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setCanvasState(prev => ({ ...prev, showMask: !prev.showMask }))}
+                                                            className={`flex-1 p-3 rounded-xl border transition-all flex items-center justify-between group ${canvasState.showMask ? 'bg-rose-500/20 border-rose-500/30' : 'bg-white/5 border-white/10'}`}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <Eye className={`w-3 h-3 ${canvasState.showMask ? 'text-rose-400' : 'text-white/20'}`} />
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-white">Show Mask</span>
+                                                            </div>
+                                                            <div className={`w-6 h-3 rounded-full relative transition-all ${canvasState.showMask ? 'bg-rose-500/40' : 'bg-white/10'}`}>
+                                                                <div className={`absolute top-0.5 w-2 h-2 bg-white rounded-full transition-all ${canvasState.showMask ? 'left-3.5 shadow-lg' : 'left-0.5'}`}></div>
+                                                            </div>
+                                                        </button>
                                                     </div>
-                                                    <input type="range" min="1" max="100" value={canvasState.sensitivity} onChange={(e) => setCanvasState(prev => ({ ...prev, sensitivity: parseInt(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
-                                                        <span className="text-white/40">Smooth Edges</span>
-                                                        <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{canvasState.feathering}%</span>
+
+                                                    <div className="space-y-3">
+                                                        <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                                            <span className="text-white/40">Tolerance (Color Range)</span>
+                                                            <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{canvasState.sensitivity}%</span>
+                                                        </div>
+                                                        <input type="range" min="1" max="100" value={canvasState.sensitivity} onChange={(e) => setCanvasState(prev => ({ ...prev, sensitivity: parseInt(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
                                                     </div>
-                                                    <input type="range" min="0" max="100" value={canvasState.feathering} onChange={(e) => setCanvasState(prev => ({ ...prev, feathering: parseInt(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                                                <span className="text-white/40">Smooth Edges</span>
+                                                                <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{canvasState.feathering}%</span>
+                                                            </div>
+                                                            <input type="range" min="0" max="100" value={canvasState.feathering} onChange={(e) => setCanvasState(prev => ({ ...prev, feathering: parseInt(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                                                <span className="text-white/40">Edge Erosion</span>
+                                                                <span className="text-[#00f2fe] bg-[#00f2fe]/10 px-2 py-0.5 rounded-full">{canvasState.erosion}px</span>
+                                                            </div>
+                                                            <input type="range" min="0" max="5" step="1" value={canvasState.erosion} onChange={(e) => setCanvasState(prev => ({ ...prev, erosion: parseInt(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#00f2fe]" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                                        <Layout className="w-3 h-3 text-primary" />
+                                        Studio Effects
+                                    </h4>
+                                    <div className="p-5 bg-black/40 rounded-[2rem] border border-white/5 space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                                <span className="text-white/40">Drop Shadow Strength</span>
+                                                <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{canvasState.shadowBlur}px</span>
+                                            </div>
+                                            <input type="range" min="0" max="50" step="1" value={canvasState.shadowBlur} onChange={(e) => setCanvasState(prev => ({ ...prev, shadowBlur: parseInt(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <span className="block text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Background Presets</span>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {[
+                                                    'transparent', '#ffffff', '#000000',
+                                                    'linear-gradient(135deg, #1e1e2f 0%, #111119 100%)',
+                                                    'linear-gradient(45deg, #primary 0%, #3b82f6 100%)',
+                                                    'linear-gradient(to right, #00f2fe 0%, #4facfe 100%)',
+                                                    'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                                    '#10b981'
+                                                ].map(color => (
+                                                    <button
+                                                        key={color}
+                                                        onClick={() => setCanvasState(prev => ({ ...prev, bgColor: color }))}
+                                                        className={`aspect-square rounded-xl border-2 transition-all ${canvasState.bgColor === color ? 'border-primary scale-110 shadow-lg' : 'border-white/10 hover:border-white/30'}`}
+                                                        style={{
+                                                            background: color === 'transparent' ? 'none' : color.replace('#primary', '#6366f1'),
+                                                            backgroundImage: color === 'transparent' ? 'linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%)' : color.includes('gradient') ? color.replace('#primary', '#6366f1') : 'none',
+                                                            backgroundColor: color === 'transparent' ? 'transparent' : color.includes('gradient') ? 'transparent' : color,
+                                                            backgroundSize: color === 'transparent' ? '8px 8px' : 'cover'
+                                                        }}
+                                                        title={color}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="color"
+                                                value={canvasState.bgColor.startsWith('#') ? canvasState.bgColor : '#ffffff'}
+                                                onChange={(e) => setCanvasState(prev => ({ ...prev, bgColor: e.target.value }))}
+                                                className="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer"
+                                            />
+                                            <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Custom Color</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
@@ -694,6 +997,20 @@ export function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
                                                     <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{Math.round(canvasState.zoom * 100)}%</span>
                                                 </div>
                                                 <input type="range" min="0.1" max="3" step="0.01" value={canvasState.zoom} onChange={(e) => setCanvasState(prev => ({ ...prev, zoom: parseFloat(e.target.value) }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                                    <span className="text-white/40">Horizontal Position</span>
+                                                    <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{Math.round(canvasState.pan.x)}px</span>
+                                                </div>
+                                                <input type="range" min="-600" max="600" step="1" value={canvasState.pan.x} onChange={(e) => setCanvasState(prev => ({ ...prev, pan: { ...prev.pan, x: parseInt(e.target.value) } }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest">
+                                                    <span className="text-white/40">Vertical Position</span>
+                                                    <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{Math.round(canvasState.pan.y)}px</span>
+                                                </div>
+                                                <input type="range" min="-600" max="600" step="1" value={canvasState.pan.y} onChange={(e) => setCanvasState(prev => ({ ...prev, pan: { ...prev.pan, y: parseInt(e.target.value) } }))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary" />
                                             </div>
                                             <div className="flex items-center justify-center gap-4">
                                                 <button onClick={() => setCanvasState(prev => ({ ...prev, pan: { x: 0, y: 0 }, zoom: 1 }))} className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest text-white/40 hover:bg-white/10 hover:text-white transition-all">Reset Transform</button>

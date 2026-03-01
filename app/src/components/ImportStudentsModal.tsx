@@ -722,7 +722,6 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                         <input
                                             type="file"
                                             accept="image/*"
-                                            capture="environment"
                                             onChange={handleImageUpload}
                                             className="hidden"
                                             id="image-upload"

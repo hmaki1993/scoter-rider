@@ -316,9 +316,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                if (parsed.academy_name && parsed.academy_name !== 'Academy System') {
-                    initial.academy_name = parsed.academy_name;
-                }
+                // merge parsed settings with defaults to ensure all keys exist
+                return { ...initial, ...parsed };
             } catch (e) { }
         }
         return initial;
@@ -336,10 +335,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (settings.academy_name && settings.academy_name !== 'Academy System') {
             document.title = settings.academy_name;
-            // Sync to localStorage for immediate index.html pickup on refresh
-            localStorage.setItem('gym_settings', JSON.stringify({ academy_name: settings.academy_name }));
         }
-    }, [settings.academy_name]);
+        // Sync full settings for immediate theme pickup on refresh in index.html
+        localStorage.setItem('gym_settings', JSON.stringify(settings));
+    }, [settings]);
 
     useEffect(() => {
         // Only force change if it's different and we are NOT in the middle of a manual switch
