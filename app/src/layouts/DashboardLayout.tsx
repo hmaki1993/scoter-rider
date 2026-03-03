@@ -469,10 +469,12 @@ export default function DashboardLayout() {
                                             ) : (fullName || role || 'E')[0]}
                                         </div>
                                     </button>
-                                    <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#122E34] ${userStatus === 'online' ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse z-20`}></div>
                                 </div>
 
                                 <div className="flex-1 min-w-0">
+                                    <p className={`text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1 ${userStatus === 'online' ? 'text-emerald-400' : userStatus === 'away' ? 'text-orange-400' : 'text-white/20'}`}>
+                                        {userStatus || 'offline'}
+                                    </p>
                                     <h3 className="font-extrabold text-white tracking-tight text-[11px] truncate leading-tight">
                                         {fullName || t('common.adminRole')}
                                     </h3>
@@ -544,118 +546,108 @@ export default function DashboardLayout() {
             {/* Main Content Area */}
             <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-500 ${isRtl ? 'lg:mr-72' : 'lg:ml-72'}`}>
                 {/* Header - Branding */}
-                <header className="relative h-16 flex items-center justify-between px-6 bg-background/50 backdrop-blur-3xl sticky top-0 z-30 w-full border-b border-surface-border">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden w-10 h-10 flex items-center justify-center text-white/70 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-95 border border-white/5 shadow-sm hover:shadow-premium"
-                        >
-                            <Menu className="w-5 h-5" />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 sm:gap-6">
-                        {/* Quick Action Hub */}
-                        <div className="flex items-center gap-1.5 sm:gap-4 md:p-2 md:bg-text-base/5 md:border md:border-surface-border md:rounded-[2rem] md:shadow-inner md:backdrop-blur-md">
-                            {settings.clock_position === 'header' && (
-                                <div className="hidden md:flex items-center gap-3">
-                                    <PremiumClock className="!bg-transparent !border-none !shadow-none !px-2" />
-                                    {role === 'admin' && <div className="h-6 w-px bg-white/10 mx-1"></div>}
-                                    <div className="flex flex-col items-center px-1">
-                                        <span className="text-[7px] font-black uppercase tracking-[0.3em] opacity-40" style={{ color: 'var(--color-brand-label)' }}>System</span>
-                                        <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Active</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {role === 'admin' && (
-                                <a
-                                    href="/registration"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="relative group/reg flex items-center justify-center w-11 h-11 rounded-full bg-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/40 transition-all duration-500 shadow-lg shadow-emerald-500/5 hover:bg-emerald-500/10 active:scale-95"
-                                    title={t('common.registrationPage')}
-                                >
-                                    {/* Premium Glow effect */}
-                                    <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl opacity-0 group-hover/reg:opacity-100 transition-opacity duration-700"></div>
-
-                                    <UserPlus className="w-5 h-5 text-emerald-400 group-hover/reg:scale-110 transition-transform duration-500 relative z-10" />
-
-                                    {/* Elite Status Dot */}
-                                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0E1D21] shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse z-20"></span>
-                                </a>
-                            )}
-
-                            {/* Unified Control Separator */}
-                            <div className="hidden md:block h-8 w-px bg-surface-border mx-2"></div>
-
-                            {/* Notifications Center */}
-                            <div className="relative" style={{ perspective: '1000px' }}>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-full transition-all relative sidebar-3d-item ${notificationsOpen ? 'bg-primary/20 text-primary shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.3)] border border-primary/20 sidebar-3d-item-active' : 'text-white/70 bg-white/5 hover:bg-white/10 border border-white/5 shadow-sm hover:shadow-premium'}`}
-                                >
-                                    <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                                    {unreadCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 border-2 border-background">
-                                            {unreadCount > 9 ? '9+' : unreadCount}
-                                        </span>
-                                    )}
-                                </button>
-
-                            </div>
-
-                            {/* Walkie Talkie (Hoki Toki) */}
-                            {userId && <WalkieTalkie role={normalizedRole || 'coach'} userId={userId || ''} />}
+                {!location.pathname.includes('/communications') && (
+                    <header className="relative h-16 flex items-center justify-between px-6 bg-background/50 backdrop-blur-3xl sticky top-0 z-30 w-full border-b border-surface-border">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setSidebarOpen(true)}
+                                className="lg:hidden w-10 h-10 flex items-center justify-center text-white/70 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-95 border border-white/5 shadow-sm hover:shadow-premium"
+                            >
+                                <Menu className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        {/* Status & Profile Hub */}
-                        <div className="relative" style={{ perspective: '1000px' }}>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); setNotificationsOpen(false); }}
-                                className={`flex items-center justify-center sm:justify-start gap-0 sm:gap-3 p-0 sm:pl-4 sm:pr-2 sm:py-2 rounded-full transition-all group w-10 h-10 sm:w-auto sm:h-auto sidebar-3d-item ${profileOpen ? 'bg-white/10 shadow-inner ring-1 ring-white/20 sidebar-3d-item-active' : 'bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 shadow-sm hover:shadow-premium'}`}
-                            >
-                                <div className="hidden sm:flex flex-col items-end leading-none gap-1 mr-1">
-                                    <p className="text-[13px] font-black text-white tracking-tight">
-                                        {fullName || 'Elite User'}
-                                    </p>
-
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        <span className={`w-2 h-2 rounded-full ${userStatus === 'online' ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse shadow-[0_0_10px_currentColor]`}></span>
-                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{role ? t(`roles.${role}`) : t('common.adminRole')}</span>
-                                    </div>
-                                </div>
-
-                                <div className="relative">
-                                    <div
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsAvatarModalOpen(true);
-                                        }}
-                                        className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent p-[1px] group-hover:scale-110 transition-transform duration-500 relative cursor-pointer"
-                                    >
-                                        <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden border border-white/5">
-                                            {avatarUrl ? (
-                                                <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="text-white font-black text-xs">
-                                                    {(fullName || role)?.[0]?.toUpperCase() || 'A'}
-                                                </span>
-                                            )}
+                        <div className="flex items-center gap-2 sm:gap-6">
+                            {/* Quick Action Hub */}
+                            <div className="flex items-center gap-1.5 sm:gap-4 md:p-2 md:bg-text-base/5 md:border md:border-surface-border md:rounded-[2rem] md:shadow-inner md:backdrop-blur-md">
+                                {settings.clock_position === 'header' && (
+                                    <div className="hidden md:flex items-center gap-3">
+                                        <PremiumClock className="!bg-transparent !border-none !shadow-none !px-2" />
+                                        {role === 'admin' && <div className="h-6 w-px bg-white/10 mx-1"></div>}
+                                        <div className="flex flex-col items-center px-1">
+                                            <span className="text-[7px] font-black uppercase tracking-[0.3em] opacity-40" style={{ color: 'var(--color-brand-label)' }}>System</span>
+                                            <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Active</span>
                                         </div>
                                     </div>
-                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#122E34] border-2 border-white/10 flex items-center justify-center p-0.5 shadow-lg group-hover:bg-primary transition-colors duration-500">
-                                        <ChevronDown className={`w-full h-full text-white/60 transition-all duration-500 ${profileOpen ? 'rotate-180' : ''}`} />
-                                    </div>
-                                </div>
-                            </button>
+                                )}
 
+                                {role === 'admin' && (
+                                    <a
+                                        href="/registration"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="relative group/reg flex items-center justify-center w-11 h-11 rounded-full bg-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/40 transition-all duration-500 shadow-lg shadow-emerald-500/5 hover:bg-emerald-500/10 active:scale-95"
+                                        title={t('common.registrationPage')}
+                                    >
+                                        <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl opacity-0 group-hover/reg:opacity-100 transition-opacity duration-700"></div>
+                                        <UserPlus className="w-5 h-5 text-emerald-400 group-hover/reg:scale-110 transition-transform duration-500 relative z-10" />
+                                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0E1D21] shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse z-20"></span>
+                                    </a>
+                                )}
+
+                                <div className="hidden md:block h-8 w-px bg-surface-border mx-2"></div>
+
+                                <div className="relative" style={{ perspective: '1000px' }}>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}
+                                        className={`w-10 h-10 flex items-center justify-center rounded-full transition-all relative sidebar-3d-item ${notificationsOpen ? 'bg-primary/20 text-primary shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.3)] border border-primary/20 sidebar-3d-item-active' : 'text-white/70 bg-white/5 hover:bg-white/10 border border-white/5 shadow-sm hover:shadow-premium'}`}
+                                    >
+                                        <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 border-2 border-background">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {userId && <WalkieTalkie role={normalizedRole || 'coach'} userId={userId || ''} />}
+                            </div>
+
+                            <div className="relative" style={{ perspective: '1000px' }}>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); setNotificationsOpen(false); }}
+                                    className={`flex items-center justify-center sm:justify-start gap-0 sm:gap-3 p-0 sm:pl-4 sm:pr-2 sm:py-2 rounded-full transition-all group w-10 h-10 sm:w-auto sm:h-auto sidebar-3d-item ${profileOpen ? 'bg-white/10 shadow-inner ring-1 ring-white/20 sidebar-3d-item-active' : 'bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 shadow-sm hover:shadow-premium'}`}
+                                >
+                                    <div className="hidden sm:flex flex-col items-end leading-none gap-1 mr-1">
+                                        <p className="text-[13px] font-black text-white tracking-tight">
+                                            {fullName || 'Elite User'}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className={`w-2 h-2 rounded-full ${userStatus === 'online' ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse shadow-[0_0_10px_currentColor]`}></span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{role ? t(`roles.${role}`) : t('common.adminRole')}</span>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsAvatarModalOpen(true);
+                                            }}
+                                            className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent p-[1px] group-hover:scale-110 transition-transform duration-500 relative cursor-pointer"
+                                        >
+                                            <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden border border-white/5">
+                                                {avatarUrl ? (
+                                                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-white font-black text-xs">
+                                                        {(fullName || role)?.[0]?.toUpperCase() || 'A'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#122E34] border-2 border-white/10 flex items-center justify-center p-0.5 shadow-lg group-hover:bg-primary transition-colors duration-500">
+                                            <ChevronDown className={`w-full h-full text-white/60 transition-all duration-500 ${profileOpen ? 'rotate-180' : ''}`} />
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </header>
+                    </header>
+                )}
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:p-6">
+                <main className={`flex-1 ${location.pathname.includes('/communications') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6'}`}>
                     <Outlet context={{ role, fullName, userId }} />
 
                 </main>

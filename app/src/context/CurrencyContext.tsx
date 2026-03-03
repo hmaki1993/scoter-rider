@@ -27,11 +27,11 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const [currencyCode, setCurrencyCode] = useState<CurrencyCode>(() => {
-        const saved = localStorage.getItem('currency');
-        return (saved as CurrencyCode) || 'EGP';
+        const saved = localStorage.getItem('currency') as CurrencyCode;
+        return (saved in CURRENCIES) ? saved : 'EGP';
     });
 
-    const currency = CURRENCIES[currencyCode];
+    const currency = CURRENCIES[currencyCode] || CURRENCIES['EGP'];
 
     const setCurrency = (code: CurrencyCode) => {
         setCurrencyCode(code);

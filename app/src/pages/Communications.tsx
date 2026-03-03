@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AgoraRTC, { IAgoraRTCClient, ILocalVideoTrack, ILocalAudioTrack, IRemoteVideoTrack, IRemoteAudioTrack } from 'agora-rtc-sdk-ng';
 import Cropper from 'react-easy-crop';
 import {
@@ -7,8 +7,8 @@ import {
     PhoneCall, PhoneOff, PhoneMissed, Volume2, VolumeX,
     Camera, Users, Plus, ArrowLeft, Smile, Play, Pause,
     Loader2, Download, MicOff, VideoOff, Reply, Pin, Trash2,
-    Archive, CheckSquare, Maximize2, RotateCcw, Type, Pencil,
-    ArrowDownLeft, ArrowUpRight
+    Archive, CheckSquare, Minimize2, Maximize2, RotateCcw, Type, Pencil,
+    ArrowDownLeft, ArrowUpRight, UserPlus, Settings
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
@@ -42,6 +42,7 @@ interface Message {
     created_at: string;
     sender?: Profile;
     reply_to_id?: string;
+    groupCount?: number;
     reply_to?: Message;
     is_pinned?: boolean;
     is_deleted?: boolean;
@@ -141,6 +142,8 @@ const MessageBubble = ({
     const isLongPressActive = useRef(false);
     const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    const groupCountSuffix = msg.groupCount && msg.groupCount > 1 ? ` (${msg.groupCount})` : '';
+
     const handleStart = (clientX: number) => {
         startX.current = clientX;
         setIsDragging(true);
@@ -238,7 +241,7 @@ const MessageBubble = ({
                     <div className="flex flex-col leading-none">
                         <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-bold text-white">
-                                {label}
+                                {label}{groupCountSuffix}
                             </span>
                             {isCaller ? (
                                 <ArrowUpRight className="w-3 h-3 text-primary" />
@@ -287,8 +290,10 @@ const MessageBubble = ({
             {/* Avatar */}
             <div className="w-7 h-7 flex-shrink-0">
                 {!isOwn && (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-[10px] font-black text-white">
-                        {msg.sender?.full_name?.[0] || '?'}
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-[10px] font-black text-white overflow-hidden shadow-sm">
+                        {msg.sender?.avatar_url ? (
+                            <img src={msg.sender.avatar_url} className="w-full h-full object-cover" alt="" />
+                        ) : (msg.sender?.full_name?.[0] || '?')}
                     </div>
                 )}
             </div>
@@ -397,34 +402,34 @@ const DeleteConfirmationModal = ({
     canDeleteForEveryone: boolean;
 }) => {
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-            <div className="relative bg-[#1a2634] border border-white/10 rounded-[2rem] p-8 w-full max-w-sm shadow-2xl animate-premium-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/40">
+            <div className="absolute inset-0" onClick={onCancel} />
+            <div className="relative bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-xl">
                 <div className="flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-6">
-                        <Trash2 className="w-8 h-8 text-red-500" />
+                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                        <Trash2 className="w-6 h-6 text-red-500" />
                     </div>
-                    <h3 className="text-xl font-black text-white mb-2">Delete {count} {count === 1 ? 'Message' : 'Messages'}?</h3>
-                    <p className="text-white/40 text-sm mb-8">Choose how you want to remove these messages.</p>
+                    <h3 className="text-lg font-semibold text-white mb-1">Delete {count} {count === 1 ? 'Message' : 'Messages'}?</h3>
+                    <p className="text-white/40 text-sm mb-6">Choose how you want to remove these messages.</p>
 
-                    <div className="flex flex-col gap-3 w-full">
+                    <div className="flex flex-col gap-2 w-full">
                         <button
                             onClick={onDeleteForMe}
-                            className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all border border-white/5 active:scale-95"
+                            className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all active:scale-95"
                         >
                             Delete for Me
                         </button>
                         {canDeleteForEveryone && (
                             <button
                                 onClick={onDeleteForEveryone}
-                                className="w-full py-4 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold transition-all shadow-lg shadow-red-500/20 active:scale-95"
+                                className="w-full py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all active:scale-95"
                             >
                                 Delete for Everyone
                             </button>
                         )}
                         <button
                             onClick={onCancel}
-                            className="w-full py-4 mt-2 text-white/40 hover:text-white font-bold transition-all"
+                            className="w-full py-3 mt-1 text-white/40 hover:text-white font-medium transition-all"
                         >
                             Cancel
                         </button>
@@ -440,25 +445,21 @@ const IncomingCallModal = ({
     callerName, callType, onAccept, onReject
 }: { callerName: string; callType: 'audio' | 'video'; onAccept: () => void; onReject: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
-            <div className="relative z-10 flex flex-col items-center gap-6 p-10 rounded-[3rem] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-2xl w-80 animate-in zoom-in-95 duration-300">
-                <div className="relative">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl font-black text-white shadow-2xl">
-                        {callerName[0]}
-                    </div>
-                    <div className="absolute inset-0 rounded-full border-4 border-primary/40 animate-ping" />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
+            <div className="relative z-10 flex flex-col items-center gap-6 p-8 rounded-3xl bg-zinc-900 border border-white/10 shadow-2xl w-72 animate-in zoom-in-95 duration-300">
+                <div className="w-20 h-20 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center text-2xl font-semibold text-white">
+                    {callerName[0]}
                 </div>
                 <div className="text-center">
-                    <p className="text-white/50 text-xs font-black uppercase tracking-widest">Incoming {callType} call</p>
-                    <h3 className="text-white text-xl font-black mt-1">{callerName}</h3>
+                    <p className="text-white/40 text-[10px] font-medium uppercase tracking-wider">Incoming {callType} call</p>
+                    <h3 className="text-white text-xl font-bold mt-1">{callerName}</h3>
                 </div>
-                <div className="flex items-center gap-6">
-                    <button onClick={onReject} className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-400 flex items-center justify-center shadow-xl shadow-red-500/30 transition-all active:scale-95">
-                        <PhoneOff className="w-6 h-6 text-white" />
+                <div className="flex items-center gap-4">
+                    <button onClick={onReject} className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95">
+                        <PhoneOff className="w-5 h-5 text-white" />
                     </button>
-                    <button onClick={onAccept} className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/30 transition-all active:scale-95 animate-bounce">
-                        <Phone className="w-6 h-6 text-white" />
+                    <button onClick={onAccept} className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg transition-all active:scale-95">
+                        <Phone className="w-5 h-5 text-white" />
                     </button>
                 </div>
             </div>
@@ -468,7 +469,8 @@ const IncomingCallModal = ({
 
 // ─── Active Call Modal ─────────────────────────────────────────────────────────
 const ActiveCallModal = ({
-    callType, otherUserName, duration, onHangup, isMuted, toggleMute, isCameraOff, toggleCamera, otherUserAvatar
+    callType, otherUserName, duration, onHangup, isMuted, toggleMute, isCameraOff, toggleCamera, otherUserAvatar,
+    facingMode, toggleFacingMode, isLocalVideoMain, setIsLocalVideoMain, onMinimize
 }: {
     callType: 'audio' | 'video';
     otherUserName: string;
@@ -479,131 +481,217 @@ const ActiveCallModal = ({
     isCameraOff: boolean;
     toggleCamera: () => void;
     otherUserAvatar?: string;
+    facingMode: 'user' | 'environment';
+    toggleFacingMode: () => void;
+    isLocalVideoMain: boolean;
+    setIsLocalVideoMain: (val: boolean) => void;
+    onMinimize?: () => void;
 }) => {
     const formatDuration = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+    const [pos, setPos] = useState({ x: 24, y: 24 }); // Initial position from top-right
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartPos = useRef({ x: 0, y: 0 });
+    const hasMovedRef = useRef(false);
+    const dragInitialPos = useRef({ x: 0, y: 0 });
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (isLocalVideoMain) return;
+        setIsDragging(true);
+        hasMovedRef.current = false;
+        dragInitialPos.current = { x: e.clientX, y: e.clientY };
+        dragStartPos.current = { x: e.clientX + pos.x, y: e.clientY - pos.y };
+    };
+
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isDragging) return;
+
+        // Only mark as moved if drag distance is more than 5px to avoid accidental drag triggers on simple click
+        const dx = Math.abs(e.clientX - dragInitialPos.current.x);
+        const dy = Math.abs(e.clientY - dragInitialPos.current.y);
+        if (dx > 5 || dy > 5) {
+            hasMovedRef.current = true;
+        }
+
+        setPos({
+            x: dragStartPos.current.x - e.clientX,
+            y: e.clientY - dragStartPos.current.y
+        });
+    }, [isDragging]);
+
+    const handleMouseUp = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    useEffect(() => {
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        } else {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, handleMouseMove, handleMouseUp]);
+
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden animate-in fade-in duration-500">
-            {/* Immersive Blurred Background */}
-            <div className="absolute inset-0 bg-[#050505]">
-                {otherUserAvatar ? (
-                    <img src={otherUserAvatar} alt="" className="w-full h-full object-cover opacity-20 blur-[100px] scale-150" />
-                ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-[#0A1A1E] via-[#050505] to-[#1A0A10]" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/80" />
-            </div>
-
-            {/* Video Canvas (Remote) */}
-            {callType === 'video' && (
-                <div id="agora-remote-video" className="absolute inset-0 z-0">
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
-                        <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-                        <div className="text-white/40 font-black tracking-[0.5em] text-[10px] uppercase animate-pulse">
-                            Establishing encrypted connection...
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Main Content Area */}
-            <div className="relative z-10 flex flex-col items-center justify-between h-full py-20 px-6 w-full max-w-lg">
-                {/* Header Info */}
-                <div className="text-center space-y-4 animate-in slide-in-from-top-12 duration-1000">
-                    <div className="flex flex-col items-center mb-6">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-4">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Live Connection</span>
-                        </div>
-
-                        {callType === 'audio' && (
-                            <div className="relative mb-10 group">
-                                <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl group-hover:bg-primary/30 transition-all duration-1000 animate-pulse" />
-                                <div className="relative w-40 h-40 rounded-[3rem] bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden">
-                                    {otherUserAvatar ? (
-                                        <img src={otherUserAvatar} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="text-6xl font-black text-white">{otherUserName[0]}</span>
-                                    )}
-                                </div>
-                                <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-primary rounded-2xl flex items-center justify-center border-4 border-[#050505] shadow-xl">
-                                    <Mic className="w-5 h-5 text-white" />
-                                </div>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden animate-in fade-in duration-500 bg-black">
+            {/* Background Layer: Remote Video or Avatar */}
+            <div
+                className={`absolute inset-0 transition-opacity duration-700 ${isLocalVideoMain ? 'opacity-20' : 'opacity-100'}`}
+                onClick={() => isLocalVideoMain && setIsLocalVideoMain(false)}
+            >
+                {callType === 'video' ? (
+                    <div id="agora-remote-video" className="w-full h-full">
+                        {!isLocalVideoMain && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/60 z-10">
+                                <div className="w-12 h-12 border-2 border-white/10 border-t-white rounded-full animate-spin mb-4" />
+                                <div className="text-white/40 text-sm">Connecting...</div>
                             </div>
                         )}
                     </div>
-
-                    <h3 className="text-white text-4xl font-black tracking-tight drop-shadow-2xl">{otherUserName}</h3>
-                    <div className="flex flex-col items-center gap-1">
-                        <p className="text-white/30 text-[11px] font-black uppercase tracking-[0.4em]">{callType === 'video' ? 'Secure Video Session' : 'Encrypted Voice Call'}</p>
-                        <p className="text-primary text-2xl font-black tabular-nums tracking-tighter mt-2 bg-primary/10 px-4 py-1 rounded-full border border-primary/20">{formatDuration(duration)}</p>
-                    </div>
-                </div>
-
-                {/* Animated Audio Visualizer (Mock for Premium Feel) */}
-                {callType === 'audio' && (
-                    <div className="flex items-end justify-center gap-1.5 h-16 w-full opacity-40">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1].map((h, i) => (
-                            <div
-                                key={i}
-                                className="w-1.5 bg-primary rounded-full animate-bounce"
-                                style={{
-                                    height: `${h * 15 + Math.random() * 20}%`,
-                                    animationDelay: `${i * 0.1}s`,
-                                    animationDuration: '1.2s'
-                                }}
-                            />
-                        ))}
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+                        {otherUserAvatar ? (
+                            <img src={otherUserAvatar} alt="" className="w-full h-full object-cover opacity-20 blur-3xl scale-125" />
+                        ) : (
+                            <div className="w-full h-full bg-zinc-900" />
+                        )}
                     </div>
                 )}
-
-                {/* Control Tray - Premium Glassmorphism */}
-                <div className="flex items-center gap-6 p-6 bg-white/[0.03] backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-12 duration-1000">
-                    <button
-                        onClick={toggleMute}
-                        className={`w-16 h-16 rounded-[1.75rem] flex items-center justify-center transition-all duration-500 group ${isMuted ? 'bg-red-500 text-white shadow-lg shadow-red-500/40' : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 hover:border-white/20'}`}
-                    >
-                        {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6 group-hover:scale-110 transition-transform" />}
-                    </button>
-
-                    <button
-                        onClick={onHangup}
-                        className="w-20 h-20 rounded-[2rem] bg-rose-600 hover:bg-rose-500 flex items-center justify-center shadow-[0_15px_40px_rgba(225,29,72,0.4)] transition-all hover:scale-105 active:scale-95 group"
-                    >
-                        <PhoneOff className="w-8 h-8 text-white group-hover:rotate-[135deg] transition-transform duration-500" />
-                    </button>
-
-                    {callType === 'video' && (
-                        <button
-                            onClick={toggleCamera}
-                            className={`w-16 h-16 rounded-[1.75rem] flex items-center justify-center transition-all duration-500 group ${isCameraOff ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40' : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 hover:border-white/20'}`}
-                        >
-                            {isCameraOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6 group-hover:scale-110 transition-transform" />}
-                        </button>
-                    )}
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/60 pointer-events-none" />
             </div>
 
-            {/* Local Video - Floating Premium Panel */}
+            {/* Local Video - Floating Panel (Draggable) */}
             {callType === 'video' && (
-                <div className="absolute top-10 right-10 z-20 animate-in zoom-in-95 duration-700">
-                    <div className="relative group/local">
-                        <div className="absolute -inset-2 bg-primary/10 rounded-[2rem] blur-xl opacity-0 group-hover/local:opacity-100 transition-opacity duration-500" />
-                        <div id="agora-local-video" className="relative w-48 h-64 rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl bg-black/40 backdrop-blur-md">
-                            {isCameraOff && (
-                                <div className="w-full h-full flex flex-col items-center justify-center bg-black/60">
-                                    <VideoOff className="w-8 h-8 text-white/20 mb-2" />
-                                    <span className="text-[10px] font-black text-white/10 uppercase tracking-widest">Privacy Active</span>
-                                </div>
-                            )}
-                        </div>
-                        <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md py-2 px-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">You</span>
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                        </div>
+                <div
+                    onMouseDown={handleMouseDown}
+                    style={!isLocalVideoMain ? {
+                        position: 'absolute',
+                        top: `${pos.y}px`,
+                        right: `${pos.x}px`,
+                        transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+                        transition: isDragging ? 'none' : 'all 0.4s ease-out'
+                    } : {}}
+                    className={`absolute z-[200] cursor-grab active:cursor-grabbing touch-none select-none ${isLocalVideoMain
+                        ? 'inset-0'
+                        : 'w-32 h-44 md:w-40 md:h-52 rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-900 ring-1 ring-white/5'
+                        }`}
+                    onClick={(e) => {
+                        if (hasMovedRef.current) {
+                            e.stopPropagation();
+                            return;
+                        }
+                        if (!isLocalVideoMain) setIsLocalVideoMain(true);
+                    }}
+                >
+                    <div id="agora-local-video" className="w-full h-full relative">
+                        {/* Drag overlay to catch events even if video captures them */}
+                        <div className="absolute inset-0 z-10 pointer-events-auto" />
+
+                        {isLocalVideoMain && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsLocalVideoMain(false);
+                                }}
+                                className="absolute top-6 right-6 z-50 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all active:scale-95"
+                                title="Exit full screen"
+                            >
+                                <Minimize2 className="w-5 h-5" />
+                            </button>
+                        )}
+                        {isCameraOff && (
+                            <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                                <VideoOff className="w-6 h-6 text-white/10" />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
+
+            {/* Main Content Overlay - Minimal for better focus */}
+            <div className={`relative z-20 flex flex-col items-center justify-between h-full py-16 md:py-24 px-6 w-full max-w-lg transition-opacity duration-500 ${isLocalVideoMain ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                {/* Simplified Header for active calls */}
+                <div className="text-center">
+                    {callType === 'audio' && (
+                        <div className="flex flex-col items-center mb-6">
+                            <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-zinc-800 border-2 border-white/5 flex items-center justify-center shadow-2xl overflow-hidden ring-4 ring-white/[0.02]">
+                                {otherUserAvatar ? (
+                                    <img src={otherUserAvatar} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-4xl font-black text-white/10 tracking-tighter">{otherUserName[0]}</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Bottom Bar - Matched to Reference Image */}
+                <div className="absolute bottom-12 left-0 right-0 flex items-end justify-between px-4 sm:px-10">
+                    {/* Left Actions */}
+                    <div className="flex items-center gap-2 sm:gap-4 py-2">
+                        <button
+                            onClick={onMinimize}
+                            className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md"
+                        >
+                            <MessageSquare className="w-4 h-4" />
+                        </button>
+                        <button className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md">
+                            <UserPlus className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* Center Controls */}
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-5">
+                            <button
+                                onClick={toggleMute}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-md border border-white/10 ${isMuted ? 'bg-red-500/80 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
+                            >
+                                {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                            </button>
+
+                            {callType === 'video' && (
+                                <button
+                                    onClick={toggleCamera}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-md border border-white/10 ${isCameraOff ? 'bg-red-500/80 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
+                                >
+                                    {isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                                </button>
+                            )}
+
+                            <button
+                                onClick={onHangup}
+                                className="w-12 h-12 rounded-full bg-red-600/90 hover:bg-red-500 flex items-center justify-center shadow-lg transition-transform active:scale-95 backdrop-blur-md border border-white/10"
+                            >
+                                <PhoneOff className="w-5 h-5 text-white" />
+                            </button>
+                        </div>
+
+                        {/* Duration Timer below controls */}
+                        <div className="text-white/40 text-[11px] font-medium tabular-nums tracking-[0.2em]">
+                            {/* Adding leading zeros for the image style: HH:MM:SS:CC (approx) */}
+                            00:{formatDuration(duration)}:00
+                        </div>
+                    </div>
+                    {/* Right Actions */}
+                    <div className="flex items-center gap-2 sm:gap-4 py-2">
+                        <button
+                            onClick={() => setIsLocalVideoMain(!isLocalVideoMain)}
+                            className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md"
+                        >
+                            <Minimize2 className="w-4 h-4" />
+                        </button>
+                        <button className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md">
+                            <Settings className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
@@ -648,16 +736,16 @@ const VoiceRecorder = ({ onRecordingComplete }: { onRecordingComplete: (blob: Bl
 
     if (isRecording) {
         return (
-            <div className="flex items-center gap-3 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                <span className="text-red-400 text-sm font-black">
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-red-500 text-xs font-medium tabular-nums">
                     {String(Math.floor(duration / 60)).padStart(2, '0')}:{String(duration % 60).padStart(2, '0')}
                 </span>
-                <button onClick={stopRecording} className="ml-2 p-1 rounded-full bg-red-500 hover:bg-red-400 text-white transition-all">
-                    <Check className="w-3.5 h-3.5" />
+                <button onClick={stopRecording} className="ml-1 p-1 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all">
+                    <Check className="w-3 h-3" />
                 </button>
-                <button onClick={() => { mediaRecorderRef.current?.stop(); setIsRecording(false); setDuration(0); }} className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 transition-all">
-                    <X className="w-3.5 h-3.5" />
+                <button onClick={() => { mediaRecorderRef.current?.stop(); setIsRecording(false); setDuration(0); }} className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white/40 transition-all">
+                    <X className="w-3 h-3" />
                 </button>
             </div>
         );
@@ -739,18 +827,18 @@ const ImageEditorModal = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex flex-col bg-black/95 backdrop-blur-xl animate-premium-in">
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="fixed inset-0 z-[10000] flex flex-col bg-black">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-zinc-900">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
-                        <ImageIcon className="w-5 h-5 text-primary" />
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <ImageIcon className="w-4 h-4 text-white/60" />
                     </div>
                     <div>
-                        <h3 className="text-white font-black">Edit Image</h3>
-                        <p className="text-white/30 text-[10px] uppercase font-black tracking-widest">Crop and refine before sending</p>
+                        <h3 className="text-white text-sm font-semibold">Edit Image</h3>
+                        <p className="text-white/30 text-[10px] uppercase font-medium tracking-wide">Crop and refine before sending</p>
                     </div>
                 </div>
-                <button onClick={onCancel} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                <button onClick={onCancel} className="p-2 text-white/40 hover:text-white transition-all">
                     <X className="w-5 h-5" />
                 </button>
             </div>
@@ -871,24 +959,24 @@ const ImageViewerModal = ({ url, onClose }: { url: string; onClose: () => void }
         <div className="fixed inset-0 z-[10001] bg-black/90 backdrop-blur-2xl flex flex-col p-6 animate-in fade-in duration-300">
             <div className="flex items-center justify-between z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-white/40">
-                        <Maximize2 className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-white/30">
+                        <ImageIcon className="w-5 h-5" />
                     </div>
                     <div>
                         <h3 className="text-white font-black">Multimedia View</h3>
-                        <p className="text-white/30 text-[9px] uppercase font-black tracking-widest">Pinch to zoom • Drag to pan</p>
+                        <p className="text-white/20 text-[9px] uppercase font-black tracking-widest">Pinch to zoom • Drag to pan</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <a
                         href={url}
                         download
-                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all"
+                        className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all"
                         title="Download"
                     >
                         <Download className="w-5 h-5" />
                     </a>
-                    <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all shadow-xl active:scale-95">
+                    <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-all shadow-xl active:scale-95">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -948,6 +1036,8 @@ export default function Communications() {
     const [showNewChat, setShowNewChat] = useState(false);
     const [replyTo, setReplyTo] = useState<Message | null>(null);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+    const [longPressConvoId, setLongPressConvoId] = useState<string | null>(null);
+    const [longPressActive, setLongPressActive] = useState<string | null>(null);
     const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
     const [showForwardModal, setShowForwardModal] = useState(false);
     const [pendingImage, setPendingImage] = useState<string | null>(null);
@@ -960,6 +1050,34 @@ export default function Communications() {
     const [callDuration, setCallDuration] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const [isLocalVideoMain, setIsLocalVideoMain] = useState(false);
+    const [isCallMinimized, setIsCallMinimized] = useState(false);
+
+    // Group consecutive call events
+    const groupedMessages = useMemo(() => {
+        const result: Message[] = [];
+        messages.forEach((msg) => {
+            const prev = result[result.length - 1];
+            if (
+                prev &&
+                prev.type === 'call_event' &&
+                msg.type === 'call_event' &&
+                prev.caller_id === msg.caller_id &&
+                prev.call_status === msg.call_status &&
+                prev.call_type === msg.call_type
+            ) {
+                // Same type of call event from same person, group it
+                prev.groupCount = (prev.groupCount || 1) + 1;
+                // Keep the latest timestamp for the group
+                prev.created_at = msg.created_at;
+            } else {
+                result.push({ ...msg, groupCount: 1 });
+            }
+        });
+        return result;
+    }, [messages]);
+
     const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
     const localAudioRef = useRef<ILocalAudioTrack | null>(null);
     const localVideoRef = useRef<ILocalVideoTrack | null>(null);
@@ -969,6 +1087,8 @@ export default function Communications() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const clearedAtRef = useRef<string | null>(null);
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // ─── Presence Section Tracking ───────────────────────────────────────────────
     useEffect(() => {
@@ -1253,9 +1373,11 @@ export default function Communications() {
         setCallDuration(0);
         setIsMuted(false);
         setIsCameraOff(false);
+        setFacingMode('user');
+        setIsLocalVideoMain(false);
 
         if (callSnapshot && isInitiator) {
-            // Check if WE were the caller by checking if we still have an activeConvo.otherUser 
+            // Check if WE were the caller by checking if we still have an activeConvo.otherUser
             // set in initiateCall. Actually, a better way: 
             // In initiating: we set activeCall.conversationId.
             // Let's use the call_record to be certain who the caller was.
@@ -1335,6 +1457,20 @@ export default function Communications() {
         setIncomingCall(null);
     };
 
+    const markAsRead = async (convoId: string) => {
+        try {
+            const { error } = await supabase
+                .from('conversation_participants')
+                .update({ last_read_at: new Date().toISOString() })
+                .eq('conversation_id', convoId)
+                .eq('user_id', currentUserId);
+            if (error) throw error;
+            setConversations(prev => prev.map(c => c.id === convoId ? { ...c, unreadCount: 0 } : c));
+        } catch (err) {
+            console.error('Failed to mark as read:', err);
+        }
+    };
+
     const handleToggleMute = async () => {
         if (localAudioRef.current) {
             const newMuted = !isMuted;
@@ -1348,6 +1484,39 @@ export default function Communications() {
             const newOff = !isCameraOff;
             await localVideoRef.current.setMuted(newOff);
             setIsCameraOff(newOff);
+        }
+    };
+
+    const handleToggleFacingMode = async () => {
+        if (localVideoRef.current && agoraClientRef.current) {
+            const newMode = facingMode === 'user' ? 'environment' : 'user';
+
+            try {
+                // Create new track with new facing mode first
+                const newTrack = await AgoraRTC.createCameraVideoTrack({
+                    facingMode: newMode
+                });
+
+                // Unpublish old track and publish new one
+                await agoraClientRef.current.unpublish([localVideoRef.current]);
+
+                // Stop and close old track
+                localVideoRef.current.stop();
+                localVideoRef.current.close();
+
+                await agoraClientRef.current.publish([newTrack]);
+
+                // Play in the local element
+                const localEl = document.getElementById('agora-local-video');
+                if (localEl) newTrack.play(localEl);
+
+                localVideoRef.current = newTrack;
+                setFacingMode(newMode);
+                toast.success(`Switched to ${newMode === 'user' ? 'front' : 'back'} camera`);
+            } catch (err) {
+                console.error('Failed to switch camera:', err);
+                toast.error('Could not switch camera. Device may not support multiple cameras.');
+            }
         }
     };
 
@@ -1381,18 +1550,26 @@ export default function Communications() {
 
         // Step 4: Get profile details for all participant user IDs
         const allUserIds = [...new Set((allParticipants || []).map(p => p.user_id))];
-        const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name, role, avatar_url, last_seen, is_in_chat')
-            .in('id', allUserIds);
+        const [profilesRes, coachesRes] = await Promise.all([
+            supabase.from('profiles').select('id, full_name, role, avatar_url, last_seen, is_in_chat').in('id', allUserIds),
+            supabase.from('coaches').select('profile_id, avatar_url').in('profile_id', allUserIds)
+        ]);
+
+        const coachAvatarMap: Record<string, string> = {};
+        (coachesRes.data || []).forEach(c => { if (c.avatar_url) coachAvatarMap[c.profile_id] = c.avatar_url; });
 
         const profileMap: Record<string, Profile> = {};
-        (profiles || []).forEach(p => { profileMap[p.id] = p; });
+        (profilesRes.data || []).forEach(p => {
+            profileMap[p.id] = {
+                ...p,
+                avatar_url: p.avatar_url || coachAvatarMap[p.id]
+            };
+        });
 
         // Step 5: Get last message per conversation (flat)
         const { data: lastMsgs } = await supabase
             .from('messages')
-            .select('id, conversation_id, sender_id, content, type, media_url, media_duration, call_status, call_duration, created_at')
+            .select('id, conversation_id, sender_id, content, type, media_url, media_duration, call_status, call_duration, call_type, caller_id, created_at')
             .in('conversation_id', convoIds)
             .order('created_at', { ascending: false })
             .limit(convoIds.length * 2);
@@ -1400,7 +1577,7 @@ export default function Communications() {
         // Step 6: Count unread messages per conversation
         const { data: unreadMsgs } = await supabase
             .from('messages')
-            .select('conversation_id, id')
+            .select('conversation_id, id, created_at')
             .in('conversation_id', convoIds)
             .neq('sender_id', currentUserId)
             .gt('created_at', new Date(Date.now() - 86400000 * 7).toISOString());
@@ -1408,6 +1585,9 @@ export default function Communications() {
         // Step 7: Assemble everything in JavaScript with de-duplication
         const seenDirectUsers = new Set<string>();
         const uniqueEnriched = (convos || []).map(c => {
+            const myParticipation = (participations || []).find(p => p.conversation_id === c.id);
+            if (myParticipation?.is_hidden) return null;
+
             const myParticipantsForConvo = (allParticipants || []).filter(p => p.conversation_id === c.id);
             const otherParticipant = myParticipantsForConvo.find(p => p.user_id !== currentUserId);
             const otherUser = otherParticipant ? profileMap[otherParticipant.user_id] : undefined;
@@ -1418,11 +1598,17 @@ export default function Communications() {
                 seenDirectUsers.add(otherUser.id);
             }
 
-            const myParticipation = (participations || []).find(p => p.conversation_id === c.id);
-            if (myParticipation?.is_hidden) return null;
+            const lastMsg = (lastMsgs || []).find(m => {
+                if (m.conversation_id !== c.id) return false;
+                if (myParticipation?.cleared_at && new Date(m.created_at) <= new Date(myParticipation.cleared_at)) return false;
+                return true;
+            });
 
-            const lastMsg = (lastMsgs || []).find(m => m.conversation_id === c.id);
-            const unread = (unreadMsgs || []).filter(m => m.conversation_id === c.id).length;
+            const unread = (unreadMsgs || []).filter(m => {
+                if (m.conversation_id !== c.id) return false;
+                if (myParticipation?.cleared_at && new Date(m.created_at) <= new Date(myParticipation.cleared_at)) return false;
+                return true;
+            }).length;
 
             return {
                 id: c.id,
@@ -1443,14 +1629,26 @@ export default function Communications() {
 
     // ─── Load messages ────────────────────────────────────────────────────────────
     const loadMessages = useCallback(async (convoId: string) => {
-        const convo = conversations.find(c => c.id === convoId);
+        if (!currentUserId) return;
+
+        // Fetch cleared_at directly from DB — always the source of truth
+        const { data: participation } = await supabase
+            .from('conversation_participants')
+            .select('cleared_at')
+            .eq('conversation_id', convoId)
+            .eq('user_id', currentUserId)
+            .maybeSingle();
+
+        const clearedAt = participation?.cleared_at;
+        clearedAtRef.current = clearedAt || null;
+
         let query = supabase
             .from('messages')
-            .select('id, conversation_id, sender_id, content, type, media_url, media_duration, call_status, call_duration, created_at, is_deleted, reply_to_id, is_pinned, deleted_for_users')
+            .select('id, conversation_id, sender_id, content, type, media_url, media_duration, call_status, call_duration, call_type, caller_id, created_at, is_deleted, reply_to_id, is_pinned, deleted_for_users')
             .eq('conversation_id', convoId);
 
-        if (convo?.cleared_at) {
-            query = query.gt('created_at', convo.cleared_at);
+        if (clearedAt) {
+            query = query.gt('created_at', clearedAt);
         }
 
         const { data: msgs, error } = await query
@@ -1464,21 +1662,31 @@ export default function Communications() {
             const senderIds = [...new Set(msgs.map(m => m.sender_id))];
             const replyIds = [...new Set(msgs.filter(m => m.reply_to_id).map(m => m.reply_to_id))];
 
-            const [sendersRes, repliesRes] = await Promise.all([
+            const [sendersRes, repliesRes, coachesRes] = await Promise.all([
                 supabase.from('profiles').select('id, full_name, role, avatar_url, last_seen, is_in_chat').in('id', senderIds),
                 replyIds.length > 0
                     ? supabase.from('messages').select('id, content, type, media_url, sender_id').in('id', replyIds)
-                    : Promise.resolve({ data: [], error: null })
+                    : Promise.resolve({ data: [], error: null }),
+                supabase.from('coaches').select('profile_id, avatar_url').in('profile_id', senderIds)
             ]);
 
+            const coachAvatarMap: Record<string, string> = {};
+            (coachesRes.data || []).forEach(c => { if (c.avatar_url) coachAvatarMap[c.profile_id] = c.avatar_url; });
+
             const senderMap: Record<string, Profile> = {};
-            (sendersRes.data || []).forEach(s => senderMap[s.id] = s);
+            (sendersRes.data || []).forEach(s => {
+                senderMap[s.id] = {
+                    ...s,
+                    avatar_url: s.avatar_url || coachAvatarMap[s.id]
+                };
+            });
 
             const replyMap: Record<string, Message> = {};
             (repliesRes.data || []).forEach(r => replyMap[r.id] = r as Message);
 
             const enrichedMsgs = msgs
                 .filter(m => !m.is_deleted && !(m.deleted_for_users || []).includes(currentUserId || ''))
+                .filter(m => !clearedAtRef.current || new Date(m.created_at) > new Date(clearedAtRef.current))
                 .map(m => ({
                     ...m,
                     sender: senderMap[m.sender_id],
@@ -1495,7 +1703,7 @@ export default function Communications() {
             .update({ last_read_at: new Date().toISOString() })
             .eq('conversation_id', convoId)
             .eq('user_id', currentUserId);
-    }, [currentUserId, conversations]);
+    }, [currentUserId]);
 
     const togglePinMessage = async (msgId: string, isPinned: boolean) => {
         const { error } = await supabase.from('messages').update({ is_pinned: !isPinned }).eq('id', msgId);
@@ -1510,33 +1718,66 @@ export default function Communications() {
             .eq('conversation_id', convoId)
             .eq('user_id', currentUserId);
 
-        if (error) toast.error('Failed to delete chat');
+        if (error) toast.error('Failed to hide chat');
         else {
-            setActiveConvo(null);
-            loadConversations();
+            setConversations(prev => prev.filter(c => c.id !== convoId));
+            if (activeConvo?.id === convoId) {
+                setActiveConvo(null);
+                setMessages([]);
+            }
         }
     };
 
     const clearConversation = async (convoId: string) => {
+        const now = new Date().toISOString();
         const { error } = await supabase
             .from('conversation_participants')
-            .update({ cleared_at: new Date().toISOString() })
+            .update({ cleared_at: now, last_read_at: now })
             .eq('conversation_id', convoId)
             .eq('user_id', currentUserId);
 
         if (error) toast.error('Failed to clear chat');
-        else loadMessages(convoId);
+        else {
+            clearedAtRef.current = now;
+            setConversations(prev => prev.map(c => c.id === convoId ? {
+                ...c,
+                cleared_at: now,
+                unreadCount: 0,
+                lastMessage: undefined
+            } : c));
+            if (activeConvo?.id === convoId) {
+                setMessages([]);
+                setActiveConvo(prev => prev ? { ...prev, cleared_at: now, unreadCount: 0, lastMessage: undefined } : null);
+            }
+        }
     };
 
 
     // ─── Load all users for new chat ──────────────────────────────────────────────
     useEffect(() => {
         const load = async () => {
-            const { data } = await supabase
+            const { data: profiles } = await supabase
                 .from('profiles')
                 .select('id, full_name, role, avatar_url, last_seen, is_in_chat')
                 .neq('id', currentUserId || '');
-            setAllUsers(data || []);
+
+            if (!profiles) return;
+
+            const userIds = profiles.map(p => p.id);
+            const { data: coaches } = await supabase
+                .from('coaches')
+                .select('profile_id, avatar_url')
+                .in('profile_id', userIds);
+
+            const coachAvatarMap: Record<string, string> = {};
+            (coaches || []).forEach(c => { if (c.avatar_url) coachAvatarMap[c.profile_id] = c.avatar_url; });
+
+            const enriched = profiles.map(p => ({
+                ...p,
+                avatar_url: p.avatar_url || coachAvatarMap[p.id]
+            }));
+
+            setAllUsers(enriched);
         };
         if (currentUserId) load();
     }, [currentUserId]);
@@ -1544,8 +1785,10 @@ export default function Communications() {
     useEffect(() => { loadConversations(); }, [loadConversations]);
 
     useEffect(() => {
-        if (activeConvo) loadMessages(activeConvo.id);
-    }, [activeConvo, loadMessages]);
+        if (!activeConvo?.id) return;
+        loadMessages(activeConvo.id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeConvo?.id]);
 
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -1561,7 +1804,20 @@ export default function Communications() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConvo.id}` },
                 async (payload) => {
                     if (payload.eventType === 'INSERT') {
-                        const { data: sender } = await supabase.from('profiles').select('*').eq('id', payload.new.sender_id).single();
+                        // Filter out messages that are older than cleared_at (if it exists)
+                        // Use the REF to avoid stale closure issues
+                        if (clearedAtRef.current && new Date(payload.new.created_at) <= new Date(clearedAtRef.current)) {
+                            return;
+                        }
+
+                        const [profileRes, coachRes] = await Promise.all([
+                            supabase.from('profiles').select('*').eq('id', payload.new.sender_id).single(),
+                            supabase.from('coaches').select('avatar_url').eq('profile_id', payload.new.sender_id).maybeSingle()
+                        ]);
+                        const sender = profileRes.data ? {
+                            ...profileRes.data,
+                            avatar_url: profileRes.data.avatar_url || coachRes.data?.avatar_url
+                        } : null;
                         const newMsg = { ...payload.new, sender } as Message;
                         setMessages(prev => [...prev, newMsg]);
                         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -1599,7 +1855,14 @@ export default function Communications() {
 
                     if (!isParticipant) return;
 
-                    const { data: caller } = await supabase.from('profiles').select('*').eq('id', call.caller_id).single();
+                    const [profileRes, coachRes] = await Promise.all([
+                        supabase.from('profiles').select('*').eq('id', call.caller_id).single(),
+                        supabase.from('coaches').select('avatar_url').eq('profile_id', call.caller_id).maybeSingle()
+                    ]);
+                    const caller = profileRes.data ? {
+                        ...profileRes.data,
+                        avatar_url: profileRes.data.avatar_url || coachRes.data?.avatar_url
+                    } : null;
                     if (caller) {
                         setIncomingCall({
                             callId: call.id,
@@ -1689,6 +1952,7 @@ export default function Communications() {
         });
 
         await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+        loadConversations();
         setIsSending(false);
     };
 
@@ -1719,6 +1983,7 @@ export default function Communications() {
                 media_size: finalImage.size
             });
             await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+            loadConversations();
             setPendingImage(null);
         } catch (err) {
             toast.error('Failed to send image');
@@ -1752,6 +2017,7 @@ export default function Communications() {
                 media_duration: duration
             });
             await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+            loadConversations();
         } catch {
             toast.error('Failed to send voice note');
         }
@@ -1815,524 +2081,726 @@ export default function Communications() {
 
     // ─── Render ────────────────────────────────────────────────────────────────────
     return (
-        <div className="h-[calc(100vh-64px)] flex overflow-hidden bg-background -m-4 sm:-m-6">
+        <>
+            <div className="h-screen flex overflow-hidden bg-background">
 
-            {/* ── Image Editor Overlay ── */}
-            {pendingImage && (
-                <ImageEditorModal
-                    image={pendingImage}
-                    onCancel={() => setPendingImage(null)}
-                    onSave={sendImage}
-                    isProcessing={isUploading}
-                />
-            )}
+                {/* ── Image Editor Overlay ── */}
+                {pendingImage && (
+                    <ImageEditorModal
+                        image={pendingImage}
+                        onCancel={() => setPendingImage(null)}
+                        onSave={sendImage}
+                        isProcessing={isUploading}
+                    />
+                )}
 
-            {/* ── Image Viewer Overlay ── */}
-            {imageToView && (
-                <ImageViewerModal
-                    url={imageToView}
-                    onClose={() => setImageToView(null)}
-                />
-            )}
+                {/* ── Image Viewer Overlay ── */}
+                {imageToView && (
+                    <ImageViewerModal
+                        url={imageToView}
+                        onClose={() => setImageToView(null)}
+                    />
+                )}
 
-            {/* ── Incoming Call Overlay ── */}
-            {incomingCall && (
-                <IncomingCallModal
-                    callerName={incomingCall.caller.full_name}
-                    callType={incomingCall.type}
-                    onAccept={acceptCall}
-                    onReject={rejectCall}
-                />
-            )}
+                {/* ── Incoming Call Overlay ── */}
+                {incomingCall && (
+                    <IncomingCallModal
+                        callerName={incomingCall.caller.full_name}
+                        callType={incomingCall.type}
+                        onAccept={acceptCall}
+                        onReject={rejectCall}
+                    />
+                )}
 
-            {/* ── Active Call Overlay ── */}
-            {activeCall && (
-                <ActiveCallModal
-                    callType={activeCall.type}
-                    otherUserName={activeCall.otherUser.full_name}
-                    otherUserAvatar={activeCall.otherUser.avatar_url}
-                    duration={callDuration}
-                    onHangup={() => hangupCall(true)}
-                    isMuted={isMuted}
-                    toggleMute={handleToggleMute}
-                    isCameraOff={isCameraOff}
-                    toggleCamera={handleToggleCamera}
-                />
-            )}
+                {/* ── Active Call Overlay ── */}
+                {activeCall && !isCallMinimized && (
+                    <ActiveCallModal
+                        callType={activeCall.type}
+                        otherUserName={activeCall.otherUser.full_name}
+                        otherUserAvatar={activeCall.otherUser.avatar_url}
+                        duration={callDuration}
+                        onHangup={() => hangupCall(true)}
+                        onMinimize={() => {
+                            setIsCallMinimized(true);
+                            // If we have an active call, ensure the chat for that user is open
+                            const relatedConvo = conversations.find(c => c.id === activeCall.conversationId);
+                            if (relatedConvo) setActiveConvo(relatedConvo);
+                        }}
+                        isMuted={isMuted}
+                        toggleMute={handleToggleMute}
+                        isCameraOff={isCameraOff}
+                        toggleCamera={handleToggleCamera}
+                        facingMode={facingMode}
+                        toggleFacingMode={handleToggleFacingMode}
+                        isLocalVideoMain={isLocalVideoMain}
+                        setIsLocalVideoMain={setIsLocalVideoMain}
+                    />
+                )}
 
-            {/* ─────────────── LEFT: Conversation List ─────────────── */}
-            <div className={`
+                {/* ── Minimized Call Bubble ── */}
+                {activeCall && isCallMinimized && (
+                    <div className="fixed bottom-24 right-6 z-[10000] flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="relative group p-1 bg-white/[0.03] backdrop-blur-2xl rounded-full border border-white/10 shadow-2xl">
+                            <div className="relative">
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent p-0.5 relative overflow-hidden">
+                                    {activeCall.otherUser.avatar_url ? (
+                                        <img src={activeCall.otherUser.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
+                                    ) : (
+                                        <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-lg font-bold text-white">
+                                            {activeCall.otherUser.full_name[0]}
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => setIsCallMinimized(false)}>
+                                        <Maximize2 className="w-5 h-5 text-white" />
+                                    </div>
+                                </div>
+                                <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-emerald-500 border-2 border-[#1A1D21] rounded-full animate-pulse shadow-lg" />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="px-2.5 py-1 bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-full shadow-lg">
+                                <span className="text-[10px] font-black text-white/90 tabular-nums tracking-wider uppercase">
+                                    {String(Math.floor(callDuration / 60)).padStart(2, '0')}:{String(callDuration % 60).padStart(2, '0')}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <button
+                                    onClick={handleToggleMute}
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 border backdrop-blur-md ${isMuted
+                                        ? 'bg-red-500/20 border-red-500/40 text-red-500'
+                                        : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                                        }`}
+                                >
+                                    {isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                                </button>
+
+                                <button
+                                    onClick={() => hangupCall(true)}
+                                    className="w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-all active:scale-90 border border-white/10"
+                                >
+                                    <PhoneOff className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ─────────────── LEFT: Conversation List ─────────────── */}
+                <div className={`
         w-full md:w-80 lg:w-96 flex-shrink-0 
         border-r border-white/5 flex flex-col
         ${activeConvo ? 'hidden md:flex' : 'flex'}
       `}>
-                {/* Panel header */}
-                <div className="p-5 border-b border-white/5">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h1 className="text-white font-black text-lg tracking-tight">Messages</h1>
-                            <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Communication Center</p>
-                        </div>
-                        <button
-                            onClick={() => setShowNewChat(true)}
-                            className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center hover:bg-primary/20 transition-all"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
-                    </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                        <input
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            placeholder=""
-                            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/5 rounded-xl text-sm text-white placeholder:text-white/20 font-medium focus:outline-none focus:border-primary/30 transition-all"
-                        />
-                    </div>
-                </div>
-
-                {/* List */}
-                <div className="flex-1 overflow-y-auto">
-                    {showNewChat ? (
-                        // New Chat: Show all users
-                        <div>
-                            <div className="px-4 py-2 flex items-center gap-2">
-                                <button onClick={() => setShowNewChat(false)} className="text-white/40 hover:text-white transition-all">
-                                    <ArrowLeft className="w-4 h-4" />
-                                </button>
-                                <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Start new chat</span>
+                    {/* Panel header */}
+                    <div className="p-5 border-b border-white/5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h1 className="text-white font-black text-lg tracking-tight">Messages</h1>
+                                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Communication Center</p>
                             </div>
-                            {filteredUsers.map(user => (
-                                <button
-                                    key={user.id}
-                                    onClick={() => startConversation(user)}
-                                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-all group"
-                                >
-                                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-sm flex-shrink-0 shadow-lg">
-                                        {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover rounded-full" alt="" /> : user.full_name[0]}
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-white font-black text-sm">{user.full_name}</p>
-                                        <p className="text-primary/60 text-[10px] font-black uppercase tracking-widest">{user.role}</p>
-                                    </div>
-                                </button>
-                            ))}
+                            <button
+                                onClick={() => setShowNewChat(true)}
+                                className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center hover:bg-primary/20 transition-all"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
                         </div>
-                    ) : (
-                        // Conversation list
-                        filteredConvos.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-                                    <MessageSquare className="w-7 h-7 text-white/20" />
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                            <input
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder=""
+                                className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/5 rounded-xl text-sm text-white placeholder:text-white/20 font-medium focus:outline-none focus:border-primary/30 transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* List */}
+                    <div className="flex-1 overflow-y-auto">
+                        {showNewChat ? (
+                            // New Chat: Show all users
+                            <div>
+                                <div className="px-4 py-2 flex items-center gap-2">
+                                    <button onClick={() => setShowNewChat(false)} className="text-white/40 hover:text-white transition-all">
+                                        <ArrowLeft className="w-4 h-4" />
+                                    </button>
+                                    <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Start new chat</span>
                                 </div>
-                                <div>
-                                    <p className="text-white/40 font-black text-sm">No conversations yet</p>
-                                    <p className="text-white/20 text-xs mt-1">Click + to start a new chat</p>
-                                </div>
+                                {filteredUsers.map(user => (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => startConversation(user)}
+                                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-all group"
+                                    >
+                                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-sm flex-shrink-0 shadow-lg">
+                                            {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover rounded-full" alt="" /> : user.full_name[0]}
+                                        </div>
+                                        <div className="text-left">
+                                            {(() => {
+                                                const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
+                                                const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
+                                                const isOnline = user.is_in_chat && isRecentlyActive;
+                                                const isAway = !user.is_in_chat && isRecentlyActive;
+
+                                                if (isOnline) return <p className="text-emerald-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Online</p>;
+                                                if (isAway) return <p className="text-amber-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Away</p>;
+                                                return <p className="text-white/20 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Offline</p>;
+                                            })()}
+                                            <p className="text-white font-black text-sm">{user.full_name}</p>
+                                            <p className="text-primary/60 text-[9px] font-black uppercase tracking-widest">{user.role}</p>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         ) : (
-                            filteredConvos.map(convo => {
-                                const name = convo.type === 'direct' ? convo.otherUser?.full_name : convo.name;
-                                const lastText = convo.lastMessage?.type === 'text'
-                                    ? convo.lastMessage.content
-                                    : convo.lastMessage?.type === 'image' ? '📷 Photo'
-                                        : convo.lastMessage?.type === 'voice' ? '🎤 Voice note'
-                                            : convo.lastMessage?.type === 'call_event' ? '📞 Call'
-                                                : '';
-                                const isActive = activeConvo?.id === convo.id;
+                            // Conversation list
+                            filteredConvos.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                                        <MessageSquare className="w-7 h-7 text-white/20" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white/40 font-black text-sm">No conversations yet</p>
+                                        <p className="text-white/20 text-xs mt-1">Click + to start a new chat</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                filteredConvos.map((convo, idx) => {
+                                    const name = convo.type === 'direct' ? convo.otherUser?.full_name : convo.name;
+                                    const lastText = convo.lastMessage?.type === 'text'
+                                        ? convo.lastMessage.content
+                                        : convo.lastMessage?.type === 'image' ? '📷 Photo'
+                                            : convo.lastMessage?.type === 'voice' ? '🎤 Voice note'
+                                                : convo.lastMessage?.type === 'call_event' ? '📞 Call'
+                                                    : '';
+                                    const isActive = activeConvo?.id === convo.id;
+                                    const isTopItem = idx < 2;
 
-                                return (
-                                    <button
-                                        key={convo.id}
-                                        onClick={() => setActiveConvo(convo)}
-                                        className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all ${isActive ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-white/[0.03]'}`}
-                                    >
-                                        {/* Avatar */}
-                                        <div className="relative flex-shrink-0">
-                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-base shadow-lg overflow-hidden">
-                                                {convo.otherUser?.avatar_url
-                                                    ? <img src={convo.otherUser.avatar_url} className="w-full h-full object-cover" alt="" />
-                                                    : (name || 'U')[0]
-                                                }
+                                    const handleLongPressStart = (e: React.MouseEvent | React.TouchEvent) => {
+                                        longPressTimerRef.current = setTimeout(() => {
+                                            setLongPressActive(null);
+                                            setLongPressConvoId(convo.id);
+                                        }, 600);
+                                        setLongPressActive(convo.id);
+                                    };
+
+                                    const handleLongPressEnd = () => {
+                                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                        setLongPressActive(null);
+                                    };
+
+                                    return (
+                                        <button
+                                            key={convo.id}
+                                            onClick={() => setActiveConvo(convo)}
+                                            onMouseDown={handleLongPressStart}
+                                            onMouseUp={handleLongPressEnd}
+                                            onMouseLeave={handleLongPressEnd}
+                                            onTouchStart={handleLongPressStart}
+                                            onTouchEnd={handleLongPressEnd}
+                                            className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all duration-150 select-none ${isActive ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-white/[0.03]'} ${menuOpenId === convo.id ? 'z-50 relative' : ''} ${longPressActive === convo.id ? 'scale-[0.97] bg-red-500/10' : ''}`}
+                                        >
+                                            {/* Avatar */}
+                                            <div className="relative flex-shrink-0">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-base shadow-lg overflow-hidden">
+                                                    {convo.otherUser?.avatar_url
+                                                        ? <img src={convo.otherUser.avatar_url} className="w-full h-full object-cover" alt="" />
+                                                        : (name || 'U')[0]
+                                                    }
+                                                </div>
                                             </div>
-                                            {(() => {
-                                                const prof = convo.otherUser;
-                                                if (!prof) return null;
-                                                const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
-                                                const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
-                                                const isOnline = prof.is_in_chat && isRecentlyActive;
-                                                const isAway = !prof.is_in_chat && isRecentlyActive;
+                                            {/* Info */}
+                                            <div className="flex-1 text-left min-w-0 flex flex-col justify-center">
+                                                {(() => {
+                                                    const prof = convo.otherUser;
+                                                    if (!prof) return null;
+                                                    const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
+                                                    const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
+                                                    const isOnline = prof.is_in_chat && isRecentlyActive;
+                                                    const isAway = !prof.is_in_chat && isRecentlyActive;
 
-                                                return (
-                                                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background transition-colors ${isOnline ? 'bg-emerald-400' : isAway ? 'bg-amber-400' : 'bg-white/10'}`} />
-                                                );
-                                            })()}
-                                        </div>
-                                        {/* Info */}
-                                        <div className="flex-1 text-left min-w-0 overflow-hidden">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className="text-white font-black text-sm truncate flex-1 min-w-0">{name}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-white/25 text-[9px] font-bold flex-shrink-0 ml-2">
-                                                        {convo.lastMessage ? new Date(convo.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                                    </span>
-                                                    {/* Premium Options Menu */}
-                                                    <div className="relative">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setMenuOpenId(menuOpenId === convo.id ? null : convo.id);
-                                                            }}
-                                                            className={`p-1.5 rounded-xl hover:bg-white/10 transition-all shadow-lg ${menuOpenId === convo.id ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
-                                                        >
-                                                            <MoreVertical className="w-4 h-4" />
-                                                        </button>
-                                                        {menuOpenId === convo.id && (
-                                                            <div className="absolute right-0 top-full mt-2 bg-[#1A1D21]/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] p-2 min-w-[190px] backdrop-blur-2xl animate-premium-in origin-top-right sm:right-0 max-sm:-right-4">
-                                                                <div className="px-3 py-2 border-b border-white/5 mb-1.5">
-                                                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Chat Options</p>
-                                                                </div>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); clearConversation(convo.id); setMenuOpenId(null); }}
-                                                                    className="w-full text-left px-3 py-2.5 text-[11px] font-bold tracking-wide text-white/60 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
-                                                                >
-                                                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/item:bg-primary/20 group-hover/item:text-primary transition-all">
-                                                                        <Trash2 className="w-4 h-4" />
+                                                    if (isOnline) return <p className="text-emerald-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Online</p>;
+                                                    if (isAway) return <p className="text-amber-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Away</p>;
+                                                    return <p className="text-white/20 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Offline</p>;
+                                                })()}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-white font-black text-sm truncate flex-1 min-w-0">{name}</p>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <span className="text-white/25 text-[9px] font-bold">
+                                                            {convo.lastMessage ? new Date(convo.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                        </span>
+                                                        {/* Premium Options Menu */}
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setMenuOpenId(menuOpenId === convo.id ? null : convo.id);
+                                                                }}
+                                                                className={`p-1.5 rounded-xl hover:bg-white/10 transition-all shadow-lg ${menuOpenId === convo.id ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
+                                                            >
+                                                                <MoreVertical className="w-4 h-4" />
+                                                            </button>
+                                                            {menuOpenId === convo.id && (
+                                                                <div className={`absolute right-0 ${isTopItem ? 'top-full mt-2 origin-top-right' : 'bottom-full mb-2 origin-bottom-right'} bg-[#1A1D21]/95 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] p-2 min-w-[190px] backdrop-blur-2xl animate-premium-in`}>
+                                                                    <div className="px-3 py-2 border-b border-white/5 mb-1.5">
+                                                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Chat Actions</p>
                                                                     </div>
-                                                                    Clear History
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); deleteConversation(convo.id); setMenuOpenId(null); }}
-                                                                    className="w-full text-left px-3 py-2.5 text-[11px] font-bold tracking-wide text-red-400/70 hover:text-red-400 hover:bg-red-400/5 rounded-xl flex items-center gap-3 transition-all group/item"
-                                                                >
-                                                                    <div className="w-8 h-8 rounded-lg bg-red-400/10 flex items-center justify-center group-hover/item:bg-red-400/20 transition-all">
-                                                                        <Archive className="w-4 h-4" />
-                                                                    </div>
-                                                                    Hide Conversation
-                                                                </button>
-                                                                {isActive && messages.length > 0 && (
+                                                                    {/* Audio Call */}
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); setSelectedMessageIds(new Set([messages[0].id])); }}
-                                                                        className="w-full text-left px-3 py-2.5 text-[11px] font-bold tracking-wide text-white/60 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setActiveConvo(convo);
+                                                                            initiateCall('audio');
+                                                                            setMenuOpenId(null);
+                                                                        }}
+                                                                        className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/70 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
                                                                     >
-                                                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/item:bg-primary/20 group-hover/item:text-primary transition-all">
+                                                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover/item:bg-emerald-500/20 transition-all">
+                                                                            <Phone className="w-4 h-4" />
+                                                                        </div>
+                                                                        Audio Call
+                                                                    </button>
+                                                                    {/* Video Call */}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setActiveConvo(convo);
+                                                                            initiateCall('video');
+                                                                            setMenuOpenId(null);
+                                                                        }}
+                                                                        className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/70 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover/item:bg-indigo-500/20 transition-all">
+                                                                            <Video className="w-4 h-4" />
+                                                                        </div>
+                                                                        Video Call
+                                                                    </button>
+                                                                    {/* Mark as Read */}
+                                                                    {convo.unreadCount > 0 && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); markAsRead(convo.id); setMenuOpenId(null); }}
+                                                                            className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/70 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
+                                                                        >
+                                                                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover/item:bg-primary/20 transition-all">
+                                                                                <Check className="w-4 h-4" />
+                                                                            </div>
+                                                                            Mark as Read
+                                                                        </button>
+                                                                    )}
+                                                                    <div className="h-px bg-white/5 my-1.5 mx-2" />
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); setSelectedMessageIds(new Set([convo.lastMessage?.id].filter(Boolean) as string[])); }}
+                                                                        className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/50 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/item:bg-white/10 transition-all">
                                                                             <CheckSquare className="w-4 h-4" />
                                                                         </div>
                                                                         Select Messages
                                                                     </button>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); clearConversation(convo.id); setMenuOpenId(null); }}
+                                                                        className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/50 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/item:bg-white/10 transition-all">
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </div>
+                                                                        Clear History
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); deleteConversation(convo.id); setMenuOpenId(null); }}
+                                                                        className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-red-400/50 hover:text-red-400 hover:bg-red-400/5 rounded-xl flex items-center gap-3 transition-all group/item"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-red-400/10 text-red-400/70 flex items-center justify-center group-hover/item:bg-red-400/20 transition-all">
+                                                                            <Archive className="w-4 h-4" />
+                                                                        </div>
+                                                                        Hide Chat
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <div className="flex items-center justify-between gap-2 mt-0.5">
+                                                    <p className="text-white/35 text-xs truncate flex-1 min-w-0">{lastText}</p>
+                                                    {convo.unreadCount > 0 && (
+                                                        <span className="min-w-[20px] h-5 px-1.5 bg-primary rounded-full text-[10px] font-black text-white flex items-center justify-center flex-shrink-0">
+                                                            {convo.unreadCount > 9 ? '9+' : convo.unreadCount}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center justify-between gap-2 mt-0.5 overflow-hidden">
-                                                <p className="text-white/35 text-xs truncate flex-1 min-w-0">{lastText}</p>
-                                                {convo.unreadCount > 0 && (
-                                                    <span className="min-w-[20px] h-5 px-1.5 bg-primary rounded-full text-[10px] font-black text-white flex items-center justify-center flex-shrink-0">
-                                                        {convo.unreadCount > 9 ? '9+' : convo.unreadCount}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })
-                        )
-                    )}
-                </div>
-            </div>
-
-            {/* ─────────────── CENTER: Chat Window ─────────────── */}
-            {activeConvo ? (
-                <div className="flex-1 flex flex-col min-w-0">
-
-                    {/* Chat header */}
-                    <div className={`sticky top-0 z-20 h-16 flex items-center justify-between px-5 border-b border-white/5 transition-all duration-300 bg-background/50 backdrop-blur-xl flex-shrink-0`}>
-                        {/* LEFT: Contact Info */}
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setActiveConvo(null)}
-                                className="md:hidden w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-white transition-all mr-1"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                            </button>
-                            <div className="relative">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-sm overflow-hidden shadow-lg">
-                                    {activeConvo.otherUser?.avatar_url
-                                        ? <img src={activeConvo.otherUser.avatar_url} className="w-full h-full object-cover" alt="" />
-                                        : (activeConvo.otherUser?.full_name || 'G')[0]
-                                    }
-                                </div>
-                                {(() => {
-                                    const prof = activeConvo.otherUser;
-                                    if (!prof) return null;
-                                    const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
-                                    const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
-                                    const isOnline = prof.is_in_chat && isRecentlyActive;
-                                    const isAway = !prof.is_in_chat && isRecentlyActive;
-
-                                    return (
-                                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background transition-colors ${isOnline ? 'bg-emerald-400' : isAway ? 'bg-amber-400' : 'bg-white/10'}`} />
+                                        </button>
                                     );
-                                })()}
-                            </div>
-                            <div className="hidden sm:block">
-                                <p className="text-white font-black text-sm">
-                                    {activeConvo.type === 'direct' ? activeConvo.otherUser?.full_name : activeConvo.name}
-                                </p>
-                                {(() => {
-                                    const prof = activeConvo.otherUser;
-                                    if (!prof) return null;
-                                    const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
-                                    const now = new Date();
-                                    const isRecentlyActive = lastSeenDate && (now.getTime() - lastSeenDate.getTime()) < 6000;
-
-                                    if (prof.is_in_chat && isRecentlyActive) {
-                                        return <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Online</p>;
-                                    }
-                                    if (isRecentlyActive) {
-                                        return <p className="text-amber-400 text-[10px] font-black uppercase tracking-widest">Away</p>;
-                                    }
-                                    if (lastSeenDate) {
-                                        const timeStr = lastSeenDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                        const isToday = lastSeenDate.toDateString() === now.toDateString();
-                                        return <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">
-                                            Last seen {isToday ? timeStr : lastSeenDate.toLocaleDateString()}
-                                        </p>;
-                                    }
-                                    return <p className="text-white/20 text-[10px] font-black uppercase tracking-widest">Offline</p>;
-                                })()}
-                            </div>
-                        </div>
-
-                        {/* MIDDLE: Selection Actions (Visible in middle space) */}
-                        {selectedMessageIds.size > 0 && (
-                            <div className="absolute inset-x-0 top-0 h-full flex items-center justify-center pointer-events-none">
-                                <div className="bg-primary px-4 py-1.5 rounded-2xl flex items-center gap-2 shadow-2xl animate-premium-up pointer-events-auto border border-white/20">
-                                    <button
-                                        onClick={() => setSelectedMessageIds(new Set())}
-                                        className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-all flex items-center gap-2"
-                                    >
-                                        <X className="w-4 h-4" />
-                                        <span className="text-[10px] font-black">{selectedMessageIds.size}</span>
-                                    </button>
-
-                                    <div className="w-px h-6 bg-white/10 mx-1" />
-
-                                    <button
-                                        onClick={() => setShowForwardModal(true)}
-                                        className="p-2 rounded-xl hover:bg-white/10 text-white transition-all flex items-center justify-center group"
-                                        title="Forward"
-                                    >
-                                        <Reply className="w-4 h-4 group-hover:scale-110 transition-transform -scale-x-100" />
-                                    </button>
-                                    <button
-                                        onClick={togglePinForSelected}
-                                        className="p-2 rounded-xl hover:bg-white/10 text-white transition-all flex items-center justify-center group"
-                                        title="Toggle Pin"
-                                    >
-                                        <Pin className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                    </button>
-                                    <button
-                                        onClick={deleteSelectedMessages}
-                                        className="p-2 rounded-xl hover:bg-white/10 text-red-400 hover:text-white transition-all flex items-center justify-center group"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                    </button>
-
-                                    <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
-
-                                    <button
-                                        onClick={() => {
-                                            const allIds = new Set(messages.map(m => m.id));
-                                            setSelectedMessageIds(allIds);
-                                        }}
-                                        className="px-3 py-1.5 rounded-lg hover:bg-white/10 text-white/90 text-[9px] font-black uppercase tracking-widest transition-all hidden sm:block"
-                                    >
-                                        All
-                                    </button>
-                                </div>
-                            </div>
+                                })
+                            )
                         )}
-
-                        {/* RIGHT: Call Buttons */}
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => initiateCall('audio')}
-                                className="w-9 h-9 rounded-full bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-primary/15 hover:border-primary/20 flex items-center justify-center transition-all"
-                            >
-                                <Phone className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => initiateCall('video')}
-                                className="w-9 h-9 rounded-full bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-primary/15 hover:border-primary/20 flex items-center justify-center transition-all"
-                            >
-                                <Video className="w-4 h-4" />
-                            </button>
-                        </div>
                     </div>
+                </div>
 
-                    {/* Messages area */}
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-0.5">
-                        {messages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full gap-3 text-center opacity-40">
-                                <MessageSquare className="w-10 h-10 text-white/20" />
-                                <p className="text-white/30 font-bold text-sm">Start the conversation!</p>
-                            </div>
-                        )}
-                        {messages.map((msg) => (
-                            <MessageBubble
-                                key={msg.id}
-                                msg={msg}
-                                isOwn={msg.sender_id === currentUserId}
-                                currentUserId={currentUserId || undefined}
-                                onReply={setReplyTo}
-                                onPin={m => togglePinMessage(m.id, !!m.is_pinned)}
-                                isSelected={selectedMessageIds.has(msg.id)}
-                                isSelectionMode={selectedMessageIds.size > 0}
-                                onSelect={toggleMessageSelection}
-                                onImageClick={setImageToView}
-                            />
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
+                {/* ─────────────── CENTER: Chat Window ─────────────── */}
+                {activeConvo ? (
+                    <div className="flex-1 flex flex-col min-w-0">
 
-                    {/* Forward Modal */}
-                    {showForwardModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForwardModal(false)} />
-                            <div className="relative bg-[#0F1115] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden animate-premium-up shadow-2xl">
-                                <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                                    <h3 className="text-lg font-black text-white px-2">Forward to...</h3>
-                                    <button onClick={() => setShowForwardModal(false)} className="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all">
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
-                                <div className="max-h-[400px] overflow-y-auto p-2 scrollbar-thin">
-                                    {conversations.map(convo => {
-                                        const otherUser = convo.otherUser;
-                                        const name = convo.type === 'direct' ? otherUser?.full_name : convo.name;
-                                        if (!name) return null;
-                                        return (
-                                            <button
-                                                key={convo.id}
-                                                onClick={() => handleForwardMessages(convo.id)}
-                                                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-all text-left group"
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-black text-white">
-                                                    {(name || '?')[0]}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-white font-bold truncate">{name}</p>
-                                                    <p className="text-white/30 text-[10px] uppercase tracking-widest">{convo.type === 'direct' ? (otherUser?.role || 'User') : 'Group'}</p>
-                                                </div>
-                                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                                                    <Send className="w-3.5 h-3.5 text-primary" />
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Delete Confirmation Modal */}
-                    {showDeleteModal && (
-                        <DeleteConfirmationModal
-                            count={selectedMessageIds.size}
-                            onCancel={() => setShowDeleteModal(false)}
-                            onDeleteForMe={deleteForMe}
-                            onDeleteForEveryone={deleteForEveryone}
-                            canDeleteForEveryone={Array.from(selectedMessageIds).every(id => {
-                                const m = messages.find(msg => msg.id === id);
-                                return m?.sender_id === currentUserId && !!currentUserId;
-                            })}
-                        />
-                    )}
-
-                    {/* Input bar */}
-                    <div className="sticky bottom-0 z-20 flex-shrink-0 p-4 border-t border-white/5 bg-background/50 backdrop-blur-xl">
-                        {/* Reply Preview */}
-                        {replyTo && (
-                            <div className="mb-3 p-3 rounded-2xl bg-[#1A1D21]/80 border border-white/10 flex items-center justify-between group animate-premium-up shadow-xl backdrop-blur-xl">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-1 h-8 rounded-full bg-primary" />
-                                    <div className="min-w-0">
-                                        <p className="text-primary font-black text-[10px] uppercase tracking-widest leading-none mb-1">Replying to {replyTo.sender?.full_name}</p>
-                                        <p className="text-white/40 text-xs truncate">
-                                            {replyTo.type === 'text' ? replyTo.content : `[${replyTo.type}]`}
-                                        </p>
+                        {/* Chat header */}
+                        <div className={`sticky top-0 z-20 h-16 flex items-center justify-between px-5 border-b border-white/5 transition-all duration-300 bg-background/50 backdrop-blur-xl flex-shrink-0`}>
+                            {/* LEFT: Contact Info */}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setActiveConvo(null)}
+                                    className="md:hidden w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-white transition-all mr-1"
+                                >
+                                    <ArrowLeft className="w-4 h-4" />
+                                </button>
+                                <div className="relative">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-sm overflow-hidden shadow-lg">
+                                        {activeConvo.otherUser?.avatar_url
+                                            ? <img src={activeConvo.otherUser.avatar_url} className="w-full h-full object-cover" alt="" />
+                                            : (activeConvo.otherUser?.full_name || 'G')[0]
+                                        }
                                     </div>
                                 </div>
-                                <button onClick={() => setReplyTo(null)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white flex items-center justify-center transition-all">
-                                    <X className="w-4 h-4" />
+                                <div className="hidden sm:block">
+                                    {(() => {
+                                        const prof = activeConvo.otherUser;
+                                        if (!prof) return null;
+                                        const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
+                                        const now = new Date();
+                                        const isRecentlyActive = lastSeenDate && (now.getTime() - lastSeenDate.getTime()) < 6000;
+
+                                        if (prof.is_in_chat && isRecentlyActive) {
+                                            return <p className="text-emerald-400 text-[9px] font-black uppercase tracking-widest leading-none mb-1">Online</p>;
+                                        }
+                                        if (isRecentlyActive) {
+                                            return <p className="text-amber-400 text-[9px] font-black uppercase tracking-widest leading-none mb-1">Away</p>;
+                                        }
+                                        if (lastSeenDate) {
+                                            const timeStr = lastSeenDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                            const isToday = lastSeenDate.toDateString() === now.toDateString();
+                                            return <p className="text-white/30 text-[9px] font-black uppercase tracking-widest leading-none mb-1">
+                                                Last seen {isToday ? timeStr : lastSeenDate.toLocaleDateString()}
+                                            </p>;
+                                        }
+                                        return <p className="text-white/20 text-[9px] font-black uppercase tracking-widest leading-none mb-1">Offline</p>;
+                                    })()}
+                                    <p className="text-white font-black text-sm">
+                                        {activeConvo.type === 'direct' ? activeConvo.otherUser?.full_name : activeConvo.name}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Selection Actions Overlay */}
+                            {selectedMessageIds.size > 0 && (
+                                <div className="absolute inset-0 bg-[#0E1D21] z-20 flex items-center justify-between px-4 md:px-6 animate-in fade-in duration-200">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setSelectedMessageIds(new Set())}
+                                            className="w-10 h-10 rounded-full hover:bg-white/5 text-white/50 hover:text-white transition-all flex items-center justify-center"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                        <div className="flex flex-col">
+                                            <span className="text-white font-black text-sm leading-none">{selectedMessageIds.size}</span>
+                                            <span className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-1">Selected</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 sm:gap-2">
+                                        <button
+                                            onClick={() => setShowForwardModal(true)}
+                                            className="w-10 h-10 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all flex items-center justify-center group"
+                                            title="Forward"
+                                        >
+                                            <Reply className="w-5 h-5 group-hover:scale-110 transition-transform -scale-x-100" />
+                                        </button>
+                                        <button
+                                            onClick={togglePinForSelected}
+                                            className="w-10 h-10 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all flex items-center justify-center group"
+                                            title="Toggle Pin"
+                                        >
+                                            <Pin className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                        </button>
+                                        <button
+                                            onClick={deleteSelectedMessages}
+                                            className="w-10 h-10 rounded-xl hover:bg-white/5 text-red-500 hover:text-red-400 transition-all flex items-center justify-center group"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                        </button>
+
+                                        <div className="w-px h-6 bg-white/10 mx-2 hidden sm:block" />
+
+                                        <button
+                                            onClick={() => {
+                                                const allIds = new Set(messages.map(m => m.id));
+                                                setSelectedMessageIds(allIds);
+                                            }}
+                                            className="px-4 py-2 rounded-xl hover:bg-white/5 text-white/30 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all hidden md:block"
+                                        >
+                                            Select All
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* RIGHT: Call Buttons */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => initiateCall('audio')}
+                                    className="w-9 h-9 rounded-full bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-primary/15 hover:border-primary/20 flex items-center justify-center transition-all"
+                                >
+                                    <Phone className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => initiateCall('video')}
+                                    className="w-9 h-9 rounded-full bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-primary/15 hover:border-primary/20 flex items-center justify-center transition-all"
+                                >
+                                    <Video className="w-4 h-4" />
                                 </button>
                             </div>
+                        </div>
+
+                        {/* Messages area */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-0.5">
+                            {messages.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-full gap-3 text-center opacity-40">
+                                    <MessageSquare className="w-10 h-10 text-white/20" />
+                                    <p className="text-white/30 font-bold text-sm">Start the conversation!</p>
+                                </div>
+                            )}
+                            {groupedMessages.map((msg) => (
+                                <MessageBubble
+                                    key={msg.id}
+                                    msg={msg}
+                                    isOwn={msg.sender_id === currentUserId}
+                                    currentUserId={currentUserId || undefined}
+                                    onReply={setReplyTo}
+                                    onPin={m => togglePinMessage(m.id, !!m.is_pinned)}
+                                    isSelected={selectedMessageIds.has(msg.id)}
+                                    isSelectionMode={selectedMessageIds.size > 0}
+                                    onSelect={toggleMessageSelection}
+                                    onImageClick={setImageToView}
+                                />
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Forward Modal */}
+                        {showForwardModal && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForwardModal(false)} />
+                                <div className="relative bg-[#0F1115] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden animate-premium-up shadow-2xl">
+                                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                                        <h3 className="text-lg font-black text-white px-2">Forward to...</h3>
+                                        <button onClick={() => setShowForwardModal(false)} className="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                    <div className="max-h-[400px] overflow-y-auto p-2 scrollbar-thin">
+                                        {conversations.map(convo => {
+                                            const otherUser = convo.otherUser;
+                                            const name = convo.type === 'direct' ? otherUser?.full_name : convo.name;
+                                            if (!name) return null;
+                                            return (
+                                                <button
+                                                    key={convo.id}
+                                                    onClick={() => handleForwardMessages(convo.id)}
+                                                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-all text-left group"
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-black text-white">
+                                                        {(name || '?')[0]}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-white font-bold truncate">{name}</p>
+                                                        <p className="text-white/30 text-[10px] uppercase tracking-widest">{convo.type === 'direct' ? (otherUser?.role || 'User') : 'Group'}</p>
+                                                    </div>
+                                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                                                        <Send className="w-3.5 h-3.5 text-primary" />
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                        <form onSubmit={sendMessage} className="flex items-center gap-2">
-                            {/* File input */}
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={e => e.target.files?.[0] && sendImage(e.target.files[0])}
+
+                        {/* Delete Confirmation Modal */}
+                        {showDeleteModal && (
+                            <DeleteConfirmationModal
+                                count={selectedMessageIds.size}
+                                onCancel={() => setShowDeleteModal(false)}
+                                onDeleteForMe={deleteForMe}
+                                onDeleteForEveryone={deleteForEveryone}
+                                canDeleteForEveryone={Array.from(selectedMessageIds).every(id => {
+                                    const m = messages.find(msg => msg.id === id);
+                                    return m?.sender_id === currentUserId && !!currentUserId;
+                                })}
                             />
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all flex-shrink-0"
-                            >
-                                {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
-                            </button>
+                        )}
 
-                            {/* Voice recorder */}
-                            <VoiceRecorder onRecordingComplete={sendVoiceNote} />
+                        {/* Input bar */}
+                        <div className="sticky bottom-0 z-20 flex-shrink-0 p-4 pb-6 bg-gradient-to-t from-[#0E1D21] via-[#0E1D21]/95 to-transparent backdrop-blur-3xl">
+                            {/* Reply Preview */}
+                            {replyTo && (
+                                <div className="mb-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group animate-premium-up shadow-2xl backdrop-blur-3xl">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-1 h-8 rounded-full bg-primary" />
+                                        <div className="min-w-0">
+                                            <p className="text-primary font-black text-[10px] uppercase tracking-widest leading-none mb-1">Replying to {replyTo.sender?.full_name}</p>
+                                            <p className="text-white/50 text-xs truncate">
+                                                {replyTo.type === 'text' ? replyTo.content : `[${replyTo.type}]`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setReplyTo(null)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white flex items-center justify-center transition-all">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                            <form onSubmit={sendMessage} className="max-w-5xl mx-auto flex items-end gap-3 px-2">
+                                <div className="flex items-center gap-1.5 pb-1">
+                                    {/* File input */}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={e => e.target.files?.[0] && sendImage(e.target.files[0])}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-11 h-11 rounded-2xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all flex-shrink-0 border border-white/5 bg-white/5"
+                                    >
+                                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                                    </button>
 
-                            {/* Text input */}
-                            <textarea
-                                ref={textareaRef}
-                                value={text}
-                                onChange={e => setText(e.target.value)}
-                                placeholder="Type a message..."
-                                rows={1}
-                                className="flex-1 px-4 pr-12 py-3 bg-white/[0.04] border border-white/5 rounded-2xl text-sm text-white placeholder:text-white/20 font-medium focus:outline-none focus:border-primary/30 transition-all resize-none overflow-hidden"
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        sendMessage(e as any);
-                                    }
-                                }}
-                            />
+                                    {/* Voice recorder */}
+                                    <VoiceRecorder onRecordingComplete={sendVoiceNote} />
+                                </div>
 
-                            {/* Send button */}
-                            <button
-                                type="submit"
-                                disabled={!text.trim() || isSending}
-                                className="w-10 h-10 rounded-full bg-primary hover:bg-primary/80 disabled:opacity-30 text-white flex items-center justify-center transition-all flex-shrink-0 shadow-lg shadow-primary/20"
-                            >
-                                {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            ) : (
-                // Empty state
-                <div className="hidden md:flex flex-1 items-center justify-center">
-                    <div className="text-center space-y-4">
-                        <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
-                            <MessageSquare className="w-10 h-10 text-white/15" />
+                                {/* Text input container - Single layer pill */}
+                                <div className="flex-1 bg-white/[0.06] border border-white/10 rounded-[1.8rem] focus-within:border-primary/50 focus-within:bg-white/[0.08] transition-all">
+                                    <textarea
+                                        ref={textareaRef}
+                                        value={text}
+                                        onChange={e => setText(e.target.value)}
+                                        placeholder="Message..."
+                                        rows={1}
+                                        className="w-full px-6 py-4 !bg-transparent text-sm text-white placeholder:text-white/20 font-medium !outline-none transition-all resize-none overflow-hidden !border-none !ring-0 !shadow-none"
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                sendMessage(e as any);
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                {/* External Send Button */}
+                                <button
+                                    type="submit"
+                                    disabled={!text.trim() || isSending}
+                                    className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent hover:from-primary/90 hover:to-accent/90 disabled:from-white/5 disabled:to-white/5 disabled:border-white/5 disabled:text-white/10 text-white flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-90 flex-shrink-0 border border-white/10 group mb-0.5"
+                                >
+                                    {isSending ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Send className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                    )}
+                                </button>
+                            </form>
                         </div>
-                        <div>
-                            <h3 className="text-white/40 font-black text-lg">Select a conversation</h3>
-                            <p className="text-white/20 text-sm mt-1">Choose a chat on the left to start messaging</p>
+                    </div>
+                ) : (
+                    // Empty state
+                    <div className="hidden md:flex flex-1 items-center justify-center">
+                        <div className="text-center space-y-4">
+                            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
+                                <MessageSquare className="w-10 h-10 text-white/15" />
+                            </div>
+                            <div>
+                                <h3 className="text-white/40 font-black text-lg">Select a conversation</h3>
+                                <p className="text-white/20 text-sm mt-1">Choose a chat on the left to start messaging</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+            </div>
+
+            {/* ─── Long-Press Delete Modal ─────────────────────────────────────── */}
+            {
+                longPressConvoId && (() => {
+                    const lpc = conversations.find(c => c.id === longPressConvoId);
+                    if (!lpc) return null;
+                    const lpName = lpc.type === 'direct' ? lpc.otherUser?.full_name : lpc.name;
+                    return (
+                        <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center" onClick={() => setLongPressConvoId(null)}>
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                            <div
+                                className="relative w-full max-w-sm mx-4 mb-6 sm:mb-0 bg-[#141920] border border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.6)] overflow-hidden animate-premium-in"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {/* Header */}
+                                <div className="px-6 pt-6 pb-4 flex items-center gap-4 border-b border-white/5">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-xl shadow-lg overflow-hidden flex-shrink-0">
+                                        {lpc.otherUser?.avatar_url
+                                            ? <img src={lpc.otherUser.avatar_url} className="w-full h-full object-cover" alt="" />
+                                            : (lpName || 'U')[0]
+                                        }
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-0.5">Conversation</p>
+                                        <p className="text-white font-black text-base">{lpName}</p>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="p-3 space-y-1.5">
+                                    <button
+                                        onClick={() => { clearConversation(longPressConvoId); setLongPressConvoId(null); }}
+                                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white/5 transition-all group"
+                                    >
+                                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center group-hover:bg-amber-500/20 transition-all flex-shrink-0">
+                                            <Trash2 className="w-5 h-5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-white font-bold text-sm">Clear History</p>
+                                            <p className="text-white/30 text-xs">Remove messages — chat stays</p>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => { deleteConversation(longPressConvoId); setLongPressConvoId(null); }}
+                                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-red-500/5 transition-all group"
+                                    >
+                                        <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center group-hover:bg-red-500/20 transition-all flex-shrink-0">
+                                            <Archive className="w-5 h-5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-red-400 font-bold text-sm">Hide Chat</p>
+                                            <p className="text-white/30 text-xs">Remove from list completely</p>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                {/* Cancel */}
+                                <div className="px-3 pb-3">
+                                    <button
+                                        onClick={() => setLongPressConvoId(null)}
+                                        className="w-full py-3.5 rounded-2xl bg-white/5 hover:bg-white/8 text-white/50 hover:text-white font-bold text-sm transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()
+            }
+        </>
     );
 }
