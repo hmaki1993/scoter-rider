@@ -141,12 +141,33 @@
     box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
 }
 
+.sensitivity-controls button {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sensitivity-controls button:active {
+    background: rgba(var(--primary-rgb), 0.2);
+    color: white;
+    border-color: var(--primary);
+}
+
+.controls-bar {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
 .reset-btn {
-    background: rgba(255, 255, 255, 0.1);
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0.75rem 2rem;
     border-radius: 12px;
     font-weight: bold;
     cursor: pointer;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }

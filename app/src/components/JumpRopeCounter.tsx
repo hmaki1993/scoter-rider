@@ -12,10 +12,11 @@ const JumpRopeCounter: React.FC = () => {
     const [jumpStatus, setJumpStatus] = useState<'standing' | 'jumping'>('standing');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [sensitivity, setSensitivity] = useState(25); // Lower = easier to count
+    const [currentDiff, setCurrentDiff] = useState(0);
 
     // AI Variables
     const jumpBaseline = useRef<number | null>(null);
-    const jumpThreshold = 30; // Min pixels to trigger a jump
     const lastY = useRef<number>(0);
 
     const handleVideoLoad = () => {
@@ -92,15 +93,18 @@ const JumpRopeCounter: React.FC = () => {
         const canvasCtx = canvasRef.current.getContext('2d');
         if (!canvasCtx) return;
 
-        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        const width = canvasRef.current.width;
+        const height = canvasRef.current.height;
+
+        canvasCtx.clearRect(0, 0, width, height);
 
         // Draw Landmarks (Visual only)
         for (const landmark of results.poseLandmarks) {
             canvasCtx.beginPath();
             canvasCtx.arc(
-                landmark.x * canvasRef.current.width,
-                landmark.y * canvasRef.current.height,
-                4, 0, 2 * Math.PI
+                landmark.x * width,
+                landmark.y * height,
+                3, 0, 2 * Math.PI
             );
             canvasCtx.fillStyle = '#00f2fe';
             canvasCtx.fill();
@@ -111,17 +115,21 @@ const JumpRopeCounter: React.FC = () => {
         const rightHip = results.poseLandmarks[24];
 
         if (leftHip && rightHip) {
-            const midHipY = (leftHip.y + rightHip.y) / 2 * canvasRef.current.height;
+            const midHipY = (leftHip.y + rightHip.y) / 2 * height;
 
             if (jumpBaseline.current === null) {
                 jumpBaseline.current = midHipY;
             }
 
             const diff = jumpBaseline.current - midHipY;
+            setCurrentDiff(Math.max(0, diff));
 
-            if (diff > jumpThreshold && jumpStatus === 'standing') {
+            // Detect Jump Start
+            if (diff > sensitivity && jumpStatus === 'standing') {
                 setJumpStatus('jumping');
-            } else if (diff < (jumpThreshold / 2) && jumpStatus === 'jumping') {
+            }
+            // Detect Jump End (Landing)
+            else if (diff < (sensitivity / 3) && jumpStatus === 'jumping') {
                 setJumpStatus('standing');
                 setJumpCount((prev: number) => prev + 1);
 
@@ -129,6 +137,13 @@ const JumpRopeCounter: React.FC = () => {
                     navigator.vibrate(50);
                 }
             }
+
+            // Dynamic Baseline: Slowly drift baseline towards current height when standing
+            // This prevents "stuck" baseline if user changes posture
+            if (jumpStatus === 'standing' && Math.abs(diff) < sensitivity) {
+                jumpBaseline.current = (jumpBaseline.current * 0.95) + (midHipY * 0.05);
+            }
+
             lastY.current = midHipY;
         }
     };
@@ -203,10 +218,36 @@ const JumpRopeCounter: React.FC = () => {
                     <span className="stat-value">{jumpCount}</span>
                     <span className="stat-label">Total Jumps</span>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card relative overflow-hidden">
+                    <div
+                        className="absolute bottom-0 left-0 h-1 bg-primary/40 transition-all duration-100"
+                        style={{ width: `${Math.min(100, (currentDiff / sensitivity) * 100)}%` }}
+                    />
                     <span className="stat-value">{isLoading ? '--' : error ? 'Error' : 'Live'}</span>
                     <span className="stat-label">AI Status</span>
                 </div>
+            </div>
+
+            <div className="sensitivity-controls w-full bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Sensitivity</span>
+                    <span className="text-xs font-black text-primary">{sensitivity}px</span>
+                </div>
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => setSensitivity(s => Math.max(10, s - 5))}
+                        className="flex-1 py-2 bg-white/5 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 transition-colors"
+                    >
+                        Higher Sensitivity
+                    </button>
+                    <button
+                        onClick={() => setSensitivity(s => Math.min(60, s + 5))}
+                        className="flex-1 py-2 bg-white/5 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 transition-colors"
+                    >
+                        Lower Sensitivity
+                    </button>
+                </div>
+                <p className="text-[9px] text-white/20 mt-2 text-center">Decrease px if jumps aren't counting. Increase px if counting false jumps.</p>
             </div>
 
             <div className="controls-bar">
