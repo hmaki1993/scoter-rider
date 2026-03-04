@@ -113,23 +113,37 @@ const JumpRopeCounter: React.FC = () => {
         // --- Jump Detection Logic ---
         const leftHip = results.poseLandmarks[23];
         const rightHip = results.poseLandmarks[24];
+        const nose = results.poseLandmarks[0];
+        const leftAnkle = results.poseLandmarks[27];
+        const rightAnkle = results.poseLandmarks[28];
 
-        if (leftHip && rightHip) {
+        if (leftHip && rightHip && nose && (leftAnkle || rightAnkle)) {
             const midHipY = (leftHip.y + rightHip.y) / 2 * height;
+            const ankleY = (leftAnkle && rightAnkle)
+                ? (leftAnkle.y + rightAnkle.y) / 2 * height
+                : (leftAnkle?.y || rightAnkle?.y) * height;
+
+            // Calculate apparent body height in pixels
+            const bodyHeightPx = Math.abs(ankleY - (nose.y * height));
+
+            // Dynamic threshold: 8% of body height is a good jump indicator
+            // We use sensitivity as a "fine-tuning" offset
+            const dynamicThreshold = (bodyHeightPx * 0.08) * (30 / sensitivity);
 
             if (jumpBaseline.current === null) {
                 jumpBaseline.current = midHipY;
             }
 
             const diff = jumpBaseline.current - midHipY;
-            setCurrentDiff(Math.max(0, diff));
+            // Store normalized diff for the movement bar (0 to 1 range)
+            setCurrentDiff(Math.max(0, diff / dynamicThreshold * sensitivity));
 
             // Detect Jump Start
-            if (diff > sensitivity && jumpStatus === 'standing') {
+            if (diff > dynamicThreshold && jumpStatus === 'standing') {
                 setJumpStatus('jumping');
             }
-            // Detect Jump End (Landing)
-            else if (diff < (sensitivity / 3) && jumpStatus === 'jumping') {
+            // Detect Jump End (Landing) with Hysteresis
+            else if (diff < (dynamicThreshold * 0.3) && jumpStatus === 'jumping') {
                 setJumpStatus('standing');
                 setJumpCount((prev: number) => prev + 1);
 
@@ -138,10 +152,16 @@ const JumpRopeCounter: React.FC = () => {
                 }
             }
 
-            // Dynamic Baseline: Slowly drift baseline towards current height when standing
-            // This prevents "stuck" baseline if user changes posture
-            if (jumpStatus === 'standing' && Math.abs(diff) < sensitivity) {
-                jumpBaseline.current = (jumpBaseline.current * 0.95) + (midHipY * 0.05);
+            // Adaptive Baseline: Drift slowly when the user is relatively stationary
+            if (Math.abs(diff) < dynamicThreshold * 0.5) {
+                // Slower drift (0.02) for more stability
+                jumpBaseline.current = (jumpBaseline.current * 0.98) + (midHipY * 0.02);
+            }
+
+            // Emergency Baseline Reset: If user is far from baseline for too long while "standing"
+            // it means the baseline is likely invalid.
+            if (jumpStatus === 'standing' && Math.abs(diff) > bodyHeightPx * 0.3) {
+                jumpBaseline.current = midHipY;
             }
 
             lastY.current = midHipY;

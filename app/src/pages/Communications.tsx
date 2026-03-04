@@ -2230,10 +2230,13 @@ export default function Communications() {
                                     <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Start new chat</span>
                                 </div>
                                 {filteredUsers.map(user => (
-                                    <button
+                                    <div
                                         key={user.id}
                                         onClick={() => startConversation(user)}
-                                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-all group"
+                                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-all group cursor-pointer"
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => e.key === 'Enter' && startConversation(user)}
                                     >
                                         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-sm flex-shrink-0 shadow-lg">
                                             {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover rounded-full" alt="" /> : user.full_name[0]}
@@ -2252,7 +2255,7 @@ export default function Communications() {
                                             <p className="text-white font-black text-sm">{user.full_name}</p>
                                             <p className="text-primary/60 text-[9px] font-black uppercase tracking-widest">{user.role}</p>
                                         </div>
-                                    </button>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -2293,7 +2296,7 @@ export default function Communications() {
                                     };
 
                                     return (
-                                        <button
+                                        <div
                                             key={convo.id}
                                             onClick={() => setActiveConvo(convo)}
                                             onMouseDown={handleLongPressStart}
@@ -2301,7 +2304,10 @@ export default function Communications() {
                                             onMouseLeave={handleLongPressEnd}
                                             onTouchStart={handleLongPressStart}
                                             onTouchEnd={handleLongPressEnd}
-                                            className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all duration-150 select-none ${isActive ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-white/[0.03]'} ${menuOpenId === convo.id ? 'z-50 relative' : ''} ${longPressActive === convo.id ? 'scale-[0.97] bg-red-500/10' : ''}`}
+                                            className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all duration-150 select-none cursor-pointer ${isActive ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-white/[0.03]'} ${menuOpenId === convo.id ? 'z-50 relative' : ''} ${longPressActive === convo.id ? 'scale-[0.97] bg-red-500/10' : ''}`}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e) => e.key === 'Enter' && setActiveConvo(convo)}
                                         >
                                             {/* Avatar */}
                                             <div className="relative flex-shrink-0">
@@ -2432,7 +2438,7 @@ export default function Communications() {
                                                     )}
                                                 </div>
                                             </div>
-                                        </button>
+                                        </div>
                                     );
                                 })
                             )
