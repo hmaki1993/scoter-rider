@@ -229,21 +229,23 @@ const JumpRopeCounter = () => {
                     setJumpCount(jumpCountRef.current);
                     if ('vibrate' in navigator) navigator.vibrate(50);
 
-                    // Auto-start timer on first jump
+                    // Auto-start timer on first jump if duration is set
+                    const now = Date.now();
                     if (timerRemainingRef.current !== null && !isTimerStartedRef.current) {
                         isTimerStartedRef.current = true;
                         setIsTimerActive(true);
                         isTimerActiveRef.current = true;
-                        lastActivityTimeRef.current = Date.now();
                     }
-                    lastActivityTimeRef.current = Date.now();
+                    lastActivityTimeRef.current = now;
                 }
+
+                // CRITICAL FIX: Reset status ONLY after valid landing detection
+                jumpStatusRef.current = 'standing';
+                setDisplayStatus('READY');
+                peakY.current = 0;
+                cooldownRef.current = true;
+                setTimeout(() => { cooldownRef.current = false; }, 120);
             }
-            jumpStatusRef.current = 'standing';
-            setDisplayStatus('READY');
-            peakY.current = 0;
-            cooldownRef.current = true;
-            setTimeout(() => { cooldownRef.current = false; }, 120);
         }
     }, []); // STABLE CALLBACK - NO RE-INITIALIZATION
 
@@ -295,42 +297,51 @@ const JumpRopeCounter = () => {
     }, [onResults]); // Added onResults to dependency array
 
     useEffect(() => {
-        if (isTimerActive && timerRemaining !== null && timerRemaining > 0) {
-            timerRemainingRef.current = timerRemaining;
-            isTimerActiveRef.current = true;
-            timerIntervalRef.current = setInterval(() => {
-                setTimerRemaining(prev => {
-                    if (prev !== null && prev > 0) {
-                        const now = Date.now();
-                        const isWorking = (now - lastActivityTimeRef.current) < 5000;
+        // Universal timer interval - handles both Countdown and Free Mode
+        const interval = setInterval(() => {
+            const now = Date.now();
 
-                        if (isWorking) {
-                            workTimeRef.current += 1;
-                            setWorkTime(workTimeRef.current);
-                            setIntensityStatus('WORKING');
-                        } else {
-                            restTimeRef.current += 1;
-                            setRestTime(restTimeRef.current);
-                            setIntensityStatus('RESTING');
-                        }
-                        timerRemainingRef.current = prev - 1;
-                        return prev - 1;
+            // Only update stats if session is active (either timer is active or we are in free mode with jumps)
+            const isSessionRunning = isTimerActiveRef.current || (timerRemainingRef.current === null && jumpCountRef.current > 0);
+
+            if (isSessionRunning) {
+                const isWorking = lastActivityTimeRef.current > 0 && (now - lastActivityTimeRef.current) < 4000;
+
+                if (isWorking) {
+                    workTimeRef.current += 1;
+                    setWorkTime(workTimeRef.current);
+                    setIntensityStatus('WORKING');
+                } else {
+                    restTimeRef.current += 1;
+                    setRestTime(restTimeRef.current);
+                    setIntensityStatus('RESTING');
+                }
+
+                // Handle Countdown
+                if (timerRemainingRef.current !== null) {
+                    const nextValue = Math.max(0, timerRemainingRef.current - 1);
+                    timerRemainingRef.current = nextValue;
+                    setTimerRemaining(nextValue);
+
+                    if (nextValue === 0) {
+                        setIsTimerActive(false);
+                        isTimerActiveRef.current = false;
+                        const activeMinutes = (workTimeRef.current || 1) / 60;
+                        setJpm(Math.round(jumpCountRef.current / activeMinutes) || 0);
+                        setShowSummary(true);
                     }
-                    timerRemainingRef.current = 0;
-                    return 0;
-                });
-            }, 1000);
-        } else if (timerRemaining === 0) {
-            setIsTimerActive(false);
-            isTimerActiveRef.current = false;
-            const activeMinutes = (workTimeRef.current || 1) / 60;
-            setJpm(Math.round(jumpCountRef.current / activeMinutes) || 0);
-            setShowSummary(true);
-        }
-        return () => {
-            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-        };
-    }, [isTimerActive, timerRemaining]);
+                } else {
+                    // Free Mode JPM update every 2 seconds
+                    if (workTimeRef.current % 2 === 0) {
+                        const activeMinutes = (workTimeRef.current || 1) / 60;
+                        setJpm(Math.round(jumpCountRef.current / activeMinutes) || 0);
+                    }
+                }
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []); // One stable interval for the component lifetime
 
     const handleSetDuration = (mins: number) => {
         const secs = mins * 60;

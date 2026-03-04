@@ -2630,10 +2630,10 @@ export default function Communications() {
 
                 {/* ─────────────── LEFT: Conversation List ─────────────── */}
                 <div className={`
-        w-full md:w-80 lg:w-96 flex-shrink-0 
-        border-r border-white/5 flex flex-col h-full min-h-0
-        ${activeConvo ? 'hidden md:flex' : 'flex'}
-      `}>
+                    w-full md:w-80 lg:w-96 flex-shrink-0 
+                    border-r border-white/5 flex-col h-full min-h-0
+                    ${activeConvo ? 'hidden md:flex' : 'flex'}
+                `}>
                     {/* Panel header */}
                     <div className="p-5 border-b border-white/5 safe-area-pt-large">
                         <div className="flex items-center justify-between mb-4">
