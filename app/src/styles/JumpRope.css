@@ -3,12 +3,13 @@
     flex-direction: column;
     align-items: center;
     gap: 1.5rem;
-    padding: 2rem;
+    padding: 1rem;
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(10px);
     border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
+    width: 100%;
     max-width: 800px;
     margin: 0 auto;
 }
@@ -16,11 +17,19 @@
 .video-wrapper {
     position: relative;
     width: 100%;
+    max-width: 640px;
     aspect-ratio: 4 / 3;
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     background: #1a1a1a;
+}
+
+@media (max-width: 640px) {
+    .video-wrapper {
+        aspect-ratio: 3 / 4;
+        /* Portrait for mobile */
+    }
 }
 
 .webcam-feed {
@@ -49,7 +58,7 @@
 
 .stat-card {
     background: rgba(255, 255, 255, 0.05);
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 16px;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -63,15 +72,25 @@
 
 .stat-value {
     display: block;
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     font-weight: 800;
     color: #00f2fe;
     text-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
 }
 
+@media (min-width: 768px) {
+    .stat-value {
+        font-size: 2.5rem;
+    }
+
+    .stat-card {
+        padding: 1.5rem;
+    }
+}
+
 .stat-label {
     display: block;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -80,17 +99,18 @@
 
 .jump-indicator {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.5rem 1rem;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 20px;
-    font-size: 0.75rem;
+    font-size: 10px;
     font-weight: bold;
     text-transform: uppercase;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
+    z-index: 10;
 }
 
 .jump-indicator.status-jumping {
