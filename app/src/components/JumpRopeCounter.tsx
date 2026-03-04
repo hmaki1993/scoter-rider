@@ -20,6 +20,9 @@ const JumpRopeCounter: React.FC = () => {
     const [showSummary, setShowSummary] = useState(false);
     const [workoutDuration, setWorkoutDuration] = useState<number>(0);
     const [jpm, setJpm] = useState(0);
+    const [workTime, setWorkTime] = useState(0);
+    const [restTime, setRestTime] = useState(0);
+    const [intensityStatus, setIntensityStatus] = useState<'WORKING' | 'RESTING'>('RESTING');
 
     // --- Detection Refs (Optimized for Speed) ---
     const jumpCountRef = useRef(0);
@@ -42,6 +45,9 @@ const JumpRopeCounter: React.FC = () => {
     const lastFrameTime = useRef<number>(Date.now());
     const isTimerStartedRef = useRef(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const lastActivityTimeRef = useRef<number>(0);
+    const workTimeRef = useRef(0);
+    const restTimeRef = useRef(0);
 
     const handleVideoLoad = () => {
         setIsLoading(false);
@@ -217,16 +223,18 @@ const JumpRopeCounter: React.FC = () => {
                     if (timerRemaining !== null && !isTimerStartedRef.current) {
                         isTimerStartedRef.current = true;
                         setIsTimerActive(true);
+                        lastActivityTimeRef.current = Date.now();
                     }
+                    lastActivityTimeRef.current = Date.now();
                 }
-                jumpStatusRef.current = 'standing';
-                setDisplayStatus('READY');
-                peakY.current = 0;
-                cooldownRef.current = true;
-                setTimeout(() => { cooldownRef.current = false; }, 120);
             }
+            jumpStatusRef.current = 'standing';
+            setDisplayStatus('READY');
+            peakY.current = 0;
+            cooldownRef.current = true;
+            setTimeout(() => { cooldownRef.current = false; }, 120);
         }
-    }, []);
+    }, [timerRemaining]);
 
     useEffect(() => {
         let active = true;
@@ -278,18 +286,35 @@ const JumpRopeCounter: React.FC = () => {
     useEffect(() => {
         if (isTimerActive && timerRemaining !== null && timerRemaining > 0) {
             timerIntervalRef.current = setInterval(() => {
-                setTimerRemaining(prev => (prev !== null && prev > 0) ? prev - 1 : 0);
+                setTimerRemaining(prev => {
+                    if (prev !== null && prev > 0) {
+                        const now = Date.now();
+                        const isWorking = (now - lastActivityTimeRef.current) < 5000;
+
+                        if (isWorking) {
+                            workTimeRef.current += 1;
+                            setWorkTime(workTimeRef.current);
+                            setIntensityStatus('WORKING');
+                        } else {
+                            restTimeRef.current += 1;
+                            setRestTime(restTimeRef.current);
+                            setIntensityStatus('RESTING');
+                        }
+                        return prev - 1;
+                    }
+                    return 0;
+                });
             }, 1000);
         } else if (timerRemaining === 0) {
             setIsTimerActive(false);
-            const totalMinutes = (workoutDuration || 60) / 60; // Added default for workoutDuration
-            setJpm(Math.round(jumpCountRef.current / totalMinutes) || 0);
+            const activeMinutes = (workTimeRef.current || 1) / 60;
+            setJpm(Math.round(jumpCountRef.current / activeMinutes) || 0);
             setShowSummary(true);
         }
         return () => {
             if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         };
-    }, [isTimerActive, timerRemaining, workoutDuration]);
+    }, [isTimerActive, timerRemaining]);
 
     const handleSetDuration = (mins: number) => {
         const secs = mins * 60;
@@ -314,6 +339,12 @@ const JumpRopeCounter: React.FC = () => {
         isTimerStartedRef.current = false;
         setIsTimerActive(false);
         setShowSummary(false);
+        setWorkTime(0);
+        setRestTime(0);
+        workTimeRef.current = 0;
+        restTimeRef.current = 0;
+        lastActivityTimeRef.current = 0;
+        setIntensityStatus('RESTING');
     };
 
     return (
@@ -391,12 +422,12 @@ const JumpRopeCounter: React.FC = () => {
 
             {/* Timer Selection */}
             {!isTimerActive && !isTimerStartedRef.current && !showSummary && (
-                <div className="flex justify-center gap-2 mb-4 overflow-x-auto py-2 px-4 no-scrollbar">
+                <div className="timer-selection-container">
                     {[1, 5, 10, 20].map(mins => (
                         <button
                             key={mins}
                             onClick={() => handleSetDuration(mins)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === mins * 60
+                            className={`timer-btn px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === mins * 60
                                 ? 'bg-cyan-500 border-cyan-400 text-white shadow-lg shadow-cyan-500/30'
                                 : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
                                 }`}
@@ -406,7 +437,7 @@ const JumpRopeCounter: React.FC = () => {
                     ))}
                     <button
                         onClick={() => { setWorkoutDuration(0); setTimerRemaining(null); resetCounter(); }}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === 0
+                        className={`timer-btn px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === 0
                             ? 'bg-white/20 border-white/30 text-white'
                             : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
                             }`}
@@ -422,7 +453,10 @@ const JumpRopeCounter: React.FC = () => {
                     <span className="stat-label">Total Jumps</span>
                 </div>
                 {timerRemaining !== null && (
-                    <div className={`stat-card ${timerRemaining < 60 && isTimerActive ? 'animate-pulse border-rose-500/50' : ''}`}>
+                    <div className={`stat-card relative ${timerRemaining < 60 && isTimerActive ? 'animate-pulse border-rose-500/50' : ''}`}>
+                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter ${intensityStatus === 'WORKING' ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/10 text-white/40'}`}>
+                            {intensityStatus}
+                        </div>
                         <span className={`stat-value ${timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-amber-400'}`}>
                             {Math.floor(timerRemaining / 60)}:{String(timerRemaining % 60).padStart(2, '0')}
                         </span>
@@ -453,12 +487,14 @@ const JumpRopeCounter: React.FC = () => {
                                 <span className="value text-cyan-400">{jumpCount}</span>
                             </div>
                             <div className="summary-stat-item">
-                                <span className="label">Avg Jumps/Min</span>
+                                <span className="label">Intensity (JPM)</span>
                                 <span className="value text-amber-400">{jpm}</span>
                             </div>
                             <div className="summary-stat-item">
-                                <span className="label">Duration</span>
-                                <span className="value">{workoutDuration / 60}m</span>
+                                <span className="label">Work / Rest</span>
+                                <span className="value text-white text-sm">
+                                    <span className="text-rose-400">{Math.floor(workTime / 60)}m</span> / <span className="text-blue-400">{Math.floor(restTime / 60)}m</span>
+                                </span>
                             </div>
                         </div>
                         <p className="summary-quote">
