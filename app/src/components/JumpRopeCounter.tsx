@@ -26,6 +26,7 @@ const JumpRopeCounter: React.FC = () => {
     const cooldownRef = useRef(false);
     const lastNoseY = useRef<number>(0);
     const lastNoseX = useRef<number>(0);
+    const lastShoulderWidth = useRef<number>(0);
     const lastDisplacementRef = useRef<number>(0);
     const emaSmoothY = useRef<number | null>(null);
     const isStableRef = useRef<boolean>(false);
@@ -73,44 +74,50 @@ const JumpRopeCounter: React.FC = () => {
 
         if (!nose || !lShoulder || !rShoulder) return;
 
-        // --- STABILITY & FULL BODY GUARD ---
+        // --- STABILITY & FULL BODY & PROXIMITY GUARD ---
         const isFullBody = !!(lAnkle && rAnkle);
-        const hasAura = !!(lShoulder || rShoulder || lHip || rHip); // Minimum detection to keep lock
+        const hasAura = !!(lShoulder || rShoulder || lHip || rHip);
         const noseY = nose.y * H;
         const noseX = nose.x * W;
+        const shoulderW = Math.abs(lShoulder.x - rShoulder.x) * W;
+
         const frameVelocityY = Math.abs(lastNoseY.current - noseY) / deltaTime;
         const frameVelocityX = Math.abs(lastNoseX.current - noseX) / deltaTime;
+        const scaleVelocity = (shoulderW - lastShoulderWidth.current) / deltaTime;
 
-        // Setup Mistake thresholds (Higher velocity = phone moving)
-        const isCurrentlyMoving = frameVelocityY > 300 || frameVelocityX > 150;
+        // Detection: Too close (shoulders take up >40% of screen) or moving forward fast
+        const isTooClose = shoulderW > (W * 0.40);
+        const isApproaching = scaleVelocity > 150; // Rapidly getting larger in frame
+        const isCurrentlyMoving = frameVelocityY > 300 || frameVelocityX > 150 || isApproaching;
+
         lastNoseY.current = noseY;
         lastNoseX.current = noseX;
+        lastShoulderWidth.current = shoulderW;
 
         // --- STABLE PERSISTENCE LOGIC ---
         if (isStableRef.current) {
-            // Once stable, we are VERY FORGIVING. 
-            // Turning sideways (losing 1 ankle) or fast jumps MUST NOT reset setup.
+            // Stability Lock Protection
             const essentialTrackingLost = !hasAura || (!lAnkle && !rAnkle);
-            const massiveLateralMovement = frameVelocityX > 400; // Only reset if phone actually picked up
+            const massiveLateralMovement = frameVelocityX > 400;
 
-            if (essentialTrackingLost || massiveLateralMovement) {
+            if (essentialTrackingLost || massiveLateralMovement || isTooClose || isApproaching) {
                 if (trackingLossStartRef.current === null) {
                     trackingLossStartRef.current = now;
-                } else if (now - trackingLossStartRef.current > 1500) {
-                    // RESET only after 1.5s of persistent tracking loss
+                } else if (now - trackingLossStartRef.current > 1000) {
                     isStableRef.current = false;
                     stabilityStartRef.current = null;
-                    setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                    setSetupStatus(isTooClose || !isFullBody ? 'STEP_BACK' : 'MOVING');
+                    return;
                 }
             } else {
                 trackingLossStartRef.current = null;
                 setSetupStatus('READY');
             }
         } else {
-            // Setup Mode: Need FULL body and absolute stillness
-            if (isCurrentlyMoving || !isFullBody) {
+            // Setup Mode
+            if (isCurrentlyMoving || !isFullBody || isTooClose) {
                 stabilityStartRef.current = null;
-                setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                setSetupStatus(isTooClose || !isFullBody ? 'STEP_BACK' : 'MOVING');
                 baselineY.current = noseY;
                 setMovementPct(0);
                 return;
