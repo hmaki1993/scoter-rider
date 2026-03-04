@@ -26,23 +26,7 @@ const AITraining: React.FC = () => {
                     </Suspense>
                 </div>
 
-                <div className="mt-12 p-6 rounded-3xl bg-white/5 border border-white/10">
-                    <h3 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">How to use</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">1</div>
-                            <p className="text-white/60 text-sm">Place your device on a stable surface at waist height.</p>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">2</div>
-                            <p className="text-white/60 text-sm">Stand 2-3 meters back so your whole body is visible.</p>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">3</div>
-                            <p className="text-white/60 text-sm">Start jumping! The AI will automatically detect and count each rep.</p>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </div>
     );

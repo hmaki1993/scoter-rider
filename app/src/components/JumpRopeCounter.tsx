@@ -23,6 +23,12 @@ const JumpRopeCounter: React.FC = () => {
     const [workTime, setWorkTime] = useState(0);
     const [restTime, setRestTime] = useState(0);
     const [intensityStatus, setIntensityStatus] = useState<'WORKING' | 'RESTING'>('RESTING');
+    const [customMins, setCustomMins] = useState('');
+    const [customSecs, setCustomSecs] = useState('');
+
+    // Refs for non-passive wheel listeners
+    const minsInputRef = useRef<HTMLInputElement>(null);
+    const secsInputRef = useRef<HTMLInputElement>(null);
 
     // --- Detection Refs (Optimized for Speed) ---
     const jumpCountRef = useRef(0);
@@ -345,15 +351,48 @@ const JumpRopeCounter: React.FC = () => {
         restTimeRef.current = 0;
         lastActivityTimeRef.current = 0;
         setIntensityStatus('RESTING');
+        setCustomSecs('');
     };
 
+    // Robust Wheel-to-Adjust Logic (Non-passive)
+    useEffect(() => {
+        const handleMinsWheel = (e: WheelEvent) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1 : -1;
+            setCustomMins(prev => {
+                const current = parseInt(prev || '0');
+                const newValue = Math.max(0, Math.min(99, current + delta));
+                return newValue.toString().padStart(2, '0');
+            });
+        };
+
+        const handleSecsWheel = (e: WheelEvent) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1 : -1;
+            setCustomSecs(prev => {
+                const current = parseInt(prev || '0');
+                const newValue = (current + delta + 60) % 60;
+                return newValue.toString().padStart(2, '0');
+            });
+        };
+
+        const minsEl = minsInputRef.current;
+        const secsEl = secsInputRef.current;
+
+        if (minsEl) minsEl.addEventListener('wheel', handleMinsWheel, { passive: false });
+        if (secsEl) secsEl.addEventListener('wheel', handleSecsWheel, { passive: false });
+
+        return () => {
+            if (minsEl) minsEl.removeEventListener('wheel', handleMinsWheel);
+            if (secsEl) secsEl.removeEventListener('wheel', handleSecsWheel);
+        };
+    }, []);
+
     return (
-        <div className="jump-counter-container">
-            <div className="header-text">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                    AI Jump Counter
-                </h2>
-                <p className="text-gray-400 text-sm">Stand 2-3 meters away · Head to toes visible</p>
+        <div className="jump-counter-container animate-in fade-in duration-700">
+            <div className="header-minimal">
+                <h1 className="title-gradient">AI Jump Counter</h1>
+                <p>Stand 2-3m away • Head to toes visible</p>
             </div>
 
             <div className="video-wrapper">
@@ -372,7 +411,7 @@ const JumpRopeCounter: React.FC = () => {
                     <>
                         <Webcam
                             ref={webcamRef}
-                            className="webcam-feed"
+                            className="video-feed"
                             mirrored={true}
                             audio={false}
                             screenshotFormat="image/jpeg"
@@ -387,13 +426,15 @@ const JumpRopeCounter: React.FC = () => {
                         />
                         <canvas
                             ref={canvasRef}
-                            className="pose-canvas"
+                            className="overlay-canvas"
                             width={640}
                             height={480}
                         />
                         {!isLoading && (
-                            <div className={`jump-indicator status-${displayStatus === 'JUMPING' ? 'jumping' : 'standing'}`}>
-                                {displayStatus}
+                            <div className="absolute top-4 right-4 z-20">
+                                <div className={`status-pill ${displayStatus === 'JUMPING' ? 'working-pill animate-pulse' : 'resting-pill'}`}>
+                                    {displayStatus}
+                                </div>
                             </div>
                         )}
                         {isLoading && (
@@ -420,30 +461,76 @@ const JumpRopeCounter: React.FC = () => {
                 )}
             </div>
 
-            {/* Timer Selection */}
+            {/* Digital Timer Control */}
             {!isTimerActive && !isTimerStartedRef.current && !showSummary && (
-                <div className="timer-selection-container">
-                    {[1, 5, 10, 20].map(mins => (
+                <div className="flex flex-col items-center w-full gap-4">
+                    <div className="timer-digital-container animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="clock-group">
+                            <div className="clock-input-wrapper">
+                                <input
+                                    ref={minsInputRef}
+                                    type="number"
+                                    placeholder="00"
+                                    className="clock-field"
+                                    value={customMins}
+                                    onChange={(e) => setCustomMins(e.target.value.slice(0, 2))}
+                                />
+                                <span className="clock-label">Min</span>
+                            </div>
+                            <span className="clock-sep">:</span>
+                            <div className="clock-input-wrapper">
+                                <input
+                                    ref={secsInputRef}
+                                    type="number"
+                                    placeholder="00"
+                                    className="clock-field"
+                                    value={customSecs}
+                                    onChange={(e) => setCustomSecs(e.target.value.slice(0, 2))}
+                                />
+                                <span className="clock-label">Sec</span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const m = parseInt(customMins || '0');
+                                    const s = parseInt(customSecs || '0');
+                                    const total = (m * 60) + s;
+                                    if (total > 0) {
+                                        setWorkoutDuration(total);
+                                        setTimerRemaining(total);
+                                        resetCounter();
+                                    }
+                                }}
+                                className="btn-set-compact"
+                            >
+                                SET
+                            </button>
+                        </div>
+
+                        <div className="w-full h-px bg-white/5 mx-auto my-1"></div>
+
                         <button
-                            key={mins}
-                            onClick={() => handleSetDuration(mins)}
-                            className={`timer-btn px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === mins * 60
-                                ? 'bg-cyan-500 border-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                            onClick={() => {
+                                setWorkoutDuration(0);
+                                setTimerRemaining(null);
+                                resetCounter();
+                                setCustomMins('');
+                                setCustomSecs('');
+                            }}
+                            className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${workoutDuration === 0
+                                ? 'bg-white/10 border-white/20 text-white shadow-inner'
+                                : 'bg-transparent border-white/5 text-white/30 hover:bg-white/5'
                                 }`}
                         >
-                            {mins} MIN
+                            Free Mode
                         </button>
-                    ))}
-                    <button
-                        onClick={() => { setWorkoutDuration(0); setTimerRemaining(null); resetCounter(); }}
-                        className={`timer-btn px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === 0
-                            ? 'bg-white/20 border-white/30 text-white'
-                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
-                            }`}
-                    >
-                        FREE
-                    </button>
+                    </div>
+
+                    {timerRemaining !== null && !isTimerStartedRef.current && (
+                        <div className="timer-ready-badge animate-pulse">
+                            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_#00f2ff]"></span>
+                            System Ready • Starts on Jump
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -453,23 +540,23 @@ const JumpRopeCounter: React.FC = () => {
                     <span className="stat-label">Total Jumps</span>
                 </div>
                 {timerRemaining !== null && (
-                    <div className={`stat-card relative ${timerRemaining < 60 && isTimerActive ? 'animate-pulse border-rose-500/50' : ''}`}>
-                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter ${intensityStatus === 'WORKING' ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/10 text-white/40'}`}>
+                    <div className={`stat-card relative ${timerRemaining < 60 && isTimerActive ? 'border-rose-500/50' : ''}`}>
+                        <div className={`absolute top-2 right-2 ${intensityStatus === 'WORKING' ? 'working-pill animate-pulse' : 'resting-pill'} !text-[7px]`}>
                             {intensityStatus}
                         </div>
-                        <span className={`stat-value ${timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-amber-400'}`}>
+                        <span className={`stat-value ${timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-cyan-400'}`}>
                             {Math.floor(timerRemaining / 60)}:{String(timerRemaining % 60).padStart(2, '0')}
                         </span>
-                        <span className="stat-label">Time Remaining</span>
+                        <span className="stat-label">Time</span>
                     </div>
                 )}
                 <div className="stat-card relative overflow-hidden">
                     <div
-                        className={`absolute bottom-0 left-0 h-1.5 transition-all duration-75 rounded-full ${movementPct > 70 ? 'bg-cyan-400' : 'bg-primary'}`}
+                        className={`absolute bottom-0 left-0 h-1 transition-all duration-700 ${movementPct > 70 ? 'bg-cyan-400' : 'bg-white/10'}`}
                         style={{ width: `${movementPct}%` }}
                     />
-                    <span className="stat-value text-sm">{aiStatus === 'error' ? 'Err' : displayStatus}</span>
-                    <span className="stat-label">Status</span>
+                    <span className="stat-value text-base">{jpm}</span>
+                    <span className="stat-label">JPM Intensity</span>
                 </div>
             </div>
 
@@ -507,19 +594,28 @@ const JumpRopeCounter: React.FC = () => {
                 </div>
             )}
 
-            <div className="w-full bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-1">Sensitivity Meter</p>
-                <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                        className={`h-full rounded-full transition-all duration-75 ${movementPct > 70 ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)]' : 'bg-primary'}`}
-                        style={{ width: `${movementPct}%` }}
-                    />
+
+
+            <div className="instructions-glassy animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-300">
+                <div className="instruction-item">
+                    <span className="instruction-num">1</span>
+                    <p className="instruction-text">Place device on a stable surface at waist height.</p>
                 </div>
-                <p className="text-[9px] text-white/20 mt-1">Movement is detected when the bar fills</p>
+                <div className="instruction-item">
+                    <span className="instruction-num">2</span>
+                    <p className="instruction-text">Stand 2-3m back so your whole body is visible.</p>
+                </div>
+                <div className="instruction-item">
+                    <span className="instruction-num">3</span>
+                    <p className="instruction-text">Jump! AI automatically starts and counts each rep.</p>
+                </div>
             </div>
 
-            <div className="controls-bar">
-                <button className="reset-btn" onClick={resetCounter}>
+            <div className="w-full flex justify-center">
+                <button
+                    className="btn-minimal btn-secondary-minimal px-8 !text-[8px] uppercase tracking-[0.3em] !opacity-30 hover:!opacity-100"
+                    onClick={resetCounter}
+                >
                     Reset Count
                 </button>
             </div>
