@@ -21,7 +21,8 @@ import {
     Globe,
     UserPlus,
     ExternalLink,
-    ClipboardCheck
+    ClipboardCheck,
+    Activity
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -285,6 +286,7 @@ export default function DashboardLayout() {
         { to: '/app/communications', icon: MessageSquare, label: t('common.communications', 'Communications'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner'] },
         { to: '/app/settings', icon: Settings, label: t('common.settings'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner'] },
         { to: '/app/admin/cameras', icon: Video, label: t('common.cameras'), roles: ['admin'] },
+        { to: '/app/ai-training', icon: Activity, label: t('common.aiTraining', 'AI Training'), roles: ['admin', 'head_coach', 'coach'] },
     ];
 
     const normalizedRole = role?.toLowerCase().trim().replace(/\s+/g, '_');

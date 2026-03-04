@@ -27,6 +27,7 @@ const PTAttendance = lazy(() => import('./pages/PTAttendance'));
 const Evaluations = lazy(() => import('./pages/Evaluations'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Communications = lazy(() => import('./pages/Communications'));
+const AITraining = lazy(() => import('./pages/AITraining'));
 
 import { initializeTheme } from './utils/theme';
 import { CurrencyProvider } from './context/CurrencyContext';
@@ -151,6 +152,7 @@ function AppContent() {
               <Route path="attendance/pt" element={<PTAttendance />} />
               <Route path="evaluations" element={<Evaluations />} />
               <Route path="communications" element={<Communications />} />
+              <Route path="ai-training" element={<AITraining />} />
             </Route>
           </Route>
 
