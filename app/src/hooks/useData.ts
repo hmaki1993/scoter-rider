@@ -484,3 +484,64 @@ export function useDeleteExpense() {
         },
     });
 }
+// --- Financial Trends Hook ---
+export function useFinancialTrends() {
+    return useQuery({
+        queryKey: ['financialTrends'],
+        queryFn: async () => {
+            const today = new Date();
+            const last6Months = Array.from({ length: 6 }, (_, i) => {
+                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                return format(date, 'yyyy-MM');
+            }).reverse();
+
+            // Fetch all data for the last 6 months
+            const startDate = `${last6Months[0]}-01`;
+
+            const [payments, refunds, expenses, students, ptSessions] = await Promise.all([
+                supabase.from('payments').select('amount, payment_date').gte('payment_date', startDate),
+                supabase.from('refunds').select('amount, refund_date').gte('refund_date', startDate),
+                supabase.from('expenses').select('amount, expense_date').gte('expense_date', startDate),
+                supabase.from('students').select('created_at').gte('created_at', startDate),
+                supabase.from('pt_sessions').select('sessions_count, date').gte('date', startDate)
+            ]);
+
+            // Group by month
+            const trends = last6Months.map(month => {
+                const monthPayments = (payments.data || [])
+                    .filter(p => p.payment_date.startsWith(month))
+                    .reduce((sum, p) => sum + Number(p.amount), 0);
+
+                const monthRefunds = (refunds.data || [])
+                    .filter(r => r.refund_date.startsWith(month))
+                    .reduce((sum, r) => sum + Number(r.amount), 0);
+
+                const monthExpenses = (expenses.data || [])
+                    .filter(e => e.expense_date.startsWith(month))
+                    .reduce((sum, e) => sum + Number(e.amount), 0);
+
+                const newStudents = (students.data || [])
+                    .filter(s => s.created_at.startsWith(month)).length;
+
+                const ptCount = (ptSessions.data || [])
+                    .filter(s => s.date.startsWith(month))
+                    .reduce((sum, s) => sum + Number(s.sessions_count || 1), 0);
+
+                const revenue = monthPayments - monthRefunds;
+                const profit = revenue - monthExpenses;
+
+                return {
+                    month: format(new Date(month + '-01'), 'MMM'),
+                    revenue,
+                    expenses: monthExpenses,
+                    profit,
+                    students: newStudents,
+                    ptSessions: ptCount
+                };
+            });
+
+            return trends;
+        },
+        staleTime: 1000 * 60 * 10, // 10 minutes
+    });
+}

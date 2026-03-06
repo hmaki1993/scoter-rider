@@ -4,6 +4,9 @@ import { Calendar, CheckCircle, Clock, Shield, MapPin, User, ArrowRight, Sparkle
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import PremiumCalendarModal from '../components/PremiumCalendarModal';
+import PageHeader from '../components/PageHeader';
+import { playHoverSound } from '../utils/audio';
+import { format } from 'date-fns';
 
 export default function StudentDashboard() {
     const { t, i18n } = useTranslation();
@@ -177,54 +180,54 @@ export default function StudentDashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Premium Personalized Header */}
-            <div className="relative overflow-hidden group py-4">
-                <div className="flex flex-col gap-1">
-                    <p className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] animate-premium-in">
-                        Training Dashboard
-                    </p>
-                    <h1 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter leading-tight">
-                        Welcome, <span className="premium-gradient-text drop-shadow-[0_0_30px_rgba(var(--color-primary),0.3)]">
-                            {studentFullName.split(' ')[0]}
-                        </span>
-                    </h1>
+            <PageHeader
+                title={`${t('dashboard.welcome')}, ${studentFullName.split(' ')[0]}`}
+                subtitle={t('dashboard.studentSubtitle', 'Player Hub & Session Analytics')}
+            >
+                <div className="flex items-center gap-3 px-6 py-3 bg-black/20 border border-white/5 rounded-full shadow-inner backdrop-blur-xl shrink-0">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">{format(new Date(), 'dd MMMM yyyy')}</span>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Activities Stats */}
             {!isPtOnly && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Attended Sessions */}
-                    <div className="glass-card p-6 rounded-[2rem] border border-white/10 shadow-premium relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-500 hover:-translate-y-1">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 blur-[50px] rounded-full -mr-12 -mt-12 transition-transform duration-700 group-hover:scale-150"></div>
-                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Attended Sessions</p>
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
+                    <div
+                        onMouseEnter={playHoverSound}
+                        className="pastel-card pastel-mint group h-full flex flex-col justify-between"
+                    >
+                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10 text-black/40">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Attended Sessions</p>
+                            <div className="w-10 h-10 rounded-2xl bg-black/5 text-black/60 flex items-center justify-center border border-black/5 group-hover:scale-110 transition-all">
                                 <CheckCircle className="w-5 h-5" strokeWidth={2} />
                             </div>
                         </div>
-                        <div className="relative z-10 flex items-baseline gap-3">
-                            <h3 className="text-5xl font-black text-emerald-400 tracking-tighter drop-shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                        <div className="relative z-10 flex items-baseline gap-3 text-black">
+                            <h3 className="text-5xl font-black tracking-tighter !text-black">
                                 {attendedSessions}
                             </h3>
-                            <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-2">Total completed</p>
+                            <p className="text-[9px] font-bold text-black/30 uppercase tracking-widest mb-2">Total completed</p>
                         </div>
                     </div>
 
                     {/* Remaining Sessions */}
-                    <div className="glass-card p-6 rounded-[2rem] border border-white/10 shadow-premium relative overflow-hidden group hover:border-accent/30 transition-all duration-500 hover:-translate-y-1">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-accent/10 blur-[50px] rounded-full -mr-12 -mt-12 transition-transform duration-700 group-hover:scale-150"></div>
-                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Remaining Sessions</p>
-                            <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center border border-accent/20 group-hover:scale-110 group-hover:bg-accent/20 transition-all">
+                    <div
+                        onMouseEnter={playHoverSound}
+                        className="pastel-card pastel-yellow group h-full flex flex-col justify-between"
+                    >
+                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10 text-black/40">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Remaining Sessions</p>
+                            <div className="w-10 h-10 rounded-2xl bg-black/5 text-black/60 flex items-center justify-center border border-black/5 group-hover:scale-110 transition-all">
                                 <Calendar className="w-5 h-5" strokeWidth={2} />
                             </div>
                         </div>
-                        <div className="relative z-10 flex items-baseline gap-3">
-                            <h3 className="text-5xl font-black text-accent tracking-tighter drop-shadow-[0_0_15px_rgba(var(--color-accent),0.2)]">
+                        <div className="relative z-10 flex items-baseline gap-3 text-black">
+                            <h3 className="text-5xl font-black tracking-tighter !text-black">
                                 {sessionsRemaining}
                             </h3>
-                            <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-2">{planName}</p>
+                            <p className="text-[9px] font-bold text-black/30 uppercase tracking-widest mb-2">{planName}</p>
                         </div>
                     </div>
                 </div>
@@ -238,30 +241,22 @@ export default function StudentDashboard() {
 
                 {isPtOnly ? (
                     /* VERY PREMIUM PT JOURNEY CARD */
-                    <div className="glass-card p-8 md:p-10 rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden bg-gradient-to-br from-white/[0.03] to-transparent backdrop-blur-2xl group/journey">
-                        {/* Animated Glass Shine Effect */}
-                        <div className="absolute inset-0 opacity-0 group-hover/journey:opacity-100 transition-opacity duration-1000 pointer-events-none">
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent -translate-x-full animate-[shimmer_3s_infinite] skew-x-12"></div>
-                        </div>
-
+                    <div className="glass-card p-8 md:p-10 rounded-[3rem] border border-white/5 shadow-premium relative overflow-hidden bg-white/[0.01] backdrop-blur-3xl group/journey">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
                             <div className="flex items-center gap-6">
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse"></div>
-                                    <div className="p-4 bg-primary/10 rounded-[1.5rem] text-primary border border-primary/20 relative z-10 backdrop-blur-md">
-                                        <Sparkles className="w-8 h-8" />
-                                    </div>
+                                <div className="p-4 bg-primary/10 rounded-[1.8rem] text-primary border border-white/5 relative z-10 backdrop-blur-md">
+                                    <Sparkles className="w-8 h-8" />
                                 </div>
                                 <div>
                                     <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-none mb-2">
                                         My <span className="premium-gradient-text">Performance Journey</span>
                                     </h2>
                                     <div className="flex items-center gap-3">
-                                        <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-2">
+                                        <div className="px-3 py-1 bg-emerald-500/5 border border-white/5 rounded-full flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                                             <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active Program</span>
                                         </div>
-                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
                                             <MapPin className="w-3 h-3 text-primary" />
                                             {coachName ? `Coach ${coachName}` : 'Personal Training'}
                                         </p>
@@ -271,9 +266,8 @@ export default function StudentDashboard() {
 
                             <button
                                 onClick={() => setShowCalendar(true)}
-                                className="group/btn relative px-10 py-5 bg-white text-black font-black uppercase tracking-[0.25em] text-[11px] rounded-[1.5rem] shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:shadow-[0_25px_50px_rgba(255,255,255,0.2)] active:scale-95 transition-all flex items-center gap-4 overflow-hidden"
+                                className="group/btn relative px-10 py-5 bg-white text-black font-black uppercase tracking-[0.25em] text-[11px] rounded-2xl shadow-xl hover:shadow-2xl active:scale-95 transition-all flex items-center gap-4 overflow-hidden border border-transparent"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary via-transparent to-accent opacity-0 group-hover/btn:opacity-10 transition-opacity"></div>
                                 <Calendar className="w-4 h-4 text-black" />
                                 View Full Journey
                                 <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-2" />
@@ -283,15 +277,15 @@ export default function StudentDashboard() {
                         {/* Feature Badges */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10 relative z-10">
                             {[
-                                { label: 'Sessions Logged', value: attendedSessions, icon: CheckCircle, color: 'text-emerald-400' },
-                                { label: 'Remaining', value: sessionsRemaining, icon: Clock, color: 'text-accent' },
-                                { label: 'Total Program', value: (attendedSessions + sessionsRemaining), icon: Shield, color: 'text-primary' },
-                                { label: 'Current Level', value: 'Prime', icon: Sparkles, color: 'text-amber-400' }
+                                { label: 'Sessions Logged', value: attendedSessions, icon: CheckCircle, pastel: 'pastel-mint' },
+                                { label: 'Remaining', value: sessionsRemaining, icon: Clock, pastel: 'pastel-yellow' },
+                                { label: 'Total Program', value: (attendedSessions + sessionsRemaining), icon: Shield, pastel: 'pastel-coral' },
+                                { label: 'Current Level', value: 'Prime', icon: Sparkles, pastel: 'pastel-blue' }
                             ].map((item, i) => (
-                                <div key={i} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center hover:bg-white/[0.05] transition-colors group/item">
-                                    <item.icon className="w-4 h-4 mb-2 text-white/20 group-hover/item:text-primary transition-colors" />
-                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">{item.label}</p>
-                                    <p className={`text-lg font-black ${item.color} uppercase tracking-tight`}>{item.value}</p>
+                                <div key={i} className={`p-5 pastel-card ${item.pastel} flex flex-col items-center justify-center text-center group/item !p-4`}>
+                                    <item.icon className="w-4 h-4 mb-2 text-black/20 group-hover/item:text-black transition-colors" />
+                                    <p className="text-[8px] font-black text-black/30 uppercase tracking-widest mb-1">{item.label}</p>
+                                    <p className="text-xl font-black text-black uppercase tracking-tight">{item.value}</p>
                                 </div>
                             ))}
                         </div>

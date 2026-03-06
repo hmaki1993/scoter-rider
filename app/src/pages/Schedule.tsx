@@ -11,6 +11,7 @@ import GroupDetailsModal from '../components/GroupDetailsModal';
 import GroupFormModal from '../components/GroupFormModal';
 import ConfirmModal from '../components/ConfirmModal';
 import AddSessionForm from '../components/AddSessionForm';
+import PageHeader from '../components/PageHeader';
 import toast from 'react-hot-toast';
 import { syncAllStudentsToGroups } from '../services/groupService';
 
@@ -258,18 +259,10 @@ export default function Schedule() {
 
     const renderHeader = () => (
         <div className="flex flex-col gap-3 mb-4">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-3 border-b border-white/5 pb-3">
-                <div className="text-center md:text-left">
-                    <h1 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter mb-0.5">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">{t('dashboard.schedule')}</span>
-                        <span className="text-primary">.</span>
-                    </h1>
-                    <p className="text-white/40 text-[9px] font-black tracking-[0.2em] uppercase flex items-center gap-2">
-                        <span className="w-4 h-[1px] bg-primary/50"></span>
-                        {format(currentDate, 'MMMM yyyy', { locale: i18n.language === 'ar' ? ar : enUS })}
-                    </p>
-                </div>
-
+            <PageHeader
+                title={t('dashboard.schedule')}
+                subtitle={format(currentDate, 'MMMM yyyy', { locale: i18n.language === 'ar' ? ar : enUS })}
+            >
                 {/* Coach Attendance Controls */}
                 {role === 'coach' && (
                     <div className="glass-card p-2 rounded-[1.5rem] border border-white/10 shadow-premium flex items-center gap-2">
@@ -277,14 +270,14 @@ export default function Schedule() {
                             <button
                                 onClick={handleCheckIn}
                                 disabled={attendanceLoading}
-                                className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 md:px-6 py-2.5 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[9px] shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all flex items-center gap-1.5 md:gap-2 active:scale-95 group"
+                                className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 md:px-6 py-2.5 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[9px] shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all flex items-center gap-1.5 md:gap-2 active:scale-95 group w-full justify-center sm:w-auto"
                             >
                                 <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-900 group-hover:rotate-12 transition-transform" />
                                 {t('common.checkIn')}
                             </button>
                         ) : !attendanceToday.check_out_time ? (
-                            <div className="flex items-center gap-1.5 md:gap-2">
-                                <div className="flex items-center gap-2 md:gap-3 bg-black/40 px-3 md:px-6 py-2 md:py-4 rounded-xl md:rounded-2xl border border-white/5">
+                            <div className="flex flex-col sm:flex-row items-center gap-1.5 md:gap-2 w-full sm:w-auto">
+                                <div className="flex items-center justify-center gap-2 md:gap-3 bg-black/40 px-3 md:px-6 py-2 md:py-4 rounded-xl md:rounded-2xl border border-white/5 w-full sm:w-auto">
                                     <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-emerald-500"></span>
@@ -296,23 +289,23 @@ export default function Schedule() {
                                 <button
                                     onClick={handleCheckOut}
                                     disabled={attendanceLoading}
-                                    className="bg-rose-500 hover:bg-rose-400 text-white px-4 md:px-6 py-2.5 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[9px] shadow-[0_0_20px_rgba(244,63,94,0.2)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)] transition-all flex items-center gap-1.5 md:gap-2 active:scale-95 group"
+                                    className="bg-rose-500 hover:bg-rose-400 text-white px-4 md:px-6 py-2.5 rounded-xl font-black uppercase tracking-widest text-[8px] md:text-[9px] shadow-[0_0_20px_rgba(244,63,94,0.2)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)] transition-all flex items-center justify-center gap-1.5 md:gap-2 active:scale-95 group w-full sm:w-auto mt-2 sm:mt-0"
                                 >
                                     <LogOut className="w-3 md:w-3.5 h-3 md:h-3.5 text-white group-hover:-translate-x-1 transition-transform" />
                                     {t('common.out')}
                                 </button>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-4 px-4 py-2 rounded-2xl bg-white/5 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)] group">
-                                <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                            <div className="flex items-center gap-4 px-4 py-2 rounded-2xl bg-white/5 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)] group w-full sm:w-auto overflow-hidden">
+                                <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 group-hover:scale-110 transition-transform shrink-0">
                                     <CheckCircle2 className="w-5 h-5 text-emerald-400 group-hover:animate-bounce" />
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 truncate">
                                         {t('common.shiftCompleted')}
-                                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
                                     </span>
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-tighter font-mono">
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-tighter font-mono truncate">
                                         {new Date(attendanceToday.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(attendanceToday.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
@@ -320,7 +313,7 @@ export default function Schedule() {
                         )}
                     </div>
                 )}
-            </div>
+            </PageHeader>
 
             <div className="w-full xl:w-auto flex flex-col sm:flex-row items-center gap-3 p-1.5 rounded-[1.5rem] md:rounded-[2rem] bg-[#0a0c10]/40 backdrop-blur-xl border border-white/5 shadow-2xl">
                 {/* Date Nav */}

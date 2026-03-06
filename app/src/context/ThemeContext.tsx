@@ -309,7 +309,6 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
 export const USER_SPECIFIC_KEYS: (keyof GymSettings)[] = [
     'primary_color', 'secondary_color', 'accent_color', 'font_family',
     'font_scale', 'border_radius', 'glass_opacity', 'surface_color',
-    'search_icon_color', 'search_bg_color', 'search_border_color', 'search_text_color',
     'hover_color', 'hover_border_color', 'input_bg_color', 'clock_position',
     'clock_integration', 'weather_integration', 'language', 'premium_badge_color',
     'brand_label_color', 'text_color_base', 'text_color_muted'
@@ -672,10 +671,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                         .upsert(gymPayload);
 
                     if (gymError) {
-                        console.error('💾 GYM SETTINGS SAVE FAILED:', gymError);
-                        throw gymError;
+                        // FALLBACK: Some columns may not exist yet in DB schema.
+                        // Retry with only the guaranteed-safe core color columns.
+                        console.warn('💾 Full gym save failed (schema mismatch?), retrying with core colors...', gymError.message);
+                        const SAFE_CORE_KEYS = ['id', 'primary_color', 'secondary_color', 'accent_color',
+                            'font_family', 'font_scale', 'academy_name', 'logo_url', 'gym_address', 'gym_phone',
+                            'surface_color', 'input_bg_color', 'text_color_base', 'text_color_muted',
+                            'hover_color', 'hover_border_color', 'brand_label_color',
+                        ];
+                        const safePayload: any = {};
+                        SAFE_CORE_KEYS.forEach(k => { if (k in gymPayload) safePayload[k] = gymPayload[k]; });
+
+                        const { error: fallbackError } = await supabase
+                            .from('gym_settings')
+                            .upsert(safePayload);
+
+                        if (fallbackError) {
+                            // Last resort: only guaranteed original columns
+                            console.warn('💾 Core save also failed, trying minimal save...', fallbackError.message);
+                            const { error: minError } = await supabase
+                                .from('gym_settings')
+                                .upsert({ id: gymPayload.id, primary_color: gymPayload.primary_color, secondary_color: gymPayload.secondary_color, accent_color: gymPayload.accent_color, font_family: gymPayload.font_family });
+                            if (minError) {
+                                console.error('💾 GYM SETTINGS SAVE FAILED COMPLETELY:', minError);
+                                throw minError;
+                            }
+                        }
+                        console.log('💾 GYM SETTINGS SAVED WITH CORE COLORS (run migration to enable full save)');
+                    } else {
+                        console.log('💾 GYM SETTINGS SAVED SUCCESSFULLY');
                     }
-                    console.log('💾 GYM SETTINGS SAVED SUCCESSFULLY');
                 } else {
                     console.error('💾 No gym_settings row found in database');
                     throw new Error('Gym settings not initialized');

@@ -22,6 +22,7 @@ import BatchAssessmentModal from '../components/BatchAssessmentModal';
 import AssessmentHistoryModal from '../components/AssessmentHistoryModal';
 import BatchAssessmentDetailsModal from '../components/BatchAssessmentDetailsModal';
 import MonthlyReportModal from '../components/MonthlyReportModal';
+import PageHeader from '../components/PageHeader';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 export default function Evaluations() {
@@ -271,21 +272,10 @@ export default function Evaluations() {
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 items-center text-center md:text-left">
-                <div className="flex flex-col items-center md:items-start">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                            <ClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                        </div>
-                        <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter italic">
-                            {t('evaluations.title', 'Evaluation Hub')}
-                        </h1>
-                    </div>
-                    <p className="text-white/40 font-bold uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-[10px]">
-                        {t('evaluations.subtitle', 'Master Control for Assessments & Reports')}
-                    </p>
-                </div>
-
+            <PageHeader
+                title={t('evaluations.title', 'Evaluation Hub')}
+                subtitle={t('evaluations.subtitle', 'Master Control for Assessments & Reports')}
+            >
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-4 w-full sm:w-auto">
                     <div className="px-3 sm:px-6 py-3 sm:py-4 glass-card rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 flex flex-col items-center min-w-0 flex-1 sm:min-w-[120px]">
@@ -297,7 +287,7 @@ export default function Evaluations() {
                         <span className="text-[7px] sm:text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Success</span>
                     </div>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Tab Navigation */}
             <div className="flex flex-col md:flex-row gap-4 items-center md:items-center justify-between">

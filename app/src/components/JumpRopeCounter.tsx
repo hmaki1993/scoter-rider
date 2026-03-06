@@ -550,7 +550,7 @@ const JumpRopeCounter = () => {
                             <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                                 <div className="text-center">
                                     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                    <p className="text-white/60 font-bold uppercase tracking-widest text-xs">Initializing AI...</p>
+                                    <p className="text-white/60 font-bold uppercase tracking-widest text-xs">Initializing Tracker...</p>
                                 </div>
                             </div>
                         )}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Video, Wifi, Save } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 export default function AdminCameras() {
     const { t } = useTranslation();
@@ -14,19 +15,10 @@ export default function AdminCameras() {
 
     return (
         <div className="space-y-8 md:space-y-12 animate-in fade-in duration-700">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
-                <div className="space-y-2 md:space-y-4">
-                    <h1 className="text-3xl md:text-6xl font-black text-white uppercase tracking-tighter flex items-center gap-4 md:gap-6">
-                        <div className="p-3 md:p-4 bg-primary/20 rounded-[1.5rem] md:rounded-[2rem] text-primary shadow-inner">
-                            <Video className="w-8 h-8 md:w-12 h-12" />
-                        </div>
-                        <span className="premium-gradient-text">{t('common.cameras')}</span>
-                    </h1>
-                    <p className="text-white/40 font-black uppercase tracking-[0.3em] text-[8px] md:text-xs ml-1 md:ml-2">
-                        {t('cameras.subtitle') || 'Monitor gym activities in real-time'}
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                title={t('common.cameras')}
+                subtitle={t('cameras.subtitle') || 'Monitor gym activities in real-time'}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
                 <div className="lg:col-span-2 space-y-8">

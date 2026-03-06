@@ -27,6 +27,7 @@ import { supabase } from '../lib/supabase';
 import AddStudentForm from '../components/AddStudentForm';
 import AddPTSubscriptionForm from '../components/AddPTSubscriptionForm';
 import PremiumClock from '../components/PremiumClock';
+import PageHeader from '../components/PageHeader';
 import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
 
@@ -46,6 +47,7 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
     // Modals State
     const [showAddStudent, setShowAddStudent] = useState(false);
     const [showAddPT, setShowAddPT] = useState(false);
+    const [showEarningsModal, setShowEarningsModal] = useState(false);
 
 
 
@@ -917,100 +919,51 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Premium Header Architecture */}
-            <div className="relative overflow-hidden group">
-                {/* Background Accent Glow - Hidden on mobile for performance */}
-                <div className="absolute -top-24 -left-24 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000 hidden md:block"></div>
+            <PageHeader
+                title={`${t('dashboard.welcome') || 'WELCOME BACK'}, ${userProfile?.full_name?.split(' ')[0] || contextRole?.replace('_', ' ') || 'Staff'}`}
+                subtitle={t('dashboard.receptionSubtitle', 'Academy Reception & Real-time Management')}
+            >
+                <div className="flex flex-wrap items-center gap-4">
+                    {myCoachId && (
+                        <div className={`flex items-center gap-3 p-1.5 pr-4 rounded-full border transition-all duration-500 ${isCheckedIn
+                            ? 'bg-emerald-500/5 border-emerald-500/10 shadow-lg shadow-emerald-500/5'
+                            : 'bg-white/[0.02] border-white/5 shadow-inner'}`}>
 
-                <div className="glass-card rounded-[2rem] border border-white/10 p-5 sm:p-6 flex flex-col lg:flex-row items-center lg:items-center justify-between gap-6 relative z-10">
-                    <div className="space-y-4 flex-1 w-full">
-                        <div className="text-center lg:text-left">
-                            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-1.5">
-                                <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"></div>
-                                <h1 className="text-2xl sm:text-3xl font-black premium-gradient-text uppercase tracking-tighter leading-tight">
-                                    {t('dashboard.welcome') || 'WELCOME BACK'}, {userProfile?.full_name || contextRole?.replace('_', ' ') || 'Staff Member'}
-                                </h1>
-                            </div>
-                            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2">
-                                <p className="text-white/40 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-1.5">
-                                    <Calendar className="w-3 h-3 text-primary" />
-                                    {format(new Date(), 'EEEE, dd MMMM yyyy')}
-                                </p>
-                                {settings.clock_position === 'dashboard' && (
-                                    <PremiumClock className="!bg-white/[0.03] !border-white/10 !rounded-full !shadow-lg backdrop-blur-xl ml-2" />
+                            <button
+                                onClick={isCheckedIn ? handleSelfCheckOut : handleSelfCheckIn}
+                                className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${isCheckedIn
+                                    ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                                    : 'bg-white text-black shadow-lg shadow-white/20'}`}
+                            >
+                                {isCheckedIn ? <XCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                            </button>
+
+                            <div className="min-w-[60px]">
+                                <p className="text-[7px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">On Duty</p>
+                                {isCheckedIn ? (
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xs font-black text-white font-mono tracking-tight leading-none tabular-nums">
+                                            {formatTimer(elapsedTime)}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-tight leading-none">Offline</p>
                                 )}
                             </div>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/5">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-black text-primary text-lg shadow-inner">
-                                    {contextRole?.[0]?.toUpperCase() || 'S'}
-                                </div>
-                                <div>
-                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-0.5">{t('common.role') || 'Role'}</p>
-                                    <p className="text-xs font-black text-white uppercase tracking-tight leading-none">{contextRole?.replace('_', ' ') || 'Staff Member'}</p>
-                                </div>
-                            </div>
-
-                            {(contextRole === 'admin' || contextRole === 'reception') && (
-                                <a
-                                    href="/registration"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group/btn flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/10 hover:border-emerald-500/30 transition-all duration-300 shadow-xl shadow-emerald-500/5"
-                                >
-                                    <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                        <UserPlus className="w-3 h-3 text-emerald-400" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-[8px] font-black text-emerald-400/50 uppercase tracking-widest leading-none mb-0.5">{t('common.registrationPage') || 'Registration'}</p>
-                                        <p className="text-[10px] font-black text-white uppercase tracking-tight flex items-center gap-0.5 leading-none">
-                                            Open Portal <ArrowUpRight className="w-2.5 h-2.5 opacity-40 group-hover/btn:opacity-100 transition-all" />
-                                        </p>
-                                    </div>
-                                </a>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Ultra-Chic Duty Control Center */}
-                    {myCoachId && (
-                        <div className="relative lg:ml-auto">
-                            <div className={`flex items-center gap-3 p-1.5 pr-4 rounded-full border transition-all duration-500 ${isCheckedIn
-                                ? 'bg-emerald-500/5 border-emerald-500/10 shadow-lg shadow-emerald-500/5'
-                                : 'bg-white/[0.02] border-white/5 shadow-inner'}`}>
-
-                                <button
-                                    onClick={isCheckedIn ? handleSelfCheckOut : handleSelfCheckIn}
-                                    className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${isCheckedIn
-                                        ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                                        : 'bg-white text-black shadow-lg shadow-white/20'}`}
-                                >
-                                    {isCheckedIn ? <XCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                                </button>
-
-                                <div className="min-w-[60px]">
-                                    <p className="text-[7px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">On Duty</p>
-                                    {isCheckedIn ? (
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-xs font-black text-white font-mono tracking-tight leading-none tabular-nums">
-                                                {formatTimer(elapsedTime)}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-tight leading-none">Offline</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                    )}
+                    {settings.clock_position === 'dashboard' && (
+                        <PremiumClock className="!bg-white/[0.03] !border-white/10 !rounded-full !shadow-lg backdrop-blur-xl" />
                     )}
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Personal Earnings Widget */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="glass-card p-6 rounded-2xl border border-white/10 shadow-premium relative overflow-hidden group">
+                <div
+                    onClick={() => setShowEarningsModal(true)}
+                    className="glass-card p-6 rounded-2xl border border-white/10 shadow-premium relative overflow-hidden group cursor-pointer hover:bg-white/[0.03] active:scale-[0.98] transition-all"
+                >
                     <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl transition-all duration-700"></div>
                     <div className="flex items-center justify-between mb-3 relative z-10">
                         <div>
@@ -1270,7 +1223,51 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                 />
             )}
 
+            {/* Earnings Modal Inline */}
+            {showEarningsModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-[#0E1D21] border border-white/10 rounded-[2.5rem] w-full max-w-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-emerald-500/20 text-emerald-500 rounded-2xl border border-emerald-500/20">
+                                    <Wallet className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-white uppercase tracking-tight">{t('dashboard.earningsBreakdown', 'Earnings Breakdown')}</h2>
+                                    <p className="text-[10px] font-black text-emerald-500/80 uppercase tracking-widest mt-0.5">{format(new Date(), 'MMMM yyyy')}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowEarningsModal(false)} className="p-3 text-white/40 hover:text-white hover:bg-white/10 rounded-2xl transition-all">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
+                        <div className="p-6 md:p-8 overflow-y-auto">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                <div className="p-5 bg-white/5 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center text-center">
+                                    <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2">Base Salary</p>
+                                    <p className="text-2xl font-black text-white">{salary.toLocaleString()} {currency.code || 'KWD'}</p>
+                                </div>
+                                <div className="p-5 bg-emerald-500/10 rounded-[2rem] border border-emerald-500/20 flex flex-col items-center justify-center text-center">
+                                    <p className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest mb-2">PT Earnings</p>
+                                    <p className="text-2xl font-black text-emerald-500">{totalEarnings.toLocaleString()} {currency.code || 'KWD'}</p>
+                                </div>
+                            </div>
+
+                            {/* In ReceptionDashboard, we don't fetch monthSessions for everyone yet. So we just show summary */}
+                            <p className="text-xs text-white/50 text-center uppercase tracking-widest">(Detailed Session Breakdown available in Payroll)</p>
+                        </div>
+
+                        <div className="p-6 md:p-8 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
+                            <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Month Total</p>
+                            <p className="text-3xl font-black text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] tracking-tighter">
+                                {(totalEarnings + salary).toLocaleString()} <span className="text-sm text-white/40 font-bold uppercase tracking-widest">{currency.code || 'KWD'}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

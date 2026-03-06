@@ -24,8 +24,10 @@ export default function AssessmentHistoryModal({ isOpen, onClose, currentCoachId
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [showBulkConfirm, setShowBulkConfirm] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const { userProfile } = useTheme();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const isRtl = i18n.language === 'ar';
 
     const normalizedRole = userProfile?.role?.toLowerCase().trim() || '';
     const canDelete = normalizedRole.includes('admin') || normalizedRole.includes('head') || normalizedRole.includes('master');
@@ -61,6 +63,11 @@ export default function AssessmentHistoryModal({ isOpen, onClose, currentCoachId
                 return !forbidden.some(f => role.includes(f) || name.includes(f));
             });
             setCoachesList(filtered);
+
+            // If the user is a coach (not admin), lock the filter to their ID
+            if (!canDelete && userProfile?.id) {
+                setCoachFilter(userProfile.id);
+            }
         }
     };
 
@@ -87,6 +94,9 @@ id,
 
             if (currentCoachId) {
                 query = query.eq('coach_id', currentCoachId);
+            } else if (!canDelete && userProfile?.id) {
+                // Security: Regular coaches can only see their own assessments
+                query = query.eq('coach_id', userProfile.id);
             }
 
             const { data, error } = await query;
@@ -225,19 +235,43 @@ id,
                                                 <Layers className="w-3.5 h-3.5" />
                                                 {filteredHistory.length}
                                             </span>
-                                            <div className="relative group/filter flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-all">
-                                                <Users className="w-3 h-3 text-white/40 group-hover/filter:text-primary transition-colors" />
-                                                <select
-                                                    value={coachFilter}
-                                                    onChange={(e) => setCoachFilter(e.target.value)}
-                                                    className="bg-transparent border-none p-0 text-[9px] font-black uppercase tracking-widest text-white/60 focus:outline-none focus:text-primary transition-all appearance-none cursor-pointer pr-10"
-                                                >
-                                                    <option value="all" className="bg-[#0E1D21] text-white">All</option>
-                                                    {coachesList.map(c => (
-                                                        <option key={c.id} value={c.id} className="bg-[#0E1D21] text-white">{c.full_name.split(' ')[0]}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown className="w-2.5 h-2.5 text-white/20 absolute right-4 pointer-events-none group-hover/filter:text-primary transition-colors" />
+                                            <div className="relative group/filter flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-all cursor-pointer" onClick={() => canDelete && setIsFilterOpen(!isFilterOpen)}>
+                                                <Users className={`w-3.5 h-3.5 ${isFilterOpen ? 'text-primary' : 'text-white/40'} transition-colors`} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">
+                                                    {coachFilter === 'all' ? 'All' : (coachesList.find(c => c.id === coachFilter)?.full_name.split(' ')[0] || 'Filter')}
+                                                </span>
+                                                {canDelete && <ChevronDown className={`w-3 h-3 text-white/20 transition-transform duration-500 ${isFilterOpen ? 'rotate-180 text-primary' : ''}`} />}
+
+                                                {/* Premium Dropdown Menu */}
+                                                {isFilterOpen && canDelete && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-[120]" onClick={(e) => { e.stopPropagation(); setIsFilterOpen(false); }} />
+                                                        <div className={`absolute top-full mt-2 w-48 bg-[#0E1D21]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[130] animate-in fade-in zoom-in-95 duration-300 origin-top ${isRtl ? 'left-0' : 'right-0'}`}>
+                                                            <div className="p-1.5 max-h-64 overflow-y-auto custom-scrollbar">
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setCoachFilter('all'); setIsFilterOpen(false); }}
+                                                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${coachFilter === 'all' ? 'bg-primary/20 text-primary' : 'hover:bg-white/5 text-white/60 hover:text-white'}`}
+                                                                >
+                                                                    <Layers className="w-3.5 h-3.5" />
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest">All Coaches</span>
+                                                                </button>
+                                                                <div className="h-px bg-white/5 my-1" />
+                                                                {coachesList.map(c => (
+                                                                    <button
+                                                                        key={c.id}
+                                                                        onClick={(e) => { e.stopPropagation(); setCoachFilter(c.id); setIsFilterOpen(false); }}
+                                                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${coachFilter === c.id ? 'bg-primary/20 text-primary' : 'hover:bg-white/5 text-white/60 hover:text-white'}`}
+                                                                    >
+                                                                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] ${coachFilter === c.id ? 'bg-primary/10 text-primary' : 'bg-white/5 text-white/40'}`}>
+                                                                            {c.full_name[0]}
+                                                                        </div>
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest truncate">{c.full_name}</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

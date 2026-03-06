@@ -6,6 +6,7 @@ import { Users, Search, ChevronLeft, Calendar, ChevronRight, X, XCircle, CheckCi
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext'; // Assuming this provides generic user info if needed
 import ImageLightbox from '../components/ImageLightbox';
+import PageHeader from '../components/PageHeader';
 import toast from 'react-hot-toast';
 
 export default function StaffAttendance() {
@@ -247,33 +248,33 @@ export default function StaffAttendance() {
 
     return (
         <div className="p-4 sm:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="space-y-2">
-                    <button
-                        onClick={() => navigate('/')}
-                        className="flex items-center gap-2 text-white/50 hover:text-white transition-colors group"
-                    >
-                        <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                        <span className="font-bold uppercase tracking-wider text-xs">Back to Dashboard</span>
-                    </button>
-                    <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tighter">
-                        Staff Attendance
-                    </h1>
-                    <p className="text-white/40 font-medium">Monitor coaches and staff presence</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-4 w-4 text-white/30 group-focus-within:text-primary transition-colors" />
+            {/* Header */}
+            <div className="flex flex-col gap-4 mb-2">
+                <button
+                    onClick={() => navigate('/')}
+                    className="flex items-center gap-2 text-white/50 hover:text-white transition-colors group w-fit"
+                >
+                    <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <span className="font-bold uppercase tracking-wider text-xs">Back to Dashboard</span>
+                </button>
+                <PageHeader
+                    title="Staff Attendance"
+                    subtitle="Monitor coaches and staff presence"
+                >
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className="relative group w-full">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Search className="h-4 w-4 text-white/30 group-focus-within:text-primary transition-colors" />
+                            </div>
+                            <input
+                                type="text"
+                                value={searchStaff}
+                                onChange={(e) => setSearchStaff(e.target.value)}
+                                className="bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary block w-full sm:w-64 pl-10 p-3 transition-all"
+                            />
                         </div>
-                        <input
-                            type="text"
-                            value={searchStaff}
-                            onChange={(e) => setSearchStaff(e.target.value)}
-                            className="bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary block w-64 pl-10 p-3 transition-all"
-                        />
                     </div>
-                </div>
+                </PageHeader>
             </div>
 
             {/* Staff Cards Grid */}

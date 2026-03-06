@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -22,13 +22,16 @@ import {
     UserPlus,
     ExternalLink,
     ClipboardCheck,
-    Activity
+    Activity,
+    Search,
+    Loader2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import PremiumClock from '../components/PremiumClock';
 import WalkieTalkie from '../components/WalkieTalkie';
+import { playHoverSound } from '../utils/audio';
 
 export default function DashboardLayout() {
     const { t, i18n } = useTranslation();
@@ -45,9 +48,13 @@ export default function DashboardLayout() {
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [userStatus, setUserStatus] = useState<'online' | 'busy'>('online');
     const [notificationsOpen, setNotificationsOpen] = useState(false);
-    const [profileOpen, setProfileOpen] = useState(false);
     const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showResults, setShowResults] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
 
     const isRtl = i18n.language === 'ar' || document.dir === 'rtl';
 
@@ -116,7 +123,7 @@ export default function DashboardLayout() {
                     console.log('🔔 Notification Realtime Payload:', payload);
                     const newNote = payload.new as any;
 
-                    const { data: { user } } = await supabase.auth.getUser();
+                    const { data: { user } = {} } = await supabase.auth.getUser(); // Destructure with default empty object
                     if (!user) {
                         console.warn('🔔 Notification Realtime: No user found');
                         return;
@@ -238,11 +245,73 @@ export default function DashboardLayout() {
         };
     }, []);
 
+    // Global Search Logic
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowResults(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        if (!searchTerm.trim()) {
+            setSearchResults([]);
+            setShowResults(false);
+            return;
+        }
+
+        const fetchResults = async () => {
+            setIsSearching(true);
+            try {
+                // Search Students
+                const { data: students } = await supabase
+                    .from('students')
+                    .select('id, full_name')
+                    .ilike('full_name', `%${searchTerm}%`)
+                    .limit(5);
+
+                // Search Coaches
+                const { data: coaches } = await supabase
+                    .from('coaches')
+                    .select('id, full_name, role, specialty')
+                    .ilike('full_name', `%${searchTerm}%`)
+                    .limit(5);
+
+                const formattedResults = [
+                    ...(students?.map(s => ({ ...s, type: 'student' })) || []),
+                    ...(coaches?.map(c => ({ ...c, type: 'coach' })) || [])
+                ];
+
+                setSearchResults(formattedResults);
+                setShowResults(true);
+            } catch (error) {
+                console.error('Search error:', error);
+            } finally {
+                setIsSearching(false);
+            }
+        };
+
+        const debounceTimer = setTimeout(fetchResults, 300);
+        return () => clearTimeout(debounceTimer);
+    }, [searchTerm]);
+
+    const handleResultClick = (result: any) => {
+        setShowResults(false);
+        setSearchTerm('');
+        if (result.type === 'student') {
+            navigate('/app/students', { state: { openStudentId: result.id } });
+        } else {
+            navigate('/app/coaches', { state: { query: result.full_name } });
+        }
+    };
+
 
     useEffect(() => {
         const handleClickOutside = () => {
             setNotificationsOpen(false);
-            setProfileOpen(false);
             // Don't close logo modal on outside click here, the modal backdrop will handle it
         };
         window.addEventListener('click', handleClickOutside);
@@ -283,10 +352,10 @@ export default function DashboardLayout() {
         { to: '/app/finance', icon: Wallet, label: t('common.finance'), roles: ['admin'] },
         { to: '/app/evaluations', icon: ClipboardCheck, label: t('common.evaluations', 'Evaluations'), roles: ['admin', 'head_coach'] },
         { to: '/app/my-work', icon: UserCircle, label: t('dashboard.myWork', 'My Work'), roles: ['head_coach'] },
-        { to: '/app/communications', icon: MessageSquare, label: t('common.communications', 'Communications'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner', 'student'] },
-        { to: '/app/settings', icon: Settings, label: t('common.settings'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner', 'student'] },
+        { to: '/app/communications', icon: MessageSquare, label: t('common.communications', 'Chats'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner', 'student'] },
         { to: '/app/admin/cameras', icon: Video, label: t('common.cameras'), roles: ['admin'] },
-        { to: '/app/ai-training', icon: Activity, label: t('common.aiTraining', 'AI Training'), roles: ['admin', 'head_coach', 'coach', 'student'] },
+        { to: '/app/ai-training', icon: Activity, label: t('common.performanceTracker'), roles: ['admin', 'head_coach', 'coach', 'student'] },
+        { to: '/app/settings', icon: Settings, label: t('common.settings'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner', 'student'] },
     ];
 
     const normalizedRole = role?.toLowerCase().trim().replace(/\s+/g, '_');
@@ -427,66 +496,63 @@ export default function DashboardLayout() {
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-200"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Sidebar */}
-            <aside className={`fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-50 w-20 transition-transform duration-300 transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : isRtl ? 'translate-x-[110%]' : '-translate-x-full'}`}>
-                <div className="h-full glass-card flex flex-col m-2.5 rounded-[2rem] border border-surface-border shadow-premium relative bg-white/[0.01]">
+            {/* Sidebar Container */}
+            <aside className={`fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-50 w-16 lg:w-20 bg-background/80 lg:bg-background backdrop-blur-2xl lg:backdrop-blur-none transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : isRtl ? 'translate-x-[110%]' : '-translate-x-full'}`} style={{ top: 0, height: '100%' }}>
+                <div className="h-full flex flex-col relative">
                     {/* Sidebar Header - Compact Logo */}
-                    <div className="pt-6 pb-2 text-center">
+                    <div className="pt-4 pb-4 text-center">
                         <button
                             onClick={() => setIsLogoModalOpen(true)}
+                            onMouseEnter={playHoverSound}
                             className="relative group inline-block focus:outline-none z-10"
                         >
-                            <div className="absolute -inset-2 bg-gradient-to-r from-primary/30 to-accent/30 rounded-full blur-md opacity-0 group-hover:opacity-100 transition duration-700 pointer-events-none"></div>
                             <img
                                 src={settings.logo_url || "/logo.png"}
                                 alt="Logo"
-                                className="relative z-10 h-18 w-18 object-contain rounded-full shadow-2xl transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
-                                style={{ clipPath: 'circle(50%)' }}
+                                className="relative z-10 h-14 w-14 object-contain rounded-full shadow-2xl transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
                             />
                         </button>
                     </div>
 
-                    <div className="mt-2 w-8 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-auto"></div>
-
-
-                    {/* Navigation - Centered Icons */}
-                    <div className="flex-1 px-2 space-y-3 py-4 flex flex-col items-center">
+                    <div className="flex-1 flex flex-col items-center py-4 lg:py-6 space-y-4 lg:space-y-6">
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.to;
+                            const isSettings = item.to === '/app/settings';
+
                             return (
-                                <Link
-                                    key={item.to}
-                                    to={item.to}
-                                    onClick={() => setSidebarOpen(false)}
-                                    className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-500 group relative sidebar-3d-item ${isActive
-                                        ? 'bg-gradient-to-br from-primary via-primary/90 to-accent text-white shadow-xl scale-110 sidebar-3d-item-active'
-                                        : 'text-white/30 hover:bg-white/[0.04] hover:text-white border border-transparent hover:border-white/5'
-                                        }`}
-                                >
-                                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-current'} transition-transform group-hover:scale-110 group-active:scale-95`} />
-
-                                    {/* Premium Tooltip */}
-                                    <div className={`absolute ${isRtl ? 'right-full mr-4' : 'left-full ml-4'} px-3 py-1.5 rounded-xl bg-[#0E1D21]/95 backdrop-blur-xl border border-white/10 text-[10px] font-black text-white uppercase tracking-widest opacity-0 translate-x-[-10px] pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
-                                        <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-[#0E1D21] border-t border-l border-white/10 rotate-45`}></div>
-                                        {t(item.label)}
-                                    </div>
-
-                                    {isActive && (
-                                        <div className="absolute inset-y-3 -right-1.5 w-1 bg-primary rounded-full blur-[2px] shadow-[0_0_10px_rgba(var(--color-primary),0.8)] animate-pulse" />
+                                <React.Fragment key={item.to}>
+                                    {isSettings && (
+                                        <div className="w-6 h-px bg-white/10 rounded-full my-1"></div>
                                     )}
-                                </Link>
+                                    <Link
+                                        to={item.to}
+                                        onClick={() => setSidebarOpen(false)}
+                                        onMouseEnter={playHoverSound}
+                                        className={`relative group flex items-center justify-center transition-all duration-300 ${isActive ? 'scale-105' : ''}`}
+                                    >
+                                        <div className={`nav-icon-container ${isActive ? 'active' : isSettings ? 'settings-icon-dim' : ''}`}>
+                                            <Icon className="w-4 h-4" />
+                                        </div>
+
+                                        {/* Premium Tooltip */}
+                                        <div className={`absolute ${isRtl ? 'right-full mr-6' : 'left-full ml-6'} px-3 py-1.5 rounded-xl bg-black/90 backdrop-blur-xl border border-white/10 text-[9px] font-black text-white uppercase tracking-widest opacity-0 ${isRtl ? 'translate-x-2' : 'translate-x-[-10px]'} pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
+                                            <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-black rotate-45 border-t border-l border-white/10`}></div>
+                                            {item.to === '/app/settings' ? t('common.settings') : t(item.label)}
+                                        </div>
+                                    </Link>
+                                </React.Fragment>
                             );
                         })}
                     </div>
 
-                    {/* Sidebar Footer - Actions Vertical Hub */}
-                    <div className="pb-6 px-2 space-y-4 flex flex-col items-center flex-shrink-0">
+                    {/* Sidebar Footer */}
+                    <div className="pb-8 px-2 space-y-4 lg:space-y-6 flex flex-col items-center flex-shrink-0 z-50">
                         <button
                             onClick={() => {
                                 const newLang = i18n.language === 'en' ? 'ar' : 'en';
@@ -494,30 +560,18 @@ export default function DashboardLayout() {
                                 document.dir = newLang === 'ar' ? 'rtl' : 'ltr';
                                 updateSettings({ language: newLang });
                             }}
-                            className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 rounded-xl transition-all duration-300 group relative"
+                            onMouseEnter={playHoverSound}
+                            className="w-10 h-10 flex items-center justify-center text-muted hover:text-primary transition-all duration-300 bg-surface-border/20 hover:bg-primary/10 rounded-xl"
                         >
-                            <Globe className="w-4 h-4 transition-transform group-hover:rotate-[360deg] duration-1000" />
-
-                            {/* Premium Tooltip */}
-                            <div className={`absolute ${isRtl ? 'right-full mr-4' : 'left-full ml-4'} px-3 py-1.5 rounded-xl bg-[#0E1D21]/95 backdrop-blur-xl border border-white/10 text-[10px] font-black text-white uppercase tracking-widest opacity-0 translate-x-[-10px] pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
-                                <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-[#0E1D21] border-t border-l border-white/10 rotate-45`}></div>
-                                {t('common.language')}
-                            </div>
+                            <Globe className="w-4 h-4" />
                         </button>
-
-                        <div className="h-px w-6 bg-white/5"></div>
 
                         <button
                             onClick={handleLogout}
-                            className="w-10 h-10 flex items-center justify-center text-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all duration-500 group border border-transparent hover:border-rose-500/10 shadow-lg shadow-rose-500/5 relative"
+                            onMouseEnter={playHoverSound}
+                            className="w-10 h-10 flex items-center justify-center text-rose-500 hover:text-rose-400 transition-all duration-300 group"
                         >
-                            <LogOut className={`w-4 h-4 transition-transform group-hover:scale-110`} />
-
-                            {/* Premium Tooltip */}
-                            <div className={`absolute ${isRtl ? 'right-full mr-4' : 'left-full ml-4'} px-3 py-1.5 rounded-xl bg-rose-500/95 backdrop-blur-xl border border-rose-500/20 text-[10px] font-black text-white uppercase tracking-widest opacity-0 translate-x-[-10px] pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
-                                <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-rose-500 rotate-45`}></div>
-                                {t('common.logout')}
-                            </div>
+                            <LogOut className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-translate-x-1" />
                         </button>
                     </div>
                 </div>
@@ -527,76 +581,182 @@ export default function DashboardLayout() {
             <div className={`flex-1 flex flex-col min-w-0 h-[100dvh] transition-all duration-500 ${isRtl ? 'lg:mr-20' : 'lg:ml-20'}`}>
                 {/* Header - Branding */}
                 {!location.pathname.includes('/communications') && (
-                    <header className="relative h-16 flex items-center justify-between px-6 bg-background/50 backdrop-blur-3xl sticky top-0 z-30 w-full">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => setSidebarOpen(true)}
-                                className="lg:hidden w-10 h-10 flex items-center justify-center text-white/70 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-95 border border-white/5 shadow-sm hover:shadow-premium"
-                            >
-                                <Menu className="w-5 h-5" />
-                            </button>
-                        </div>
+                    <header className={`relative z-30 w-full pt-4 lg:pt-0 px-4 sm:px-6 lg:px-0 flex flex-col items-center lg:items-stretch`}>
+                        <div className="w-full max-w-7xl lg:max-w-none h-18 lg:h-20 flex items-center justify-between px-2 sm:px-6 relative transition-all duration-500">
+                            {/* Left Side Section - Clock & Mobile Toggle */}
+                            <div className="flex items-center gap-4 lg:w-72">
+                                <button
+                                    onClick={() => setSidebarOpen(true)}
+                                    className="lg:hidden w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-95"
+                                >
+                                    <Menu className="w-5 h-5" />
+                                </button>
 
-                        <div className="flex items-center gap-2 sm:gap-4 group/header relative">
-                            {/* Quick Action Hub - Reveal on Hover */}
-                            <div className={`flex items-center gap-2 p-1.5 bg-white/[0.03] border border-white/5 rounded-full shadow-inner backdrop-blur-md transition-all duration-700 ease-out ${notificationsOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none group-hover/header:opacity-100 group-hover/header:translate-x-0 group-hover/header:pointer-events-auto'}`}>
-                                {settings.clock_position === 'header' && (
-                                    <div className="hidden md:flex items-center gap-3">
-                                        <PremiumClock className="!bg-transparent !border-none !shadow-none !px-2" />
-                                        <div className="h-6 w-px bg-white/10 mx-1"></div>
-                                    </div>
-                                )}
-
-                                {role === 'admin' && (
-                                    <a
-                                        href="/registration"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="relative group/reg flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/40 transition-all duration-500 shadow-lg shadow-emerald-500/5 hover:bg-emerald-500/10 active:scale-95"
-                                        title={t('common.registrationPage')}
-                                    >
-                                        <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl opacity-0 group-hover/reg:opacity-100 transition-opacity duration-700"></div>
-                                        <UserPlus className="w-4 h-4 text-emerald-400 group-hover/reg:scale-110 transition-transform duration-500 relative z-10" />
-                                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0E1D21] shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse z-20"></span>
-                                    </a>
-                                )}
-
-                                <div className="relative">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setNotificationsOpen(!notificationsOpen); }}
-                                        className={`w-9 h-9 flex items-center justify-center rounded-full transition-all relative sidebar-3d-item ${notificationsOpen ? 'bg-primary/20 text-primary shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.3)] border border-primary/20 sidebar-3d-item-active' : 'text-white/70 bg-white/5 hover:bg-white/10 border border-white/5 shadow-sm hover:shadow-premium'}`}
-                                    >
-                                        <Bell className="w-4 h-4 transition-transform" />
-                                        {unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 border-2 border-background">
-                                                {unreadCount > 9 ? '9+' : unreadCount}
-                                            </span>
-                                        )}
-                                    </button>
+                                {/* Premium Clock - Now on the left side */}
+                                <div className="hidden lg:flex items-center">
+                                    <PremiumClock className="!bg-transparent !border-none !shadow-none !px-0 !backdrop-blur-none scale-90 origin-left" />
                                 </div>
-
-                                {userId && <WalkieTalkie role={normalizedRole || 'coach'} userId={userId || ''} />}
                             </div>
 
-                            {/* Profile Trigger - Static Icon */}
-                            <div className="relative z-20">
-                                <div
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setIsAvatarModalOpen(true);
-                                    }}
-                                    className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent p-[2px] hover:scale-110 transition-all duration-500 relative cursor-pointer shadow-premium"
-                                >
-                                    <div className="w-full h-full rounded-full bg-[#0E1D21] flex items-center justify-center overflow-hidden border border-white/10">
-                                        {avatarUrl ? (
-                                            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-white font-black text-sm">
-                                                {(fullName || role)?.[0]?.toUpperCase() || 'A'}
-                                            </span>
+                            {/* Center Section - Premium Search Bar (Hidden on Mobile) */}
+                            <div className="hidden lg:flex flex-1 justify-center px-4">
+                                <div className="w-full max-w-md group/search relative" ref={searchRef}>
+                                    <div className="flex items-center w-full px-0 py-2 bg-transparent transition-all duration-500">
+                                        <div className="flex items-center gap-3 ml-4">
+                                            <Search className={`w-3.5 h-3.5 ${isSearching ? 'text-primary animate-pulse' : 'text-white/20 group-focus-within/search:text-white/40'} transition-colors shrink-0`} strokeWidth={2} />
+                                            <input
+                                                type="text"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                onFocus={() => searchTerm.trim() && setShowResults(true)}
+                                                placeholder={t('dashboard.searchPlaceholder', 'Search for anything')}
+                                                className="bg-transparent border-none focus:ring-0 text-[10px] font-medium text-white placeholder:text-white/10 w-full text-left pl-0 h-auto"
+                                            />
+                                        </div>
+                                        {searchTerm && (
+                                            <button onClick={() => setSearchTerm('')} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                                                <X className="w-3 h-3 text-white/20 hover:text-white" />
+                                            </button>
                                         )}
                                     </div>
-                                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#0E1D21] shadow-[0_0_10px_rgba(52,211,153,0.5)] animate-pulse"></span>
+                                </div>
+                            </div>
+
+                            {/* Right Section - Profile/Actions */}
+                            <div className="flex items-center gap-4 sm:gap-6 justify-end lg:w-72">
+
+                                {/* Search Results Dropdown */}
+                                {showResults && (searchResults.length > 0 || isSearching) && (
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 bg-[#0a0a0a]/90 backdrop-blur-3xl border border-white/10 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
+                                            {isSearching && searchResults.length === 0 ? (
+                                                <div className="px-4 py-8 flex flex-col items-center justify-center gap-2">
+                                                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                                                    <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-center">Searching Directory...</div>
+                                                </div>
+                                            ) : (
+                                                searchResults.map((result) => {
+                                                    const role = result.type === 'student' ? 'student' : (result.role?.toLowerCase() || 'coach');
+
+                                                    const roleColor: Record<string, string> = {
+                                                        admin: 'from-rose-500 to-pink-600',
+                                                        head_coach: 'from-violet-500 to-purple-600',
+                                                        coach: 'from-blue-500 to-indigo-600',
+                                                        student: 'from-emerald-500 to-teal-600',
+                                                        reception: 'from-amber-500 to-orange-600',
+                                                        receptionist: 'from-amber-500 to-orange-600',
+                                                        cleaner: 'from-slate-400 to-slate-600',
+                                                    };
+
+                                                    const currentRoleColor = roleColor[role] || 'from-primary to-accent';
+
+                                                    const roleBadgeColor: Record<string, string> = {
+                                                        admin: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                                                        head_coach: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+                                                        coach: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                                                        student: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                                                        reception: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                                        receptionist: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                                        cleaner: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+                                                    };
+
+                                                    const currentRoleBadgeColor = roleBadgeColor[role] || 'bg-primary/10 text-primary border-primary/20';
+
+                                                    return (
+                                                        <button
+                                                            key={`${result.type}-${result.id}`}
+                                                            onClick={() => handleResultClick(result)}
+                                                            onMouseEnter={playHoverSound}
+                                                            className="w-full flex items-center gap-2.5 px-2.5 py-2 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] rounded-2xl transition-all duration-200 group cursor-pointer active:scale-[0.98] text-left"
+                                                        >
+                                                            {/* Avatar */}
+                                                            <div className="relative flex-shrink-0">
+                                                                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${currentRoleColor} flex items-center justify-center font-black text-white text-[10px] shadow-lg overflow-hidden group-hover:scale-105 transition-transform duration-200`}>
+                                                                    {result.full_name?.[0]?.toUpperCase()}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Info */}
+                                                            <div className="flex-1 text-left min-w-0">
+                                                                <p className="text-white/90 font-black text-sm leading-tight truncate group-hover:text-white transition-colors">
+                                                                    {result.full_name}
+                                                                </p>
+                                                                <div className="flex items-center gap-1.5 mt-1">
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg border text-[8px] font-black uppercase tracking-widest ${currentRoleBadgeColor}`}>
+                                                                        {role.replace('_', ' ')}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Arrow */}
+                                                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                                                <ExternalLink className="w-3.5 h-3.5 text-primary" />
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className={`flex items-center gap-2 sm:gap-4 group/header relative ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    {/* Quick Action Hub - Reveal on Hover (Desktop) / Always Visible (Mobile) */}
+                                    <div className={`flex items-center gap-1.5 sm:gap-2 transition-all duration-700 ease-out ${notificationsOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : `opacity-100 md:opacity-0 ${isRtl ? 'translate-x-0 md:-translate-x-10' : 'translate-x-0 md:translate-x-10'} pointer-events-auto md:pointer-events-none group-hover/header:opacity-100 group-hover/header:translate-x-0 group-hover/header:pointer-events-auto translate-z-0`}`}>
+                                        {role === 'admin' && (
+                                            <a
+                                                href="/registration"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onMouseEnter={playHoverSound}
+                                                className="relative group/reg flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all duration-500 hover:bg-emerald-500/10 active:scale-95"
+                                                title={t('common.registrationPage')}
+                                            >
+                                                <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl opacity-0 group-hover/reg:opacity-100 transition-opacity duration-700"></div>
+                                                <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 group-hover/reg:scale-110 transition-transform duration-500 relative z-10" />
+                                                <span className="absolute -top-0.5 -right-0.5 w-2 sm:w-2.5 h-2 sm:h-2.5 bg-emerald-500 rounded-full border-2 border-[#0E1D21] shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse z-20"></span>
+                                            </a>
+                                        )}
+
+                                        <div className="relative">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setNotificationsOpen(!notificationsOpen); }}
+                                                onMouseEnter={playHoverSound}
+                                                className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full transition-all relative sidebar-3d-item ${notificationsOpen ? 'bg-primary/20 text-primary shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.3)] border border-primary/20 sidebar-3d-item-active' : 'text-white/70 hover:bg-white/10 hover:shadow-premium'}`}
+                                            >
+                                                <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform" />
+                                                {unreadCount > 0 && (
+                                                    <span className="absolute -top-1 -right-1 min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] px-1 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 border-2 border-background">
+                                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {userId && <WalkieTalkie role={normalizedRole || 'coach'} userId={userId || ''} />}
+                                    </div>
+
+                                    {/* Profile Trigger */}
+                                    <div className="relative z-20">
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsAvatarModalOpen(true);
+                                            }}
+                                            onMouseEnter={playHoverSound}
+                                            className={`w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent p-[2px] hover:scale-110 transition-all duration-500 relative cursor-pointer shadow-premium`}
+                                        >
+                                            <div className="w-full h-full rounded-full bg-[#0E1D21] flex items-center justify-center overflow-hidden border border-white/10">
+                                                {avatarUrl ? (
+                                                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-white font-black text-sm">
+                                                        {(fullName || role)?.[0]?.toUpperCase() || 'A'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -683,7 +843,7 @@ export default function DashboardLayout() {
             {
                 notificationsOpen && (
                     <div
-                        className="fixed top-16 right-4 sm:right-6 md:right-10 w-[92vw] sm:w-[480px] md:w-96 bg-[#0E1D21]/95 backdrop-blur-3xl rounded-[2.5rem] md:rounded-[3rem] border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 flex flex-col max-h-[85vh] sidebar-3d-item"
+                        className="fixed top-16 right-4 sm:right-6 md:right-10 w-[min(calc(100%-2rem),480px)] bg-[#0E1D21]/95 backdrop-blur-3xl rounded-[2.5rem] md:rounded-[3rem] border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 flex flex-col max-h-[85vh] sidebar-3d-item"
                         style={{ transform: 'translateZ(100px)' }}
                     >
                         <div className="p-6 md:p-10 border-b border-white/10 bg-gradient-to-br from-white/[0.08] to-transparent flex-shrink-0">
@@ -722,6 +882,7 @@ export default function DashboardLayout() {
                                         <div
                                             key={note.id}
                                             onClick={() => handleMarkAsRead(note.id)}
+                                            onMouseEnter={playHoverSound}
                                             className={`p-6 border-b border-white/[0.05] hover:bg-white/[0.08] transition-all group cursor-pointer relative ${!note.is_read ? 'bg-primary/5' : ''}`}
                                         >
                                             {!note.is_read && (
@@ -760,54 +921,7 @@ export default function DashboardLayout() {
                 )
             }
 
-            {
-                profileOpen && (
-                    <div
-                        className="fixed top-16 right-4 sm:right-6 md:right-10 w-[92vw] sm:w-80 bg-[#122E34]/95 backdrop-blur-3xl rounded-[2.5rem] md:rounded-[3rem] border border-white/30 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)] overflow-hidden z-[100] animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 sidebar-3d-item max-h-[85vh] overflow-y-auto"
-                        style={{ transform: 'translateZ(110px)' }}
-                    >
-                        <div className="p-6 md:p-8 space-y-3 md:space-y-4 border-b border-white/10 bg-gradient-to-br from-white/[0.08] to-transparent">
-                            <p className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-[0.4em] ml-2">{t('common.setStatus')}</p>
-                            <div className="grid grid-cols-2 gap-2 md:gap-3">
-                                <button
-                                    onClick={() => handleStatusChange('online')}
-                                    className={`flex items-center justify-center gap-2 md:gap-3 py-3 md:py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${userStatus === 'online' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105' : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'}`}
-                                >
-                                    <span className={`w-1.5 md:w-2 h-1.5 md:h-2 rounded-full ${userStatus === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-white/20'}`}></span>
-                                    {t('common.onlineLabel')}
-                                </button>
-                                <button
-                                    onClick={() => handleStatusChange('busy')}
-                                    className={`flex items-center justify-center gap-2 md:gap-3 py-3 md:py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${userStatus === 'busy' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-lg shadow-orange-500/10 scale-105' : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'}`}
-                                >
-                                    <span className={`w-1.5 md:w-2 h-1.5 md:h-2 rounded-full ${userStatus === 'busy' ? 'bg-orange-400 animate-pulse' : 'bg-white/20'}`}></span>
-                                    {t('common.busyLabel')}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="p-4 md:p-5 space-y-1.5 md:space-y-2">
-                            <button
-                                onClick={() => { navigate('/app/settings'); setProfileOpen(false); }}
-                                className="flex items-center w-full px-4 md:px-6 py-4 md:py-5 text-[10px] md:text-[11px] font-black text-white/50 hover:text-white hover:bg-white/10 rounded-xl md:rounded-2xl transition-all group/item uppercase tracking-[0.15em] md:tracking-[0.2em] gap-4 md:gap-5 border border-transparent hover:border-white/10"
-                            >
-                                <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl bg-white/5 group-hover/item:bg-primary/20 group-hover/item:text-primary transition-all border border-white/5 group-hover/item:border-primary/30 shadow-lg">
-                                    <Settings className="w-4 h-4 md:w-5 md:h-5 group-hover/item:rotate-90 transition-transform duration-700" />
-                                </div>
-                                {t('common.settings')}
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex items-center w-full px-4 md:px-6 py-4 md:py-5 text-[10px] md:text-[11px] font-black text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl md:rounded-2xl transition-all group/logout uppercase tracking-[0.15em] md:tracking-[0.2em] gap-4 md:gap-5 border border-transparent hover:border-rose-500/20"
-                            >
-                                <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl bg-rose-500/10 group-hover/logout:bg-rose-500/20 transition-all border border-rose-500/10 group-hover/logout:border-rose-500/30 text-rose-500 shadow-lg shadow-rose-500/5">
-                                    <LogOut className="w-4 h-4 md:w-5 md:h-5 group-hover/logout:-translate-x-1 transition-transform" />
-                                </div>
-                                {t('common.logout')}
-                            </button>
-                        </div>
-                    </div>
-                )
-            }
+
         </div >
     );
 }

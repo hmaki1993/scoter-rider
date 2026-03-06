@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PremiumCheckbox from '../components/PremiumCheckbox';
+import PageHeader from '../components/PageHeader';
 
 interface Payment {
     id: string;
@@ -198,21 +199,10 @@ export default function Finance() {
 
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 lg:gap-12 border-b border-white/5 pb-8 md:pb-12">
-                <div className="max-w-2xl text-center lg:text-left flex-shrink-0">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary mb-4 animate-in slide-in-from-left duration-500">
-                        <Wallet className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-brand-label)' }}>{t('finance.title')}</span>
-                    </div>
-                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter uppercase leading-[0.9] mb-3">
-                        {t('finance.titlePart1')} <span className="premium-gradient-text">{t('finance.titlePart2')}</span>
-                    </h1>
-                    <p className="text-white/40 text-[9px] sm:text-xs font-bold tracking-wide uppercase max-w-xl mx-auto lg:mx-0">
-                        {t('finance.subtitle')}
-                    </p>
-                </div>
-
+            <PageHeader
+                title={`${t('finance.titlePart1')} ${t('finance.titlePart2')}`}
+                subtitle={t('finance.subtitle')}
+            >
                 <div className="flex flex-col items-center lg:items-end gap-6 md:gap-8 w-full">
                     {/* Premium Utility Bar */}
                     <div className="flex items-center gap-4 bg-white/[0.03] p-1.5 md:p-2 rounded-2xl md:rounded-[2.5rem] border border-white/[0.05] shadow-2xl w-full sm:w-auto justify-between sm:justify-start">
@@ -284,7 +274,8 @@ export default function Finance() {
                         </button>
                     </div>
                 </div>
-            </div>
+            </PageHeader>
+
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">

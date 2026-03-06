@@ -25,6 +25,8 @@ import { FullScreenPreview } from './components/FullScreenPreview';
 import { LogoEditorModal, MediaLibraryModal } from './components/Modals';
 import { SubscriptionPlansManager } from './components/SubscriptionPlansManager';
 import PaletteImportModal from '../../components/PaletteImportModal';
+import PageHeader from '../../components/PageHeader';
+
 
 
 
@@ -173,6 +175,8 @@ export default function Settings() {
                 'primary_color', 'secondary_color', 'accent_color', 'surface_color',
                 'hover_color', 'hover_border_color', 'input_bg_color',
                 'text_color_base', 'text_color_muted',
+                'brand_label_color', 'premium_badge_color',
+                'search_bg_color', 'search_text_color', 'search_icon_color', 'search_border_color',
                 'login_card_color', 'login_card_border_color', 'login_accent_color', 'login_text_color',
                 'login_mobile_card_color', 'login_mobile_card_border_color', 'login_mobile_accent_color', 'login_mobile_text_color'
             ];
@@ -363,22 +367,27 @@ export default function Settings() {
         setDraftSettings(prev => ({
             ...prev,
             primary_color: theme.primary,
-            secondary_color: theme.secondary,
+            secondary_color: theme.secondary || theme.bg,
             accent_color: theme.accent || prev.accent_color,
             surface_color: theme.surface || prev.surface_color,
-            hover_color: (theme as any).hover || theme.primary + '33',
-            hover_border_color: theme.primary + '66',
-            input_bg_color: (theme as any).input || prev.input_bg_color,
-            text_color_base: (theme as any).text_base || (lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc'),
-            text_color_muted: (theme as any).text_muted || (lum(theme.bg) > 0.6 ? '#0f172a99' : '#ffffff99'),
-            font_family: (theme as any).font || prev.font_family,
+            hover_color: theme.hover || theme.primary + '33',
+            hover_border_color: (theme as any).hover_border || theme.primary + '66',
+            input_bg_color: theme.input || prev.input_bg_color,
+            text_color_base: theme.text_base || (lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc'),
+            text_color_muted: theme.text_muted || (lum(theme.bg) > 0.6 ? '#0f172a99' : '#ffffff99'),
+            font_family: theme.font || prev.font_family,
+            brand_label_color: theme.primary,
+            premium_badge_color: theme.primary,
+            search_bg_color: theme.bg ? theme.bg + '1a' : undefined,
+            search_text_color: theme.text_base,
+            search_icon_color: theme.text_muted,
+            search_border_color: theme.text_muted ? theme.text_muted + '33' : undefined,
         }));
     };
 
     const handlePaletteImport = async (palette: { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string; text_base: string; text_muted: string; hover: string; hover_border: string }) => {
         const newSettings = {
             ...draftSettings,
-            // App theme (Login page sync removed per user request to decouple)
             primary_color: palette.primary,
             secondary_color: palette.bg,
             accent_color: palette.accent,
@@ -388,6 +397,12 @@ export default function Settings() {
             text_color_muted: palette.text_muted,
             hover_color: palette.hover,
             hover_border_color: palette.hover_border,
+            brand_label_color: palette.primary,
+            premium_badge_color: palette.primary,
+            search_bg_color: palette.bg + '1a',
+            search_text_color: palette.text_base,
+            search_icon_color: palette.text_muted,
+            search_border_color: palette.text_muted + '33',
         };
 
         setDraftSettings(newSettings);
@@ -403,17 +418,22 @@ export default function Settings() {
         localStorage.setItem('theme', theme.id);
         setDraftSettings(prev => ({
             ...prev,
-            // App-wide theme (Login page sync removed per user request to decouple)
             primary_color: theme.primary,
-            secondary_color: theme.secondary,
+            secondary_color: theme.secondary || theme.bg,
             accent_color: theme.accent || prev.accent_color,
             surface_color: theme.surface || prev.surface_color,
-            hover_color: (theme as any).hover || theme.primary + '33',
-            hover_border_color: theme.primary + '66',
-            input_bg_color: (theme as any).input || prev.input_bg_color,
-            text_color_base: (theme as any).text_base || (lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc'),
-            text_color_muted: (theme as any).text_muted || (lum(theme.bg) > 0.6 ? '#0f172a99' : '#ffffff99'),
-            font_family: (theme as any).font || prev.font_family,
+            hover_color: theme.hover || theme.primary + '33',
+            hover_border_color: (theme as any).hover_border || theme.primary + '66',
+            input_bg_color: theme.input || prev.input_bg_color,
+            text_color_base: theme.text_base || (lum(theme.bg) > 0.6 ? '#0f172a' : '#f8fafc'),
+            text_color_muted: theme.text_muted || (lum(theme.bg) > 0.6 ? '#0f172a99' : '#ffffff99'),
+            font_family: theme.font || prev.font_family,
+            brand_label_color: theme.primary,
+            premium_badge_color: theme.primary,
+            search_bg_color: theme.bg ? theme.bg + '1a' : undefined,
+            search_text_color: theme.text_base,
+            search_icon_color: theme.text_muted,
+            search_border_color: theme.text_muted ? theme.text_muted + '33' : undefined,
         }));
 
         toast.success(`✨ ${theme.name} applied to app!`, { duration: 2500 });
@@ -782,12 +802,10 @@ export default function Settings() {
                 document.body
             )}
 
-            <div className="border-b border-white/5 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-4xl font-black premium-gradient-text tracking-tighter uppercase leading-[0.9]">{t('settings.title')}</h1>
-                    <p className="text-white/40 mt-1 text-[10px] sm:text-xs font-bold tracking-wide uppercase opacity-100">{t('settings.subtitle')}</p>
-                </div>
-            </div>
+            <PageHeader
+                title={t('settings.title')}
+                subtitle={t('settings.subtitle')}
+            />
 
             {/* Tab Navigation (Optimized for Mobile Visibility - Wrapping instead of Scrolling) */}
             <div className="flex flex-wrap items-center justify-center p-1.5 bg-white/5 rounded-[1.5rem] w-full gap-1.5 mb-6 group transition-all duration-500">

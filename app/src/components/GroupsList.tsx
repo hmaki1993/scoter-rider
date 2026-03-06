@@ -8,9 +8,10 @@ interface GroupsListProps {
     coachId?: string;
     showAll?: boolean;
     onEdit?: (group: any) => void;
+    onGroupClick?: (group: any) => void;
 }
 
-export default function GroupsList({ coachId, showAll = false, onEdit }: GroupsListProps) {
+export default function GroupsList({ coachId, showAll = false, onEdit, onGroupClick }: GroupsListProps) {
     const { t, i18n } = useTranslation();
     const [groups, setGroups] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -120,7 +121,13 @@ export default function GroupsList({ coachId, showAll = false, onEdit }: GroupsL
                 return (
                     <div
                         key={group.id}
-                        onClick={() => setSelectedGroup(group)}
+                        onClick={() => {
+                            if (onGroupClick) {
+                                onGroupClick(group);
+                            } else {
+                                setSelectedGroup(group);
+                            }
+                        }}
                         className="group relative glass-card p-6 rounded-[2rem] border border-white/10 hover:border-accent/40 transition-all duration-500 cursor-pointer overflow-hidden active:scale-95"
                     >
                         {/* Interactive Background Gradient */}

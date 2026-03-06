@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Mic, Radio, Volume2, VolumeX, Loader2, Users, X, CheckSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { playHoverSound } from '../utils/audio';
 
 export default function WalkieTalkie({ role, userId }: { role: string; userId: string }) {
     const [isRecording, setIsRecording] = useState(false);
@@ -17,6 +18,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     const recordButtonRef = useRef<HTMLButtonElement>(null);
     const wakeLock = useRef<any>(null);
     const gainNode = useRef<GainNode | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // ELITE: Authentic Motorola MDC-1200 Style Chirp Synthesis
     const playBeep = (type: 'start' | 'end', force: boolean = false) => {
@@ -277,6 +279,25 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
         }
     };
 
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setShowRecipients(false);
+            }
+        };
+
+        if (showRecipients) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [showRecipients]);
+
     const toggleUserSelection = (id: string) => {
         setSelectedUserIds(prev =>
             prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
@@ -479,19 +500,20 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     }, [isMuted, userId]);
 
     return (
-        <div className="flex items-center gap-1.5 sm:gap-2 relative">
+        <div ref={containerRef} onMouseLeave={() => setShowRecipients(false)} className="flex items-center gap-1.5 sm:gap-2 relative">
             {/* Recipients Selection - ADMIN ONLY */}
             {role === 'admin' && (
                 <>
                     <button
                         onClick={handleOpenRecipients}
-                        className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all sidebar-3d-item ${showRecipients || selectedUserIds.length > 0
-                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-500 sidebar-3d-item-active'
-                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                        className={`relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full transition-all sidebar-3d-item ${showRecipients || selectedUserIds.length > 0
+                            ? 'bg-amber-500/10 border border-amber-500/50 text-amber-500 sidebar-3d-item-active'
+                            : 'text-white/40 hover:text-white hover:bg-white/10'
                             }`}
+                        onMouseEnter={playHoverSound}
                         title="Select who receives this message"
                     >
-                        <Users className="w-4 h-4" />
+                        <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         {selectedUserIds.length > 0 && (
                             <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black border-2 border-[#122E34] shadow-lg">
                                 {selectedUserIds.length}
@@ -500,7 +522,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                     </button>
 
                     {showRecipients && (
-                        <div className="absolute top-12 left-0 w-64 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[9999] animate-in fade-in slide-in-from-top-2">
+                        <div className="fixed sm:absolute top-24 sm:top-12 left-1/2 sm:left-auto -translate-x-1/2 sm:translate-x-0 sm:right-0 w-[calc(100vw-2rem)] sm:w-64 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[9999] animate-in fade-in slide-in-from-top-2">
                             <div className="p-3 border-b border-white/5 flex items-center justify-between bg-white/5">
                                 <span className="text-xs font-bold text-white/80">Select Recipients</span>
                                 <button
@@ -524,6 +546,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                                                 ? 'bg-amber-500/20 text-amber-500' // Changed to amber for better contrast
                                                 : 'hover:bg-white/5 text-white/60'
                                                 }`}
+                                            onMouseEnter={playHoverSound}
                                         >
                                             <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedUserIds.length === availableUsers.length && availableUsers.length > 0
                                                 ? 'bg-amber-500 border-amber-500'
@@ -544,6 +567,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                                                     ? 'bg-emerald-500/20 text-emerald-400'
                                                     : 'hover:bg-white/5 text-white/60'
                                                     }`}
+                                                onMouseEnter={playHoverSound}
                                             >
                                                 <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedUserIds.includes(user.id)
                                                     ? 'bg-emerald-500 border-emerald-500'
@@ -551,9 +575,9 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                                                     }`}>
                                                     {selectedUserIds.includes(user.id) && <CheckSquare className="w-3 h-3 text-black" />}
                                                 </div>
-                                                <div className="flex flex-col items-start">
-                                                    <span>{user.full_name}</span>
-                                                    <span className="text-[9px] uppercase opacity-50">{user.role}</span>
+                                                <div className="flex flex-col items-start px-1">
+                                                    <span className="text-xs">{user.full_name}</span>
+                                                    <span className="text-[9px] uppercase opacity-50">{user.role.replace('_', ' ')}</span>
                                                 </div>
                                             </button>
                                         ))}
@@ -575,10 +599,11 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                         if ((Date.now() - mouseDownTime.current) < 50) return;
                         handleToggle(e);
                     }}
-                    className={`relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 border sidebar-3d-item ${isRecording
-                        ? 'bg-red-500/20 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-110 sidebar-3d-item-active'
-                        : 'bg-white/5 border-white/10 hover:border-primary/50 text-white/70 hover:bg-white/10 shadow-sm'
+                    className={`relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full transition-all duration-300 sidebar-3d-item ${isRecording
+                        ? 'bg-red-500/20 border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-110 sidebar-3d-item-active'
+                        : 'text-white/70 hover:border-primary/50 hover:bg-white/10'
                         }`}
+                    onMouseEnter={playHoverSound}
                     title={isRecording ? "Click to Stop" : "Broadcasting Mic (Hold to Talk)"}
                 >
                     {isUploading ? (
@@ -600,12 +625,13 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                             audioContext.current.resume();
                         }
                     }}
-                    className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all duration-500 sidebar-3d-item ${isMuted
+                    className={`relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-500 sidebar-3d-item ${isMuted
                         ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 sidebar-3d-item-active'
                         : isIncoming
                             ? 'bg-primary border-primary text-white animate-pulse shadow-[0_0_25px_rgba(var(--primary-rgb),0.6)] scale-110 sidebar-3d-item-active'
-                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                            : 'text-white/40 hover:text-white hover:bg-white/10'
                         }`}
+                    onMouseEnter={playHoverSound}
                     title={isIncoming ? "Admin is Speaking... (Click to Stop)" : "Hoki Toki Speaker (Mute/Unmute)"}
                 >
                     {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}

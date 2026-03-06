@@ -7,13 +7,15 @@ import AddStudentForm from '../components/AddStudentForm';
 import AddPTSubscriptionForm from '../components/AddPTSubscriptionForm';
 import RenewSubscriptionForm from '../components/RenewSubscriptionForm';
 import RenewPTSubscriptionForm from '../components/RenewPTSubscriptionForm';
+import GroupDetailsModal from '../components/GroupDetailsModal';
+import PageHeader from '../components/PageHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import ImportStudentsModal from '../components/ImportStudentsModal';
 import { useTranslation } from 'react-i18next';
 import { useStudents, useCoaches, useGroups } from '../hooks/useData';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext, useNavigate, useLocation } from 'react-router-dom';
 import GymnastProfileModal from '../components/GymnastProfileModal';
 import PremiumCheckbox from '../components/PremiumCheckbox';
 import MonthlyReportModal from '../components/MonthlyReportModal';
@@ -217,6 +219,7 @@ export default function Students() {
     const { t } = useTranslation();
     const { currency } = useCurrency();
     const navigate = useNavigate();
+    const location = useLocation();
     const { role, userId } = useOutletContext<{ role: string, userId: string }>() || { role: null, userId: null };
     const { data: studentsData, isLoading: loading, refetch } = useStudents();
     const students = studentsData || [];
@@ -403,6 +406,17 @@ export default function Students() {
             fetchPTSubscriptions();
         }
 
+        // Handle auto-open student profile from state (used by Search)
+        const openStudentId = (location as any).state?.openStudentId;
+        if (openStudentId && students.length > 0) {
+            const student = students.find((s: any) => s.id === openStudentId);
+            if (student) {
+                setViewingProfileStudent(student);
+                // Clear state so it doesn't reopen on every refresh/navigation
+                window.history.replaceState({}, document.title);
+            }
+        }
+
         const channel = supabase
             .channel('pt_subscriptions_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'pt_subscriptions' }, () => {
@@ -474,12 +488,10 @@ export default function Students() {
 
     return (
         <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 border-b border-white/5 pb-4 sm:pb-8">
-                <div className="text-center sm:text-left">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold premium-gradient-text tracking-tight uppercase">Gymnasts</h1>
-                    <p className="text-white/60 mt-2 text-sm sm:text-base font-bold tracking-wide uppercase opacity-100">{t('students.subtitle')}</p>
-                </div>
-            </div>
+            <PageHeader
+                title="Gymnasts"
+                subtitle={t('students.subtitle')}
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

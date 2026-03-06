@@ -6,6 +6,7 @@ import { Users, User, Search, ChevronLeft, Calendar, CheckCircle, XCircle, Chevr
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import AddManualStudentModal from '../components/AddManualStudentModal';
+import PageHeader from '../components/PageHeader';
 import toast from 'react-hot-toast';
 
 export default function StudentAttendance() {
@@ -348,35 +349,33 @@ export default function StudentAttendance() {
     return (
         <div className="p-3 sm:p-8 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="space-y-2">
-                    <button
-                        onClick={() => navigate('/')}
-                        className="flex items-center gap-2 text-white/50 hover:text-white transition-colors group"
-                    >
-                        <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                        <span className="font-bold uppercase tracking-wider text-xs">Back to Dashboard</span>
-                    </button>
-                    <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">
-                        Student Attendance
-                    </h1>
-                    <p className="text-white/40 font-medium text-sm sm:text-base">Manage daily gymnast check-ins</p>
-                </div>
-
-                <div className="flex items-center w-full sm:w-auto">
-                    <div className="relative group flex items-center w-full">
-                        <div className="absolute left-3 sm:-left-10 w-10 h-10 flex items-center justify-center pointer-events-none group-focus-within:bg-primary/10 rounded-full transition-all duration-500">
-                            <Search className="h-4 w-4 text-white/20 group-focus-within:text-primary group-focus-within:scale-110 transition-all" />
+            <div className="flex flex-col gap-4 mb-2">
+                <button
+                    onClick={() => navigate('/')}
+                    className="flex items-center gap-2 text-white/50 hover:text-white transition-colors group w-fit"
+                >
+                    <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <span className="font-bold uppercase tracking-wider text-xs">Back to Dashboard</span>
+                </button>
+                <PageHeader
+                    title="Student Attendance"
+                    subtitle="Manage daily gymnast check-ins"
+                >
+                    <div className="flex items-center w-full sm:w-auto">
+                        <div className="relative group flex items-center w-full">
+                            <div className="absolute left-3 sm:-left-10 w-10 h-10 flex items-center justify-center pointer-events-none group-focus-within:bg-primary/10 rounded-full transition-all duration-500">
+                                <Search className="h-4 w-4 text-white/20 group-focus-within:text-primary group-focus-within:scale-110 transition-all" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder={i18n.language === 'ar' ? 'بحث...' : 'SEARCH...'}
+                                value={searchGymnast}
+                                onChange={(e) => setSearchGymnast(e.target.value)}
+                                className="bg-white/[0.03] border-b border-white/10 text-white text-base font-black rounded-none focus:ring-0 focus:border-primary block w-full sm:w-72 px-10 sm:px-4 py-3 transition-all placeholder:text-white/10 text-center tracking-[0.2em] uppercase"
+                            />
                         </div>
-                        <input
-                            type="text"
-                            placeholder={i18n.language === 'ar' ? 'بحث...' : 'SEARCH...'}
-                            value={searchGymnast}
-                            onChange={(e) => setSearchGymnast(e.target.value)}
-                            className="bg-white/[0.03] border-b border-white/10 text-white text-base font-black rounded-none focus:ring-0 focus:border-primary block w-full sm:w-72 px-10 sm:px-4 py-3 transition-all placeholder:text-white/10 text-center tracking-[0.2em] uppercase"
-                        />
                     </div>
-                </div>
+                </PageHeader>
             </div>
 
             {/* Attendance Sections */}

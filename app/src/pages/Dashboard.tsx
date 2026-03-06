@@ -17,6 +17,12 @@ import AssessmentHistoryModal from '../components/AssessmentHistoryModal';
 import { useCurrency } from '../context/CurrencyContext';
 import PremiumClock from '../components/PremiumClock';
 import { useTheme } from '../context/ThemeContext';
+import FinancialProgressChart from '../components/FinancialProgressChart';
+import PerformanceAnalyticsCard from '../components/PerformanceAnalyticsCard';
+import { useFinancialTrends } from '../hooks/useData';
+import { Activity } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import { playHoverSound } from '../utils/audio';
 
 export default function Dashboard() {
     const { t } = useTranslation();
@@ -28,6 +34,8 @@ export default function Dashboard() {
     const [showHistory, setShowHistory] = useState(false);
 
     const { data: stats, isLoading: loading } = useDashboardStats();
+    const { data: financialTrends } = useFinancialTrends();
+    const { currency } = useCurrency();
 
     // Show loading while role is being determined
     if (!role) {
@@ -79,34 +87,34 @@ export default function Dashboard() {
             label: t('dashboard.totalStudents'),
             value: displayStats.totalStudents,
             icon: Users,
-            color: 'bg-blue-500',
+            pastel: 'pastel-mint',
             trend: '+12% from last month',
-            trendColor: 'text-emerald-400'
+            path: '/app/students'
         },
         {
             label: t('dashboard.monthlyRevenue'),
             value: formatPrice(displayStats.monthlyRevenue),
-            icon: TrendingUp,
-            color: 'bg-emerald-500',
+            icon: DollarSign,
+            pastel: 'pastel-yellow',
             trend: '+5% from last month',
-            trendColor: 'text-emerald-400'
+            path: '/app/finance'
         },
         {
             label: t('dashboard.trainingGroups'),
             value: displayStats.totalGroups,
             icon: Scale,
-            color: 'bg-purple-500',
+            pastel: 'pastel-coral',
             trend: 'Optimized',
-            trendColor: 'text-purple-400'
+            path: '/app/schedule'
         },
         {
             label: t('dashboard.activeCoaches'),
             value: displayStats.activeCoaches,
             icon: Medal,
-            color: 'bg-orange-500',
+            pastel: 'pastel-blue',
             trend: 'Active Now',
-            trendColor: 'text-orange-400',
-            isLive: true
+            isLive: true,
+            path: '/app/coaches'
         }
     ];
 
@@ -115,72 +123,77 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-10">
-
-            {/* Premium Welcome Header */}
-            <div className="relative group p-8 rounded-[3rem] bg-white/[0.02] border border-white/5 backdrop-blur-md overflow-hidden mb-10 transition-all hover:border-white/10">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10 animate-in fade-in slide-in-from-left duration-700">
-                    <div className="text-center sm:text-left">
-                        <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mb-2">{t('common.today') || 'Today'}</p>
-                        <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter flex flex-col sm:flex-row items-center sm:items-start gap-1 sm:gap-4 mt-1 sm:mt-0">
-                            <span className="text-white/40 font-medium lowercase italic">welcome,</span>
-                            <span className="premium-gradient-text">{fullName || (role ? t(`roles.${role}`) : 'Admin')}</span>
-                        </h1>
-                    </div>
-
-                    {/* Compact Date & Clock Widget */}
-                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-4 sm:mt-0">
-                        <button
-                            onClick={() => navigate('/app/evaluations')}
-                            className="flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5 group/eval"
-                        >
-                            <ClipboardCheck className="w-4 h-4 group-hover/eval:scale-110 transition-transform" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Evaluations Hub</span>
-                        </button>
-
-                        <div className="flex items-center gap-2 sm:gap-4 p-2 bg-white/5 border border-white/10 rounded-full shadow-inner backdrop-blur-xl">
-                            {settings.clock_position === 'dashboard' && (
-                                <PremiumClock className="!bg-transparent !border-none !shadow-none !p-0 !backdrop-blur-none" />
-                            )}
+            <PageHeader
+                title={t('dashboard.title', 'Dashboard')}
+                titleSuffix={
+                    <div className="ml-4 border-l border-surface-border pl-4 py-1 flex flex-col gap-0.5 min-w-0 self-end mb-1">
+                        <p className="text-[8px] font-black text-muted uppercase tracking-[0.3em] leading-none">{t('common.today', 'TODAY')}</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl md:text-2xl font-medium text-muted arctic italic leading-none">{t('dashboard.welcome', 'Welcome back')},</span>
+                            <span className="text-xl md:text-2xl font-black text-base uppercase tracking-tighter leading-none pr-1">
+                                <span className="premium-gradient-text">
+                                    {fullName?.split(' ')[0] || (role ? t(`roles.${role}`) : 'Admin')}
+                                </span>
+                            </span>
                         </div>
                     </div>
-                </div>
-            </div>
+                }
+                subtitle={t('dashboard.subtitle', 'Academy Overview & Live Analytics')}
+            >
+                <button
+                    onClick={() => setShowBatchTest(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all font-black uppercase tracking-widest text-[10px]"
+                >
+                    <ClipboardCheck className="w-4 h-4" />
+                    {t('dashboard.batchAssessment', 'Batch Assessment')}
+                </button>
+                <button
+                    onClick={() => setShowHistory(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all font-black uppercase tracking-widest text-[10px]"
+                >
+                    <Activity className="w-4 h-4" />
+                    {t('dashboard.testHistory', 'Test History')}
+                </button>
+            </PageHeader>
 
             {/* Stats Grid - Balanced & Elite */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statCards.map((stat, index) => (
-                    <div key={index} className="glass-card p-7 rounded-[2.5rem] border border-white/10 shadow-premium group hover:scale-[1.03] transition-all duration-500 hover:border-primary/30 relative overflow-hidden bg-white/[0.02]">
-                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.color}/10 blur-[60px] rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 opacity-50`}></div>
-
-                        <div className="flex items-center justify-between gap-4 mb-6 relative z-10">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 truncate flex-1">{stat.label}</p>
-                            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 backdrop-blur-xl transition-all duration-500 border border-white/10 flex-shrink-0 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/10 group-hover:border-white/20">
+                    <div
+                        key={index}
+                        onClick={() => stat.path && navigate(stat.path)}
+                        onMouseEnter={playHoverSound}
+                        className={`pastel-card ${stat.pastel} group h-full flex flex-col justify-between cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-xl`}
+                    >
+                        <div className="flex items-center justify-between gap-4 mb-6 relative z-10 text-black/40">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] truncate flex-1">{stat.label}</p>
+                            <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-black/5 backdrop-blur-xl transition-all duration-500 border border-black/5 flex-shrink-0 group-hover:scale-110 group-hover:rotate-6">
                                 <stat.icon
-                                    className={`w-4 h-4 ${stat.color.replace('bg-', 'text-')} drop-shadow-[0_0_12px_currentColor]`}
-                                    strokeWidth={1.5}
+                                    className="w-4 h-4 text-black/80"
+                                    strokeWidth={2}
                                 />
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-1 relative z-10">
-                            <h3 className="text-4xl font-black text-white tracking-tighter">
-                                {loading ? (
-                                    <div className="h-10 w-24 bg-white/5 animate-pulse rounded-xl"></div>
-                                ) : (
-                                    stat.value
-                                )}
-                            </h3>
-                            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.1em] ${stat.trendColor || 'text-white/40'} mt-2`}>
+                            <div className="flex items-baseline justify-between mb-1">
+                                <h3 className="text-4xl font-black text-black tracking-tighter !text-black">
+                                    {loading ? (
+                                        <div className="h-10 w-24 bg-black/5 animate-pulse rounded-xl"></div>
+                                    ) : (
+                                        stat.value
+                                    )}
+                                </h3>
+                                <ArrowUpRight className="w-5 h-5 text-black/10 group-hover:text-black/30 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                            </div>
+                            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.1em] text-black/30 mt-2`}>
                                 {stat.isLive ? (
                                     <span className="flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse shadow-[0_0_8px_currentColor]"></span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shadow-[0_0_8px_rgba(5,150,105,0.4)]"></span>
                                         {stat.trend}
                                     </span>
                                 ) : (
                                     <>
-                                        <ArrowUpRight className="w-3 h-3 opacity-50" />
                                         {stat.trend}
                                     </>
                                 )}
@@ -190,27 +203,54 @@ export default function Dashboard() {
                 ))}
             </div>
 
-            {/* Groups Section */}
-            <div className="glass-card p-8 sm:p-12 rounded-[2.5rem] sm:rounded-[3.5rem] border border-white/10 shadow-premium relative">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-4">
-                        <div className="p-3 bg-white/5 backdrop-blur-md rounded-2xl text-accent border border-white/10 shadow-lg">
-                            <Users className="w-6 h-6 drop-shadow-[0_0_8px_currentColor]" strokeWidth={1.5} />
+            {/* Business Intelligence Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Trend Chart Card */}
+                <div
+                    onClick={() => navigate('/app/finance')}
+                    className="glass-card p-6 sm:p-10 rounded-[3rem] relative overflow-hidden cursor-pointer hover:bg-surface-border/30 transition-colors group"
+                >
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 backdrop-blur-md rounded-2xl text-primary border border-primary/20 shadow-lg group-hover:scale-110 transition-transform">
+                                <TrendingUp className="w-6 h-6" strokeWidth={1.5} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-base uppercase tracking-tight">{t('dashboard.businessHealth', 'Mottaba3 El Tamaren')}</h2>
+                                <p className="text-[9px] font-black text-muted uppercase tracking-[0.4em] mt-1">Monthly Analytics</p>
+                            </div>
                         </div>
-                        {t('dashboard.trainingGroups', 'Training Groups')}
-                    </h2>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => setShowHistory(true)}
-                            className="bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                        >
-                            <Clock className="w-4 h-4" />
-                            History
-                        </button>
+                        <div className="p-2 bg-surface-border/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowUpRight className="w-5 h-5 text-muted" />
+                        </div>
                     </div>
+                    <FinancialProgressChart
+                        data={financialTrends || []}
+                        currencyCode={currency.code}
+                    />
                 </div>
-                <GroupsList showAll={true} />
+
+                {/* Performance Analytics Card */}
+                <div
+                    onClick={() => navigate('/app/students')}
+                    className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-95 duration-300 h-full"
+                >
+                    <PerformanceAnalyticsCard
+                        title="Top Groups by Participation"
+                        totalLabel="Total Active Students"
+                        totalValue={displayStats.totalStudents}
+                        segments={[
+                            { label: 'Morning Warriors', value: 45, color: '#4a7c59' },
+                            { label: 'Elite Pro', value: 30, color: '#8a9a5b' },
+                            { label: 'Kids Academy', value: 15, color: '#dcd7c9' },
+                            { label: 'Evening PT', value: 10, color: '#f2f0e9' }
+                        ]}
+                        activeSegmentLabel="Peak Performance"
+                        activeSegmentValue="4.25%"
+                    />
+                </div>
             </div>
+
 
             {/* Live Floor & Recent Activity Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -220,15 +260,15 @@ export default function Dashboard() {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="lg:col-span-2 glass-card rounded-[2.5rem] border border-white/10 shadow-premium overflow-hidden">
-                    <div className="p-8 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                <div className="lg:col-span-2 glass-card rounded-[2.5rem] overflow-hidden">
+                    <div className="p-8 border-b border-surface-border flex items-center justify-between">
+                        <h3 className="text-xl font-black text-base uppercase tracking-tight flex items-center gap-3">
                             <span className="w-2 h-8 bg-primary rounded-full"></span>
                             {t('dashboard.newJoiners')}
                         </h3>
                         <button
                             onClick={() => navigate('/app/students')}
-                            className="text-[10px] font-black text-primary uppercase tracking-widest hover:text-white transition-colors"
+                            className="text-[10px] font-black text-primary uppercase tracking-widest hover:text-base transition-colors"
                         >
                             {t('dashboard.viewAll')}
                         </button>
@@ -236,20 +276,20 @@ export default function Dashboard() {
 
                     <div className="p-8 space-y-4">
                         {loading ? (
-                            <p className="text-white/20 text-sm font-black uppercase tracking-widest text-center py-10">{t('common.loading')}</p>
+                            <p className="text-muted text-sm font-black uppercase tracking-widest text-center py-10">{t('common.loading')}</p>
                         ) : displayStats.recentActivity.length === 0 ? (
-                            <p className="text-white/20 text-sm font-black uppercase tracking-widest text-center py-10">{t('dashboard.noRecentActivity')}</p>
+                            <p className="text-muted text-sm font-black uppercase tracking-widest text-center py-10">{t('dashboard.noRecentActivity')}</p>
                         ) : (
                             displayStats.recentActivity.map((student: any) => (
-                                <div key={student.id} className="flex items-start gap-4 p-5 bg-white/[0.02] rounded-3xl border border-white/5 hover:bg-white/5 transition-all duration-300 group">
+                                <div key={student.id} className="flex items-start gap-4 p-5 bg-surface-border/10 rounded-3xl border border-surface-border hover:bg-surface-border/20 transition-all duration-300 group overflow-hidden">
                                     <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black group-hover:scale-110 transition-transform flex-shrink-0 mt-1">
                                         {student.full_name.charAt(0)}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-extrabold text-white group-hover:text-primary transition-colors text-lg uppercase tracking-tight leading-tight mb-3 whitespace-nowrap overflow-hidden pr-4" style={{ maskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)' }}>{student.full_name}</p>
-                                        <div className="flex items-center justify-start gap-3">
-                                            <p className="text-[10px] text-white/30 font-black uppercase tracking-widest flex-shrink-0">{t('dashboard.joined', { date: format(new Date(student.created_at), 'MMM dd') })}</p>
-                                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/5">{t('students.active')}</span>
+                                        <p className="font-extrabold text-base group-hover:text-primary transition-colors text-lg uppercase tracking-tight leading-tight mb-3 whitespace-nowrap overflow-hidden pr-4" style={{ maskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)' }}>{student.full_name}</p>
+                                        <div className="flex items-center justify-between gap-3 w-full">
+                                            <p className="text-[10px] text-muted font-black uppercase tracking-widest truncate">{t('dashboard.joined', { date: format(new Date(student.created_at), 'MMM dd') })}</p>
+                                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/5 shrink-0">{t('students.active')}</span>
                                         </div>
                                     </div>
                                 </div>

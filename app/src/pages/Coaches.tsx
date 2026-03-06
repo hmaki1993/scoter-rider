@@ -1,6 +1,7 @@
 import { useEffect, useState, memo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Plus, Filter, Mail, Phone, MapPin, Medal, DollarSign, Clock, Edit, Trash2, X, Search } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import AddCoachForm from '../components/AddCoachForm';
 import ConfirmModal from '../components/ConfirmModal';
 import ManualAttendanceModal from '../components/ManualAttendanceModal';
@@ -10,7 +11,7 @@ import ImageLightbox from '../components/ImageLightbox';
 import { useCoaches } from '../hooks/useData';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useLocation } from 'react-router-dom';
 
 interface Coach {
     id: string;
@@ -66,7 +67,7 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
     return (
         <div className={`glass-card rounded-[1.5rem] md:rounded-[2rem] border transition-all duration-700 relative overflow-hidden group 
             ${isHeadCoach
-                ? 'p-8 border-primary/30 bg-primary/5 hover:border-primary/50 shadow-[0_0_30px_rgba(var(--color-primary-rgb),0.2)]'
+                ? 'p-5 border-primary/30 bg-primary/5 hover:border-primary/50 shadow-[0_0_30px_rgba(var(--color-primary-rgb),0.2)]'
                 : isCompact
                     ? 'p-3 border-white/5 bg-white/[0.01] hover:border-white/10'
                     : 'p-4 border-white/10 bg-white/[0.02] hover:border-white/30 shadow-premium'
@@ -99,7 +100,7 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                 </div>
 
                 {/* Main Content: Avatar & Name */}
-                <div className={`flex flex-col items-center text-center ${isHeadCoach ? 'gap-6 mb-8' : 'gap-4 mb-4'}`}>
+                <div className={`flex flex-col items-center text-center ${isHeadCoach ? 'gap-3 mb-4' : 'gap-4 mb-4'}`}>
                     {/* Avatar */}
                     <div className="relative shrink-0 group/avatar cursor-zoom-in" onClick={() => onEnlargeImage?.(coach.avatar_url!)}>
                         {/* Gold Ribbon for Head Coach */}
@@ -112,7 +113,7 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                         <div className={`absolute -inset-4 bg-gradient-to-tr from-primary/40 to-accent/40 rounded-full blur-2xl opacity-0 ${isHeadCoach ? 'opacity-30' : 'group-hover/avatar:opacity-100'} transition-all duration-500`}></div>
 
                         {coach.avatar_url ? (
-                            <div className={`relative ${isHeadCoach ? 'w-32 h-32' : 'w-14 h-14'} p-[1px] bg-gradient-to-tr from-primary/40 to-transparent rounded-[1.5rem] overflow-hidden shadow-2xl group-hover/avatar:scale-105 transition-all duration-500`}>
+                            <div className={`relative ${isHeadCoach ? 'w-20 h-20' : 'w-14 h-14'} p-[1px] bg-gradient-to-tr from-primary/40 to-transparent rounded-[1.5rem] overflow-hidden shadow-2xl group-hover/avatar:scale-105 transition-all duration-500`}>
                                 <img
                                     src={coach.avatar_url}
                                     alt={coach.full_name}
@@ -121,8 +122,8 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                                 />
                             </div>
                         ) : (
-                            <div className={`relative ${isHeadCoach ? 'w-32 h-32' : 'w-14 h-14'} rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 shadow-inner group-hover/avatar:text-primary transition-colors`}>
-                                <Medal className={`${isHeadCoach ? 'w-12 h-12' : 'w-6 h-6'}`} />
+                            <div className={`relative ${isHeadCoach ? 'w-20 h-20' : 'w-14 h-14'} rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 shadow-inner group-hover/avatar:text-primary transition-colors`}>
+                                <Medal className={`${isHeadCoach ? 'w-8 h-8' : 'w-6 h-6'}`} />
                             </div>
                         )}
                         {isWorking && (
@@ -132,7 +133,7 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
 
                     {/* Name & Role */}
                     <div className="w-full">
-                        <h3 className={`${isHeadCoach ? 'text-3xl mb-3' : 'text-base mb-1'} font-black text-white tracking-tighter leading-tight group-hover:text-primary transition-colors`} title={coach.full_name}>
+                        <h3 className={`${isHeadCoach ? 'text-xl mb-2' : 'text-base mb-1'} font-black text-white tracking-tighter leading-tight group-hover:text-primary transition-colors`} title={coach.full_name}>
                             {coach.full_name}
                         </h3>
                         <div className="flex flex-col items-center gap-1">
@@ -238,10 +239,21 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
 export default function Coaches() {
     const { t } = useTranslation();
     const { currency } = useCurrency();
+    const location = useLocation();
     const { role } = useOutletContext<{ role: string }>() || { role: null };
     const { data: coachesData, isLoading: loading, refetch } = useCoaches();
     const [searchQuery, setSearchQuery] = useState('');
     const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
+    // Handle initial search query from dashboard search
+    useEffect(() => {
+        const query = (location.state as any)?.query;
+        if (query) {
+            setSearchQuery(query);
+            // Clear state so it doesn't filter on every navigation
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     // Filter coaches based on current user role and search query
     const coaches = (coachesData || []).filter(coach => {
@@ -350,49 +362,37 @@ export default function Coaches() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12 border-b border-white/5 pb-12">
-                <div className="max-w-2xl text-center lg:text-left">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary mb-6 animate-in slide-in-from-left duration-500">
-                        <Medal className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-brand-label)' }}>{t('coaches.title')}</span>
+            <PageHeader
+                title={t('coaches.title')}
+                subtitle={t('coaches.subtitle')}
+            >
+                <div className="relative group w-full sm:w-80">
+                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                        <Search className="w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
                     </div>
-                    <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tighter uppercase leading-[0.9] mb-4">
-                        {t('coaches.title')} <span className="premium-gradient-text">{t('common.team', 'Elite Team')}</span>
-                    </h1>
-                    <p className="text-white/40 text-sm sm:text-base font-bold tracking-wide uppercase max-w-xl">
-                        {t('coaches.subtitle')}
-                    </p>
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-5 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-all font-bold tracking-wide"
+                        placeholder="Search coaches..."
+                    />
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-                    {/* Search Bar */}
-                    <div className="relative group w-full sm:w-80">
-                        <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                            <Search className="w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
-                        </div>
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-5 py-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-bold tracking-wide"
-                        />
-                    </div>
 
-                    {role?.toLowerCase().trim() === 'admin' && (
-                        <button
-                            onClick={() => {
-                                setEditingCoach(null);
-                                setShowAddModal(true);
-                            }}
-                            className="group flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-white px-8 py-4 rounded-[1.5rem] shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95 w-full sm:w-auto overflow-hidden relative"
-                        >
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                            <Plus className="w-5 h-5 relative z-10" />
-                            <span className="font-extrabold uppercase tracking-widest text-sm relative z-10">{t('dashboard.addCoach')}</span>
-                        </button>
-                    )}
-                </div>
-            </div>
+                {role?.toLowerCase().trim() === 'admin' && (
+                    <button
+                        onClick={() => {
+                            setEditingCoach(null);
+                            setShowAddModal(true);
+                        }}
+                        className="group flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary border border-primary/20 hover:border-primary/50 text-primary hover:text-white px-6 py-3.5 rounded-xl shadow-lg transition-all active:scale-95 w-full sm:w-auto"
+                    >
+                        <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
+                        <span className="font-extrabold uppercase tracking-widest text-xs">{t('dashboard.addCoach')}</span>
+                    </button>
+                )}
+            </PageHeader>
+
 
             {/* Premium Staff Sections */}
             <div className="space-y-16">
@@ -411,7 +411,7 @@ export default function Coaches() {
                                     <h2 className="text-xs font-black text-primary uppercase tracking-[0.5em]">{t('roles.head_coach')}</h2>
                                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-10 lg:gap-12">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {coaches
                                         .filter(c => ['head_coach', 'admin'].includes(c.role?.toLowerCase() || ''))
                                         .map(coach => (

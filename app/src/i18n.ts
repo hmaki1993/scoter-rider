@@ -113,7 +113,9 @@ i18n
                         inactive: 'Inactive',
                         father: 'Father',
                         mother: 'Mother',
-                        accessRestricted: 'Access Restricted: Only Admin or Head Coach can manage this'
+                        accessRestricted: 'Access Restricted: Only Admin or Head Coach can manage this',
+                        performanceTracker: 'Performance Tracker',
+                        attendance: 'Attendance'
                     },
                     cameras: {
                         subtitle: 'Monitor gym activities in real-time',
@@ -448,8 +450,8 @@ i18n
                         for: 'For {{student}}'
                     },
                     jumpCounter: {
-                        title: 'AI Jump Counter',
-                        subtitle: 'Stand 2-3m away • Head to toes visible',
+                        title: 'Performance Tracker',
+                        subtitle: 'Stand 2-3m away • Full body visibility',
                         readyBadge: 'System Ready • Starts on Jump',
                         totalJumps: 'Total Jumps',
                         time: 'Time',
@@ -460,7 +462,7 @@ i18n
                         startNew: 'START NEW SESSION',
                         instruction1: 'Place device on a stable surface at waist height.',
                         instruction2: 'Stand 2-3m back so your whole body is visible.',
-                        instruction3: 'Jump! AI automatically starts and counts each rep.',
+                        instruction3: 'Jump! System automatically starts and counts each rep.',
                         resetCount: 'Reset Count',
                         freeMode: 'Free Mode',
                         set: 'SET',
@@ -585,7 +587,9 @@ i18n
                         inactive: 'غير نشط',
                         father: 'الأب',
                         mother: 'الأم',
-                        accessRestricted: 'غير مسموح: متاح فقط للمدير أو كبير المدربين'
+                        accessRestricted: 'غير مسموح: متاح فقط للمدير أو كبير المدربين',
+                        performanceTracker: 'متبع التمارين',
+                        attendance: 'الحضور'
                     },
                     dashboard: {
                         welcome: 'مرحباً بك',
@@ -907,7 +911,7 @@ i18n
                         for: 'لـ {{student}}'
                     },
                     jumpCounter: {
-                        title: 'عداد النط بالذكاء الاصطناعي',
+                        title: 'متبع التمارين',
                         subtitle: 'قف على بعد 2-3 متر • جسمك بالكامل ظاهر',
                         readyBadge: 'النظام جاهز • يبدأ عند القفز',
                         totalJumps: 'إجمالي النطات',
@@ -919,7 +923,7 @@ i18n
                         startNew: 'بدء جلسة جديدة',
                         instruction1: 'ضع الجهاز على سطح مستقر في مستوى الخصر.',
                         instruction2: 'قف للخلف 2-3 متر حتى يظهر جسمك بالكامل.',
-                        instruction3: 'ابدأ النط! سيقوم الذكاء الاصطناعي بالعد تلقائياً.',
+                        instruction3: 'ابدأ النط! سيقوم النظام بالعد تلقائياً.',
                         resetCount: 'إعادة العداد',
                         freeMode: 'الوضع الحر',
                         set: 'ضبط',

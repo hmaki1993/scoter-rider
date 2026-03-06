@@ -8,24 +8,29 @@
   /* Premium Gold */
   --color-gold-muted: rgba(212, 175, 55, 0.5);
   --color-secondary: #000000;
-  /* Absolute Black for Epic */
+  /* Absolute Black */
   --color-secondary-foreground: #ffffff;
   --color-accent: #34d399;
   /* Emerald 400 */
   --color-accent-foreground: #ffffff;
-  --color-background: #0E1D21;
-  /* Minddazzle Dark BG */
-  --color-surface: #122E34;
-  /* Minddazzle Surface */
-  --color-hover: rgba(18, 46, 52, 0.8);
-  --color-hover-border: rgba(16, 185, 129, 0.3);
-  --color-input-bg: #0f172a;
+  --color-background: #000000;
+  /* Pure Deep Black */
+  --color-surface: #0a0a0a;
+  /* Elevated Surface */
+  --color-hover: rgba(255, 255, 255, 0.05);
+  --color-hover-border: rgba(255, 255, 255, 0.1);
+  --color-input-bg: #0a0a0a;
 
-  --shadow-premium: 0 20px 40px -5px rgba(0, 0, 0, 0.4), 0 10px 20px -5px rgba(16, 185, 129, 0.1);
-  --shadow-glass: 0 8px 32px 0 rgba(14, 29, 33, 0.5);
+  /* Precise Pastel Accent Tokens from Reference - Dynamic */
+  --color-pastel-mint: color-mix(in srgb, var(--color-primary, #10b981) 15%, white);
+  --color-pastel-yellow: color-mix(in srgb, var(--color-primary, #10b981) 15%, white);
 
-  --radius: 1.5rem;
-  --glass-opacity: 0.6;
+  --shadow-premium: 0 40px 80px -20px rgba(0, 0, 0, 0.8);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+
+  --radius: 2.5rem;
+  /* Ultra-Rounded */
+  --glass-opacity: 0.1;
   /* Theme Aware Variables */
   --color-text-base: var(--color-text-base);
   --color-text-muted: var(--color-text-muted);
@@ -62,29 +67,69 @@ body {
   PREMIUM UTILITIES 
 */
 .glass-card {
-  background: color-mix(in srgb, var(--color-surface), transparent calc(100% - (var(--glass-opacity) + 0.1) * 100%)) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid var(--color-surface-border, rgba(255, 255, 255, 0.08)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-premium) !important;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.no-border-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: none !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-premium) !important;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* Light mode specific shadow refinement */
 :root[style*="--is-light-mode: 1"] .glass-card {
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05) !important;
+  background: white !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
 }
 
 .glass-card:hover {
-  background: var(--color-hover) !important;
-  border-color: var(--color-hover-border) !important;
-  /* Custom hover border */
+  background: rgba(255, 255, 255, 0.05) !important;
   transform: translateY(-2px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(16, 185, 129, 0.1) !important;
+}
+
+.pastel-card {
+  border-radius: var(--radius) !important;
+  padding: 2rem !important;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  color: #000000 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.pastel-card:hover {
+  transform: translateY(-6px) rotate(0.5deg);
+  filter: brightness(1.02);
+}
+
+.pastel-mint {
+  background-color: var(--color-pastel-mint) !important;
+}
+
+.pastel-yellow {
+  background-color: var(--color-pastel-yellow) !important;
+}
+
+.pastel-coral {
+  background-color: var(--color-pastel-coral) !important;
+}
+
+.pastel-blue {
+  background-color: var(--color-pastel-blue) !important;
+}
+
+.pastel-purple {
+  background-color: var(--color-pastel-purple) !important;
 }
 
 .premium-gradient-text {
@@ -331,10 +376,42 @@ input[type=number] {
 }
 
 .sidebar-3d-item-active {
-  transform: translateZ(20px) scale(1.02);
-  box-shadow:
-    0 15px 30px -10px rgba(var(--color-primary), 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  box-shadow: 0 10px 20px -5px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.sidebar-pill {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-top-right-radius: 4rem;
+  border-bottom-right-radius: 0;
+  transition: all 0.5s ease;
+}
+
+.nav-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: transparent !important;
+  color: var(--color-text-muted);
+}
+
+.nav-icon-container.active {
+  width: 1.75rem;
+  height: 1.75rem;
+  background-color: var(--color-primary) !important;
+  color: white;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.nav-icon-container:hover:not(.active) {
+  background: transparent !important;
+  color: var(--color-text-base);
+  transform: scale(1.1);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -346,7 +423,7 @@ input[type=number] {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-border);
   border-radius: 20px;
 }
 
@@ -457,6 +534,36 @@ input[type=number] {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
+}
+
+/* Dashboard Stat Cards */
+.pastel-card {
+  border-radius: 2rem;
+  padding: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.pastel-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
+  filter: brightness(1.02);
+}
+
+.pastel-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.pastel-card:hover::before {
+  opacity: 1;
 }
 
 /* Global Login Glass Effect */

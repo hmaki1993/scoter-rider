@@ -2646,7 +2646,7 @@ export default function Communications() {
                         <div className="flex items-center justify-between mb-4">
                             <div className="leading-relaxed">
                                 <h1 className="text-white font-black text-lg tracking-tight">Messages</h1>
-                                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Communication Center</p>
+                                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Chats</p>
                             </div>
                             <button
                                 onClick={() => setShowNewChat(true)}
@@ -2670,41 +2670,93 @@ export default function Communications() {
                     <div className="flex-1 overflow-y-auto">
                         {showNewChat ? (
                             // New Chat: Show all users
-                            <div>
-                                <div className="px-4 py-2 flex items-center gap-2">
-                                    <button onClick={() => setShowNewChat(false)} className="text-white/40 hover:text-white transition-all">
-                                        <ArrowLeft className="w-4 h-4" />
-                                    </button>
-                                    <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Start new chat</span>
-                                </div>
-                                {filteredUsers.map(user => (
-                                    <div
-                                        key={user.id}
-                                        onClick={() => startConversation(user)}
-                                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-all group cursor-pointer"
-                                        role="button"
-                                        tabIndex={0}
-                                        onKeyDown={(e) => e.key === 'Enter' && startConversation(user)}
+                            <div className="flex flex-col h-full">
+                                {/* Premium Header */}
+                                <div className="px-4 py-3 flex items-center gap-3 border-b border-white/5">
+                                    <button
+                                        onClick={() => setShowNewChat(false)}
+                                        className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all"
                                     >
-                                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-white text-sm flex-shrink-0 shadow-lg">
-                                            {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover rounded-full" alt="" /> : user.full_name[0]}
-                                        </div>
-                                        <div className="text-left">
-                                            {(() => {
-                                                const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
-                                                const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
-                                                const isOnline = user.is_in_chat && isRecentlyActive;
-                                                const isAway = !user.is_in_chat && isRecentlyActive;
-
-                                                if (isOnline) return <p className="text-emerald-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Online</p>;
-                                                if (isAway) return <p className="text-amber-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Away</p>;
-                                                return <p className="text-white/20 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Offline</p>;
-                                            })()}
-                                            <p className="text-white font-black text-sm">{user.full_name}</p>
-                                            <p className="text-primary/60 text-[9px] font-black uppercase tracking-widest">{user.role}</p>
-                                        </div>
+                                        <ArrowLeft className="w-3.5 h-3.5" />
+                                    </button>
+                                    <div>
+                                        <p className="text-[11px] font-black uppercase text-white/70 tracking-widest leading-none">New Chat</p>
+                                        <p className="text-[8px] font-black uppercase text-white/20 tracking-[0.2em] mt-0.5">{filteredUsers.length} people available</p>
                                     </div>
-                                ))}
+                                </div>
+
+                                {/* User Cards */}
+                                <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+                                    {filteredUsers.map(user => {
+                                        const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
+                                        const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
+                                        const isOnline = user.is_in_chat && isRecentlyActive;
+                                        const isAway = !user.is_in_chat && isRecentlyActive;
+
+                                        const roleColor = {
+                                            admin: 'from-rose-500 to-pink-600',
+                                            head_coach: 'from-violet-500 to-purple-600',
+                                            coach: 'from-blue-500 to-indigo-600',
+                                            student: 'from-emerald-500 to-teal-600',
+                                            reception: 'from-amber-500 to-orange-600',
+                                            receptionist: 'from-amber-500 to-orange-600',
+                                            cleaner: 'from-slate-400 to-slate-600',
+                                        }[user.role?.toLowerCase()] || 'from-primary to-accent';
+
+                                        const roleBadgeColor = {
+                                            admin: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                                            head_coach: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+                                            coach: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                                            student: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                                            reception: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                            receptionist: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                            cleaner: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+                                        }[user.role?.toLowerCase()] || 'bg-primary/10 text-primary border-primary/20';
+
+                                        return (
+                                            <div
+                                                key={user.id}
+                                                onClick={() => startConversation(user)}
+                                                className="w-full flex items-center gap-3 px-3 py-3 bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] rounded-2xl transition-all duration-200 group cursor-pointer active:scale-[0.98]"
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(e) => e.key === 'Enter' && startConversation(user)}
+                                            >
+                                                {/* Avatar */}
+                                                <div className="relative flex-shrink-0">
+                                                    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${roleColor} flex items-center justify-center font-black text-white text-sm shadow-lg overflow-hidden group-hover:scale-105 transition-transform duration-200`}>
+                                                        {user.avatar_url
+                                                            ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="" />
+                                                            : user.full_name[0].toUpperCase()
+                                                        }
+                                                    </div>
+                                                    {/* Online indicator */}
+                                                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0E0E11] ${isOnline ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]' :
+                                                            isAway ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]' :
+                                                                'bg-white/20'
+                                                        }`} />
+                                                </div>
+
+                                                {/* Info */}
+                                                <div className="flex-1 text-left min-w-0">
+                                                    <p className="text-white/90 font-black text-sm leading-tight truncate group-hover:text-white transition-colors">{user.full_name}</p>
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg border text-[8px] font-black uppercase tracking-widest ${roleBadgeColor}`}>
+                                                            {user.role?.replace('_', ' ')}
+                                                        </span>
+                                                        {isOnline && <span className="text-emerald-400 text-[8px] font-black uppercase tracking-wide">• Online</span>}
+                                                        {isAway && <span className="text-amber-400 text-[8px] font-black uppercase tracking-wide">• Away</span>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Arrow */}
+                                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                                    <ArrowUpRight className="w-3.5 h-3.5 text-primary" />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         ) : (
                             // Conversation list

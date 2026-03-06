@@ -13,7 +13,11 @@ import { useCurrency } from '../context/CurrencyContext';
 import PremiumClock from '../components/PremiumClock';
 import { useTheme } from '../context/ThemeContext';
 import ConfirmModal from '../components/ConfirmModal';
-import { RotateCcw, Trash2, TrendingUp, ChevronRight, Globe } from 'lucide-react';
+import { RotateCcw, Trash2, TrendingUp, ChevronRight, Globe, Activity, ArrowUpRight } from 'lucide-react';
+import FinancialProgressChart from '../components/FinancialProgressChart';
+import PerformanceAnalyticsCard from '../components/PerformanceAnalyticsCard';
+import { useFinancialTrends } from '../hooks/useData';
+import PageHeader from '../components/PageHeader';
 
 export default function HeadCoachDashboard() {
     const { t, i18n } = useTranslation();
@@ -30,6 +34,7 @@ export default function HeadCoachDashboard() {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [coachId, setCoachId] = useState<string | null>(null);
     const [savedSessions, setSavedSessions] = useState<any[]>([]);
+    const { data: financialTrends } = useFinancialTrends();
 
     // Modals
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -223,114 +228,152 @@ export default function HeadCoachDashboard() {
 
     return (
         <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Premium Welcome Header */}
-            <div className="relative group p-8 rounded-[3rem] bg-white/[0.02] border border-white/5 backdrop-blur-md overflow-hidden mb-12 transition-all hover:border-white/10 shadow-2xl">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10 animate-in fade-in slide-in-from-left duration-700">
-                    <div className="flex flex-col items-center sm:items-start gap-1 text-center sm:text-left w-full">
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em]">{format(new Date(), 'EEEE, dd MMMM yyyy')}</p>
-                            <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-[0.2em] border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-                                LEADER
-                            </span>
+            <PageHeader
+                title={t('dashboard.headCoachTitle', 'Head Coach Hub')}
+                subtitle={t('dashboard.headCoachSubtitle', 'Academy Management & Live Analytics')}
+            >
+                <button
+                    onClick={() => setShowStudentModal(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all font-black uppercase tracking-widest text-[10px]"
+                >
+                    <Plus className="w-4 h-4" />
+                    {t('dashboard.addStudent', 'Add Student')}
+                </button>
+                <button
+                    onClick={() => navigate('/app/evaluations')}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all font-black uppercase tracking-widest text-[10px]"
+                >
+                    <ClipboardCheck className="w-4 h-4" />
+                    {t('dashboard.evaluationHub', 'Evaluation Hub')}
+                </button>
+                <button
+                    onClick={() => setShowGroupModal(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all font-black uppercase tracking-widest text-[10px]"
+                >
+                    <Users className="w-4 h-4" />
+                    {t('dashboard.createGroup', 'Create Group')}
+                </button>
+            </PageHeader>
+            {/* Business Intelligence Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Trend Chart Card */}
+                <div
+                    onClick={() => navigate('/app/finance')}
+                    className="glass-card p-6 sm:p-10 rounded-[3rem] border border-white/10 shadow-premium relative overflow-hidden bg-white/[0.01] cursor-pointer hover:bg-white/[0.03] transition-colors group"
+                >
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white/5 backdrop-blur-md rounded-2xl text-primary border border-white/10 shadow-lg group-hover:scale-110 transition-transform">
+                                <TrendingUp className="w-6 h-6" strokeWidth={1.5} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-white uppercase tracking-tight">{t('dashboard.businessHealth', 'Mottaba3 El Tamaren')}</h2>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mt-1">Monthly Analytics</p>
+                            </div>
                         </div>
-                        <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tighter flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4">
-                            <span className="text-white/40 font-medium lowercase italic">{t('dashboard.welcome')},</span>
-                            <span className="premium-gradient-text">{fullName || t('roles.head_coach')}</span>
-                        </h1>
+                        <div className="p-2 bg-white/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowUpRight className="w-5 h-5 text-white/50" />
+                        </div>
                     </div>
+                    <FinancialProgressChart
+                        data={financialTrends || []}
+                        currencyCode={currency.code}
+                    />
+                </div>
 
-                    {/* Compact Date & Clock Widget */}
-                    <div className="flex items-center gap-4">
-                        {settings.clock_position === 'dashboard' && (
-                            <PremiumClock className="!bg-white/[0.03] !border-white/10 !rounded-full !shadow-lg backdrop-blur-xl" />
-                        )}
-                    </div>
+                {/* Performance Analytics Card */}
+                <div
+                    onClick={() => navigate('/app/students')}
+                    className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-95 duration-300 h-full"
+                >
+                    <PerformanceAnalyticsCard
+                        title="Top Groups by Participation"
+                        totalLabel="Total Active Students"
+                        totalValue={342}
+                        segments={[
+                            { label: 'Morning Warriors', value: 45, color: '#4a7c59' },
+                            { label: 'Elite Pro', value: 30, color: '#8a9a5b' },
+                            { label: 'Kids Academy', value: 15, color: '#dcd7c9' },
+                            { label: 'Evening PT', value: 10, color: '#f2f0e9' }
+                        ]}
+                        activeSegmentLabel="Peak Performance"
+                        activeSegmentValue="4.25%"
+                    />
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* Attendance Card */}
-                <div className="glass-card p-10 rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden group col-span-1 md:col-span-2 bg-white/[0.02]">
-                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl transition-all duration-700"></div>
-                    <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="pastel-card pastel-blue group col-span-1 md:col-span-2 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4 relative z-10">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
-                                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCheckedIn ? 'bg-emerald-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]'}`}></span>
-                                <span className={isCheckedIn ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]'}>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+                                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCheckedIn ? 'bg-emerald-600 shadow-[0_0_10px_2px_rgba(5,150,105,0.4)] animate-pulse' : 'bg-rose-600'}`}></span>
+                                <span className={isCheckedIn ? 'text-emerald-700' : 'text-rose-700'}>
                                     {isCheckedIn ? t('coaches.workingNow') : t('coaches.away')}
                                 </span>
                             </p>
+                            <h2 className="text-lg font-black text-black uppercase tracking-tight mt-1">{t('common.attendance')}</h2>
                         </div>
-                        <div className="p-4 bg-primary/20 rounded-2xl text-primary border border-white/5 shadow-inner">
-                            <Clock className="w-6 h-6" />
+                        <div className="p-3 bg-black/5 rounded-2xl text-black/60 border border-black/5">
+                            <Clock className="w-5 h-5" />
                         </div>
                     </div>
-                    <div className="flex flex-col items-center gap-8 relative z-10">
+                    <div className="flex flex-col items-center gap-6 relative z-10">
                         {isCheckedIn ? (
-                            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-widest font-mono animate-in zoom-in-95 duration-500">
+                            <div className="text-4xl sm:text-5xl md:text-6xl font-black text-black tracking-widest font-mono">
                                 {formatTimer(elapsedTime)}
                             </div>
                         ) : dailyTotalSeconds > 0 ? (
-                            <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-700">
-                                <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-400 tracking-widest font-mono drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="text-4xl sm:text-5xl md:text-6xl font-black text-emerald-800 tracking-widest font-mono">
                                     {formatTimer(dailyTotalSeconds)}
                                 </div>
-                                <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_20px_rgba(52,211,153,0.15)]">
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Shift Summary</span>
+                                <div className="flex items-center gap-2 px-3 py-1 bg-black/5 rounded-full">
+                                    <span className="text-[9px] font-black text-black/40 uppercase tracking-[0.2em]">Shift Summary</span>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white/10 tracking-widest font-mono">00:00:00</div>
+                            <div className="text-4xl sm:text-5xl md:text-6xl font-black text-black/10 tracking-widest font-mono">00:00:00</div>
                         )}
                         <button
                             onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-                            className={`w-full py-5 rounded-full font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-4 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl ${isCheckedIn
-                                ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
-                                : 'bg-white text-black border border-transparent hover:shadow-[0_0_40px_rgba(255,255,255,0.35)]'}`}
+                            className={`w-full py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] shadow-xl ${isCheckedIn
+                                ? 'bg-black/10 text-black hover:bg-black/20'
+                                : 'bg-black text-white hover:bg-zinc-900'}`}
                         >
-                            {isCheckedIn ? <XCircle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}
+                            {isCheckedIn ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                             {isCheckedIn ? t('coach.checkOut') : t('coach.checkIn')}
                         </button>
                     </div>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="glass-card p-10 rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden group col-span-1 md:col-span-2 bg-white/[0.02]">
+                <div className="glass-card p-8 sm:p-10 rounded-[2.5rem] border border-white/5 shadow-premium relative overflow-hidden group col-span-1 md:col-span-2 bg-white/[0.01]">
                     <div className="flex items-center justify-between mb-8 relative z-10">
                         <div>
                             <h2 className="text-xl font-black text-white uppercase tracking-tight">Quick Actions</h2>
-                            <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em] mt-2">Elite Management</p>
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">Elite Management</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 relative z-10">
                         <button
                             onClick={() => setShowStudentModal(true)}
-                            className="p-8 rounded-[2rem] bg-accent/5 hover:bg-accent/20 border border-accent/10 hover:border-accent/40 transition-all flex flex-col items-center justify-center gap-4 group/action"
+                            className="p-6 rounded-[2rem] bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 transition-all flex flex-col items-center justify-center gap-3 group/action"
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center text-accent group-hover/action:scale-110 transition-transform shadow-lg shadow-accent/20">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover/action:scale-110 transition-transform">
                                 <Plus className="w-6 h-6" />
                             </div>
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest text-center">Add Student</span>
+                            <span className="text-[10px] font-black text-white/40 group-hover/action:text-white uppercase tracking-widest text-center">Add Student</span>
                         </button>
                         <button
                             onClick={() => navigate('/app/evaluations')}
-                            className="p-8 rounded-[2rem] bg-primary/5 hover:bg-primary/20 border border-primary/10 hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-4 group/action"
+                            className="p-6 rounded-[2rem] bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 transition-all flex flex-col items-center justify-center gap-3 group/action"
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary group-hover/action:scale-110 transition-transform shadow-lg shadow-primary/20">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover/action:scale-110 transition-transform">
                                 <ClipboardCheck className="w-6 h-6" />
                             </div>
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest text-center">Evaluation Hub</span>
-                        </button>
-                        <button
-                            onClick={() => setShowGroupModal(true)}
-                            className="p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-indigo-500/5 hover:bg-indigo-500/20 border border-indigo-500/10 hover:border-indigo-500/40 transition-all flex flex-col items-center justify-center gap-4 group/action"
-                        >
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover/action:scale-110 transition-transform shadow-lg shadow-indigo-500/20">
-                                <Users className="w-6 h-6" />
-                            </div>
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest text-center">Create Group</span>
+                            <span className="text-[10px] font-black text-white/40 group-hover/action:text-white uppercase tracking-widest text-center">Evaluation Hub</span>
                         </button>
                     </div>
                 </div>
@@ -341,14 +384,6 @@ export default function HeadCoachDashboard() {
                 <LiveStudentsWidget />
             </div>
 
-            {/* All Groups Management */}
-            <div className="glass-card p-6 sm:p-12 rounded-[2rem] sm:rounded-[3.5rem] border border-white/10 shadow-premium bg-white/[0.01]">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-8 flex items-center gap-4">
-                    <div className="p-3 bg-accent/20 rounded-2xl text-accent border border-accent/20 shadow-lg shadow-accent/5"><Users className="w-6 h-6" /></div>
-                    Academy Structure
-                </h2>
-                <GroupsList showAll={true} />
-            </div>
 
 
             {/* Modals */}

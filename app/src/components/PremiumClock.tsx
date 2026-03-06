@@ -20,31 +20,37 @@ export default function PremiumClock({ className = "" }: PremiumClockProps) {
     const amPm = format(time, 'aaa');
 
     return (
-        <div className={`inline-flex items-center gap-3 px-4 py-1.5 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 transition-all duration-700 group ${className}`}>
-            <div className="flex items-center gap-2.5">
-                {/* Minimalist Icon Box */}
-                <div className="flex items-center justify-center w-7 h-7 bg-primary/20 rounded-xl border border-primary/20 transition-all duration-500 group-hover:bg-primary/30">
-                    <Clock className="w-3.5 h-3.5 text-primary drop-shadow-[0_0_5px_rgba(var(--primary-rgb),0.5)]" />
-                </div>
-
-                <div className="flex items-baseline gap-1" style={{ textShadow: '0 0 10px rgba(255, 255, 255, 0.1)' }}>
-                    <span className="text-sm font-black text-white tracking-widest font-mono leading-none">
-                        {hours}
+        <div className={`inline-flex items-center gap-4 ${className}`}>
+            {/* Time Section */}
+            <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl font-light text-white tracking-tight leading-none">
+                    {hours}
+                </span>
+                <span className="text-primary/40 font-thin text-2xl leading-none animate-pulse">:</span>
+                <span className="text-3xl font-light text-white tracking-tight leading-none">
+                    {minutes}
+                </span>
+                <div className="flex flex-col ml-1">
+                    <span className="text-[9px] font-black text-primary/80 uppercase tracking-[0.2em] leading-none mb-0.5">
+                        {amPm}
                     </span>
-                    <span className="text-primary font-black animate-pulse text-sm leading-none">:</span>
-                    <span className="text-sm font-black text-white tracking-widest font-mono leading-none">
-                        {minutes}
-                    </span>
-                    <span className="text-[9px] font-black text-white/30 ml-1 font-mono tracking-tighter self-center uppercase">
-                        {seconds}
+                    <span className="text-[8px] font-medium text-white/20 tracking-tighter leading-none">
+                        {seconds}s
                     </span>
                 </div>
             </div>
 
-            {/* Refined Label Stack */}
-            <div className="flex flex-col items-start gap-1">
-                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.3em] leading-none mb-0.5">{format(time, 'eee')}</span>
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">{amPm}</span>
+            {/* Elegant Separator */}
+            <div className="w-px h-8 bg-white/10" />
+
+            {/* Date Section */}
+            <div className="flex flex-col justify-center">
+                <span className="text-[11px] font-bold text-white/70 uppercase tracking-[0.2em] leading-none mb-1">
+                    {format(time, 'EEEE')}
+                </span>
+                <span className="text-[9px] font-medium text-white/30 uppercase tracking-widest leading-none">
+                    {format(time, 'MMM dd, yyyy')}
+                </span>
             </div>
         </div>
     );

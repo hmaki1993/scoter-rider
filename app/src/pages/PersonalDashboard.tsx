@@ -12,6 +12,7 @@ import GroupsList from '../components/GroupsList';
 import ConfirmModal from '../components/ConfirmModal';
 import GroupFormModal from '../components/GroupFormModal';
 import PremiumCalendarModal from '../components/PremiumCalendarModal';
+import PageHeader from '../components/PageHeader';
 
 export default function PersonalDashboard() {
     const { t } = useTranslation();
@@ -265,27 +266,15 @@ export default function PersonalDashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Premium Header Architecture */}
-            <div className="relative overflow-hidden group mb-10">
-                <div className="absolute -top-24 -left-24 w-64 h-64 bg-accent/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-accent/20 transition-all duration-1000"></div>
-
-                <div className="glass-card rounded-[2.5rem] border border-white/10 p-8 flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10 bg-white/[0.02] backdrop-blur-md">
-                    <div className="flex items-center gap-6">
-                        <div className="w-3 h-12 bg-accent rounded-full shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]"></div>
-                        <div>
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mb-1.5 italic">personal workspace</p>
-                            <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-none">
-                                My Activity
-                            </h1>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 px-6 py-3 bg-black/20 border border-white/5 rounded-full shadow-inner backdrop-blur-xl shrink-0">
-                        <Calendar className="w-4 h-4 text-accent" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">{format(new Date(), 'dd MMMM yyyy')}</span>
-                    </div>
+            <PageHeader
+                title={t('dashboard.personalTitle', 'My Activity')}
+                subtitle={t('dashboard.personalSubtitle', 'Personal Workspace & Financial Status')}
+            >
+                <div className="flex items-center gap-3 px-6 py-3 bg-black/20 border border-white/5 rounded-full shadow-inner backdrop-blur-xl shrink-0">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">{format(new Date(), 'dd MMMM yyyy')}</span>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Earnings Widget (Common for Everyone) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mb-12">
@@ -425,25 +414,25 @@ export default function PersonalDashboard() {
                                                     const isLoading = recordingId === subscription.id;
 
                                                     return (
-                                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                             <button
                                                                 onClick={() => isRecentlyRecorded ? handleResetSession(subscription) : handleRecordSession(subscription)}
                                                                 disabled={isLoading || (subscription.sessions_remaining <= 0 && !isRecentlyRecorded)}
-                                                                className={`p-2.5 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group/record relative border
+                                                                className={`p-1.5 rounded-lg transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group/record relative border
                                                                     ${isRecentlyRecorded
                                                                         ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20 shadow-emerald-500/10'
                                                                         : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary hover:text-white shadow-primary/10'}`}
                                                                 title={isRecentlyRecorded ? "Reset Session" : "Record Session"}
                                                             >
                                                                 {isLoading ? (
-                                                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                                                 ) : isRecentlyRecorded ? (
-                                                                    <RotateCcw className="w-4 h-4 transition-transform group-hover/record:rotate-[-45deg]" />
+                                                                    <RotateCcw className="w-3 h-3 transition-transform group-hover/record:rotate-[-45deg]" />
                                                                 ) : (
-                                                                    <CheckCircle className="w-4 h-4 transition-transform group-hover/record:scale-110" />
+                                                                    <CheckCircle className="w-3 h-3 transition-transform group-hover/record:scale-110" />
                                                                 )}
                                                                 {isRecentlyRecorded && (
-                                                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0a0c10] shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-[#0a0c10] shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                                                                 )}
                                                             </button>
                                                             {!isRecentlyRecorded && subscription.sessions_remaining > 0 && (
@@ -452,10 +441,10 @@ export default function PersonalDashboard() {
                                                                         setSubToClear(subscription.id);
                                                                         setShowClearModal(true);
                                                                     }}
-                                                                    className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-rose-500 hover:bg-rose-500/10 border border-white/5 transition-all hover:scale-110 active:scale-90"
+                                                                    className="p-1.5 rounded-lg bg-white/5 text-white/20 hover:text-rose-500 hover:bg-rose-500/10 border border-white/5 transition-all"
                                                                     title="Clear All Sessions"
                                                                 >
-                                                                    <Trash2 className="w-4 h-4" />
+                                                                    <Trash2 className="w-3 h-3" />
                                                                 </button>
                                                             )}
                                                         </div>
@@ -505,23 +494,23 @@ export default function PersonalDashboard() {
                                             </div>
 
                                             {/* Footer: Expiry & Status */}
-                                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em]">{t('students.expiry')}:</p>
-                                                    <p className="text-[10px] font-bold text-white/80">{format(new Date(subscription.expiry_date), 'dd MMM yyyy')}</p>
+                                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-1.5 shrink-0 overflow-hidden">
+                                                    <p className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] whitespace-nowrap">{t('students.expiry')}:</p>
+                                                    <p className="text-[9px] font-bold text-white/80 whitespace-nowrap">{format(new Date(subscription.expiry_date), 'dd MMM yy')}</p>
                                                 </div>
 
                                                 {(() => {
                                                     const isExpired = new Date(subscription.expiry_date) < new Date() || subscription.status === 'expired' || subscription.sessions_remaining <= 0;
                                                     return isExpired ? (
-                                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/20 rounded-lg shrink-0">
                                                             <div className="w-1 h-1 rounded-full bg-rose-500 animate-ping"></div>
-                                                            <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest">{t('pt.expired')}</span>
+                                                            <span className="text-[7px] font-black text-rose-500 uppercase tracking-widest leading-none">{t('pt.expired')}</span>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-accent/10 border border-accent/20 rounded-lg">
+                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded-lg shrink-0">
                                                             <div className="w-1 h-1 rounded-full bg-accent animate-pulse"></div>
-                                                            <span className="text-[8px] font-black text-accent uppercase tracking-widest">{t('pt.active')}</span>
+                                                            <span className="text-[7px] font-black text-accent uppercase tracking-widest leading-none">{t('pt.active')}</span>
                                                         </div>
                                                     );
                                                 })()}
