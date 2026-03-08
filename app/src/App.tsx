@@ -14,7 +14,7 @@ const Finance = lazy(() => import('./pages/Finance'));
 const Schedule = lazy(() => import('./pages/Schedule'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Calculator = lazy(() => import('./pages/Calculator'));
-const Login = lazy(() => import('./pages/EpicLogin'));
+const Login = lazy(() => import('./pages/Login'));
 
 const Register = lazy(() => import('./pages/Register'));
 const PublicRegistration = lazy(() => import('./pages/PublicRegistration'));
@@ -32,6 +32,8 @@ const AITraining = lazy(() => import('./pages/AITraining'));
 import { initializeTheme } from './utils/theme';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { CallProvider } from './context/CallContext';
+import GlobalCallOverlay from './components/GlobalCallOverlay';
 import NotificationSoundHandler from './components/NotificationSoundHandler';
 
 import BackButtonHandler from './components/BackButtonHandler';
@@ -80,7 +82,7 @@ const PageLoader = ({ name }: { name?: string }) => {
 function AppContent() {
   console.log('App: Rendering component');
   const { i18n } = useTranslation();
-  const { settings } = useTheme();
+  const { settings, userProfile } = useTheme();
 
   useEffect(() => {
     if (i18n) {
@@ -90,76 +92,79 @@ function AppContent() {
   }, [i18n, i18n?.language]);
 
   return (
-    <BrowserRouter>
-      <NotificationSoundHandler />
-      <BackButtonHandler />
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 4000,
-          className: 'premium-toast-vibrant',
-          style: {
-            color: '#fff',
-            padding: '12px 24px',
-            fontSize: '14px',
-            fontWeight: '700',
-            letterSpacing: '0.02em',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minWidth: 'fit-content',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
+    <CallProvider currentUserId={userProfile?.id}>
+      <BrowserRouter>
+        <GlobalCallOverlay />
+        <NotificationSoundHandler />
+        <BackButtonHandler />
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 4000,
+            className: 'premium-toast-vibrant',
+            style: {
+              color: '#fff',
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: '700',
+              letterSpacing: '0.02em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              minWidth: 'fit-content',
             },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
             },
-          },
-        }}
-      />
-      <Suspense fallback={<PageLoader name={settings?.academy_name} />}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/registration" element={<PublicRegistration />} />
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        <Suspense fallback={<PageLoader name={settings?.academy_name} />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/registration" element={<PublicRegistration />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/app" element={<DashboardLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="students" element={<Students />} />
-              <Route path="students/:id" element={<StudentDetails />} />
-              <Route path="coaches" element={<Coaches />} />
-              <Route path="coaches/:id" element={<CoachDetails />} />
-              <Route path="finance" element={<Finance />} />
-              <Route path="calculator" element={<Calculator />} />
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/app" element={<DashboardLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="students" element={<Students />} />
+                <Route path="students/:id" element={<StudentDetails />} />
+                <Route path="coaches" element={<Coaches />} />
+                <Route path="coaches/:id" element={<CoachDetails />} />
+                <Route path="finance" element={<Finance />} />
+                <Route path="calculator" element={<Calculator />} />
 
-              <Route path="schedule" element={<Schedule />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="my-work" element={<PersonalDashboard />} />
-              <Route path="admin/cameras" element={<AdminCameras />} />
+                <Route path="schedule" element={<Schedule />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="my-work" element={<PersonalDashboard />} />
+                <Route path="admin/cameras" element={<AdminCameras />} />
 
-              {/* Attendance Pages */}
-              <Route path="attendance/students" element={<StudentAttendance />} />
-              <Route path="attendance/staff" element={<StaffAttendance />} />
-              <Route path="attendance/pt" element={<PTAttendance />} />
-              <Route path="evaluations" element={<Evaluations />} />
-              <Route path="communications" element={<Communications />} />
-              <Route path="ai-training" element={<AITraining />} />
+                {/* Attendance Pages */}
+                <Route path="attendance/students" element={<StudentAttendance />} />
+                <Route path="attendance/staff" element={<StaffAttendance />} />
+                <Route path="attendance/pt" element={<PTAttendance />} />
+                <Route path="evaluations" element={<Evaluations />} />
+                <Route path="communications" element={<Communications />} />
+                <Route path="ai-training" element={<AITraining />} />
+              </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </CallProvider>
   );
 }
 

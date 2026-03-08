@@ -196,38 +196,38 @@ export default function StudentDashboard() {
                     {/* Attended Sessions */}
                     <div
                         onMouseEnter={playHoverSound}
-                        className="pastel-card pastel-mint group h-full flex flex-col justify-between"
+                        className="glass-card bg-primary/[0.03] group h-full flex flex-col justify-between p-6 rounded-[2rem] relative overflow-hidden"
                     >
-                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10 text-black/40">
+                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10 text-white/40">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em]">Attended Sessions</p>
-                            <div className="w-10 h-10 rounded-2xl bg-black/5 text-black/60 flex items-center justify-center border border-black/5 group-hover:scale-110 transition-all">
+                            <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/60 flex items-center justify-center border border-white/5 group-hover:scale-110 transition-all">
                                 <CheckCircle className="w-5 h-5" strokeWidth={2} />
                             </div>
                         </div>
-                        <div className="relative z-10 flex items-baseline gap-3 text-black">
-                            <h3 className="text-5xl font-black tracking-tighter !text-black">
+                        <div className="relative z-10 flex items-baseline gap-3 text-white">
+                            <h3 className="text-5xl font-black tracking-tighter">
                                 {attendedSessions}
                             </h3>
-                            <p className="text-[9px] font-bold text-black/30 uppercase tracking-widest mb-2">Total completed</p>
+                            <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-2">Total completed</p>
                         </div>
                     </div>
 
                     {/* Remaining Sessions */}
                     <div
                         onMouseEnter={playHoverSound}
-                        className="pastel-card pastel-yellow group h-full flex flex-col justify-between"
+                        className="glass-card bg-accent/[0.03] group h-full flex flex-col justify-between p-6 rounded-[2rem] relative overflow-hidden"
                     >
-                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10 text-black/40">
+                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10 text-white/40">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em]">Remaining Sessions</p>
-                            <div className="w-10 h-10 rounded-2xl bg-black/5 text-black/60 flex items-center justify-center border border-black/5 group-hover:scale-110 transition-all">
+                            <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/60 flex items-center justify-center border border-white/5 group-hover:scale-110 transition-all">
                                 <Calendar className="w-5 h-5" strokeWidth={2} />
                             </div>
                         </div>
-                        <div className="relative z-10 flex items-baseline gap-3 text-black">
-                            <h3 className="text-5xl font-black tracking-tighter !text-black">
+                        <div className="relative z-10 flex items-baseline gap-3 text-white">
+                            <h3 className="text-5xl font-black tracking-tighter">
                                 {sessionsRemaining}
                             </h3>
-                            <p className="text-[9px] font-bold text-black/30 uppercase tracking-widest mb-2">{planName}</p>
+                            <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-2">{planName}</p>
                         </div>
                     </div>
                 </div>
@@ -277,15 +277,17 @@ export default function StudentDashboard() {
                         {/* Feature Badges */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10 relative z-10">
                             {[
-                                { label: 'Sessions Logged', value: attendedSessions, icon: CheckCircle, pastel: 'pastel-mint' },
-                                { label: 'Remaining', value: sessionsRemaining, icon: Clock, pastel: 'pastel-yellow' },
-                                { label: 'Total Program', value: (attendedSessions + sessionsRemaining), icon: Shield, pastel: 'pastel-coral' },
-                                { label: 'Current Level', value: 'Prime', icon: Sparkles, pastel: 'pastel-blue' }
+                                { label: 'Sessions Logged', value: attendedSessions, icon: CheckCircle, tint: 'bg-primary/10', iconColor: 'text-primary' },
+                                { label: 'Remaining', value: sessionsRemaining, icon: Clock, tint: 'bg-accent/10', iconColor: 'text-accent' },
+                                { label: 'Total Program', value: (attendedSessions + sessionsRemaining), icon: Shield, tint: 'bg-rose-500/10', iconColor: 'text-rose-400' },
+                                { label: 'Current Level', value: 'Prime', icon: Sparkles, tint: 'bg-indigo-500/10', iconColor: 'text-indigo-400' }
                             ].map((item, i) => (
-                                <div key={i} className={`p-5 pastel-card ${item.pastel} flex flex-col items-center justify-center text-center group/item !p-4`}>
-                                    <item.icon className="w-4 h-4 mb-2 text-black/20 group-hover/item:text-black transition-colors" />
-                                    <p className="text-[8px] font-black text-black/30 uppercase tracking-widest mb-1">{item.label}</p>
-                                    <p className="text-xl font-black text-black uppercase tracking-tight">{item.value}</p>
+                                <div key={i} className={`glass-card bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center group/item p-4 hover:bg-white/[0.05] transition-colors`}>
+                                    <div className={`p-2 rounded-lg ${item.tint} mb-2`}>
+                                        <item.icon className={`w-4 h-4 ${item.iconColor}`} />
+                                    </div>
+                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">{item.label}</p>
+                                    <p className="text-xl font-black text-white uppercase tracking-tight">{item.value}</p>
                                 </div>
                             ))}
                         </div>

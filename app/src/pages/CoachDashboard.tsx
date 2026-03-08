@@ -735,20 +735,20 @@ export default function CoachDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* Attendance Card */}
-                <div className="relative group col-span-1 flex flex-col justify-between p-6 rounded-[2rem] pastel-card pastel-mint cursor-pointer transition-all duration-700 hover:scale-[1.02] active:scale-[0.98] shadow-xl overflow-hidden">
+                <div className="relative group col-span-1 flex flex-col justify-between p-6 rounded-[2rem] glass-card bg-primary/[0.03] cursor-pointer transition-all duration-700 hover:scale-[1.02] active:scale-[0.98] shadow-xl overflow-hidden">
                     {/* Interior Glass Glow */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none group-hover:bg-primary/10 transition-colors duration-1000"></div>
 
                     <div className="flex items-center justify-between mb-6 relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-1000 border border-black/5 bg-black/5 backdrop-blur-xl`}>
-                                <Clock className={`w-5 h-5 ${isCheckedIn ? 'text-emerald-600 animate-pulse' : 'text-rose-600'}`} />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-1000 border border-white/5 bg-white/5 backdrop-blur-xl`}>
+                                <Clock className={`w-5 h-5 ${isCheckedIn ? 'text-primary animate-pulse' : 'text-rose-500'}`} />
                             </div>
                             <div>
-                                <h2 className="text-sm font-black text-black/80 uppercase tracking-tight leading-none">{t('common.attendance')}</h2>
-                                <p className="text-[8px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-1 text-black/40">
-                                    <span className={`w-1 h-1 rounded-full ${isCheckedIn ? 'bg-emerald-600 animate-ping' : 'bg-rose-600'}`}></span>
-                                    <span className={isCheckedIn ? 'text-emerald-600' : 'text-rose-600'}>
+                                <h2 className="text-sm font-black text-white uppercase tracking-tight leading-none">{t('common.attendance')}</h2>
+                                <p className="text-[8px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-1 text-white/40">
+                                    <span className={`w-1 h-1 rounded-full ${isCheckedIn ? 'bg-primary animate-ping' : 'bg-rose-500'}`}></span>
+                                    <span className={isCheckedIn ? 'text-primary' : 'text-rose-500'}>
                                         {isCheckedIn ? t('coaches.workingNow') : t('coaches.away')}
                                     </span>
                                 </p>
@@ -783,22 +783,22 @@ export default function CoachDashboard() {
                     <div className="flex-1 flex flex-col items-center justify-center py-2 relative z-10">
                         {isCheckedIn ? (
                             <div className="relative">
-                                <div className="text-4xl sm:text-5xl font-black text-black tracking-[0.05em] font-mono !text-black">
+                                <div className="text-4xl sm:text-5xl font-black text-white tracking-[0.05em] font-mono whitespace-nowrap">
                                     {formatTimer(elapsedTime)}
                                 </div>
-                                <div className="absolute -inset-4 bg-white/5 blur-2xl rounded-full -z-10 animate-pulse"></div>
+                                <div className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full -z-10 animate-pulse"></div>
                             </div>
                         ) : dailyTotalSeconds > 0 ? (
                             <div className="flex flex-col items-center gap-1">
-                                <div className="text-4xl font-black text-emerald-700/60 tracking-[0.05em] font-mono">
+                                <div className="text-4xl font-black text-primary/60 tracking-[0.05em] font-mono whitespace-nowrap">
                                     {formatTimer(dailyTotalSeconds)}
                                 </div>
-                                <div className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                                    <span className="text-[7px] font-black text-emerald-500/60 uppercase tracking-[0.3em]">Done</span>
+                                <div className="px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-full">
+                                    <span className="text-[7px] font-black text-primary/60 uppercase tracking-[0.3em]">Done</span>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-4xl font-black text-black/5 tracking-[0.05em] font-mono !text-black/5">
+                            <div className="text-4xl font-black text-white/5 tracking-[0.05em] font-mono whitespace-nowrap">
                                 00:00:00
                             </div>
                         )}
@@ -824,39 +824,39 @@ export default function CoachDashboard() {
                 <div
                     onClick={() => setShowEarningsModal(true)}
                     onMouseEnter={playHoverSound}
-                    className="relative group col-span-1 flex flex-col justify-between p-6 rounded-[2rem] pastel-card pastel-yellow cursor-pointer transition-all duration-700 hover:scale-[1.02] active:scale-[0.98] shadow-xl overflow-hidden"
+                    className="relative group col-span-1 flex flex-col justify-between p-6 rounded-[2rem] glass-card bg-accent/[0.03] cursor-pointer transition-all duration-700 hover:scale-[1.02] active:scale-[0.98] shadow-xl overflow-hidden"
                 >
                     {/* Interior Glass Glow */}
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/10 transition-colors duration-1000"></div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none group-hover:bg-accent/10 transition-colors duration-1000"></div>
 
                     <div className="flex items-center justify-between mb-6 relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-black/5 border border-black/5 backdrop-blur-xl flex items-center justify-center text-black/80">
+                            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 backdrop-blur-xl flex items-center justify-center text-white/80">
                                 <Wallet className="w-5 h-5" />
                             </div>
                             <div>
-                                <h2 className="text-sm font-black text-black/80 uppercase tracking-tight leading-none">Earnings</h2>
-                                <p className="text-[8px] font-black text-black/20 uppercase tracking-[0.2em] mt-1">Monthly</p>
+                                <h2 className="text-sm font-black text-white uppercase tracking-tight leading-none">Earnings</h2>
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">Monthly</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex-1 flex flex-col justify-center items-center py-2 relative z-10">
                         <div className="flex items-baseline gap-1.5">
-                            <h3 className="text-4xl font-black text-black tracking-tighter !text-black">
+                            <h3 className="text-4xl font-black text-white tracking-tighter">
                                 {(totalEarnings + baseSalary).toLocaleString()}
                             </h3>
-                            <span className="text-[10px] font-black text-black/20 uppercase tracking-widest">{currency.code}</span>
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{currency.code}</span>
                         </div>
                         <div className="flex gap-4 mt-4 opacity-40 group-hover:opacity-100 transition-opacity">
                             <div className="text-center">
-                                <p className="text-[7px] font-black text-black/30 uppercase tracking-widest mb-0.5">Base</p>
-                                <p className="text-[10px] font-bold text-black/60">{baseSalary.toLocaleString()}</p>
+                                <p className="text-[7px] font-black text-white/30 uppercase tracking-widest mb-0.5">Base</p>
+                                <p className="text-[10px] font-bold text-white/60">{baseSalary.toLocaleString()}</p>
                             </div>
                             <div className="w-px h-6 bg-white/10 self-center"></div>
                             <div className="text-center">
-                                <p className="text-[7px] font-black text-black/30 uppercase tracking-widest mb-0.5">PT</p>
-                                <p className="text-[10px] font-bold text-black/60">{totalEarnings.toLocaleString()}</p>
+                                <p className="text-[7px] font-black text-white/30 uppercase tracking-widest mb-0.5">PT</p>
+                                <p className="text-[10px] font-bold text-white/60">{totalEarnings.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>

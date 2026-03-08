@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import AgoraRTC, { IAgoraRTCClient, ILocalVideoTrack, ILocalAudioTrack, IRemoteVideoTrack, IRemoteAudioTrack } from 'agora-rtc-sdk-ng';
+// Agora types removed as they are now managed in CallContext
 import {
     MessageSquare, Search, Phone, Video, MoreVertical, Send,
     Paperclip, Mic, Image as ImageIcon, X, Check, CheckCheck,
@@ -8,17 +9,18 @@ import {
     Camera, Users, Plus, ArrowLeft, Smile, Play, Pause,
     Loader2, Download, MicOff, VideoOff, Reply, Pin, Trash2,
     Archive, CheckSquare, Minimize2, Maximize2, RotateCcw, Type, Pencil, Crop,
-    ArrowDownLeft, ArrowUpRight, UserPlus, Settings, ChevronLeft, Lock
+    ArrowDownLeft, ArrowUpRight, UserPlus, Settings, ChevronLeft, Lock, LayoutDashboard
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { useCall } from '../context/CallContext';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { playRecordStartSound, playMessageSentSound, playTypingTick } from '../utils/sounds';
 
-const AGORA_APP_ID = import.meta.env.VITE_AGORA_APP_ID as string;
+// AGORA_APP_ID removed as it is now managed in CallContext
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -50,6 +52,8 @@ interface Message {
     is_pinned?: boolean;
     is_deleted?: boolean;
     deleted_for_users?: string[];
+    delivered_at?: string;
+    read_at?: string;
 }
 
 interface Conversation {
@@ -87,23 +91,53 @@ const VoiceNotePlayer = ({ url, duration, sender, isOwn }: { url: string; durati
         setIsPlaying(!isPlaying);
     };
 
-    // Stable waveform generation based on the URL
-    const waveform = useMemo(() => {
+    const [waveform, setWaveform] = useState<number[]>(() =>
+        new Array(35).fill(0).map(() => 20 + Math.random() * 30)
+    ); // Default to randomized heights for a "sound indicator" look
+
+    // Fetch and decode audio to generate real waveform
+    useEffect(() => {
+        let isAborted = false;
         const bars = 35;
-        const heights = [];
-        let seed = 0;
-        for (let i = 0; i < url.length; i++) {
-            seed = (seed << 5) - seed + url.charCodeAt(i);
-            seed |= 0;
+
+        async function analyzeAudio() {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                if (isAborted) return;
+
+                const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+                const audioCtx = new AudioContextClass();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                if (isAborted) return;
+
+                const rawData = audioBuffer.getChannelData(0); // Get first channel
+                const blockSize = Math.floor(rawData.length / bars);
+                const heights = [];
+
+                for (let i = 0; i < bars; i++) {
+                    const start = i * blockSize;
+                    let sum = 0;
+                    for (let j = 0; j < blockSize; j++) {
+                        sum += Math.abs(rawData[start + j]);
+                    }
+                    // Calculate RMS-like value and scale to 30-100 range
+                    const rms = sum / blockSize;
+                    const scaled = Math.min(100, Math.max(30, rms * 800));
+                    heights.push(scaled);
+                }
+
+                setWaveform(heights);
+                audioCtx.close();
+            } catch (err) {
+                console.error("Waveform error:", err);
+                // Fallback to varied bars if analysis fails
+                setWaveform(new Array(bars).fill(0).map(() => 25 + Math.random() * 25));
+            }
         }
-        const pseudoRandom = () => {
-            seed = (seed * 16807) % 2147483647;
-            return (seed - 1) / 2147483646;
-        };
-        for (let i = 0; i < bars; i++) {
-            heights.push(20 + pseudoRandom() * 80);
-        }
-        return heights;
+
+        analyzeAudio();
+        return () => { isAborted = true; };
     }, [url]);
 
     // Smooth progress update loop
@@ -135,6 +169,8 @@ const VoiceNotePlayer = ({ url, duration, sender, isOwn }: { url: string; durati
     }, [isPlaying, isDragging, updateProgress]);
 
     const handleScrub = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         const container = document.getElementById(`waveform-${url}`);
         if (!container) return;
         const rect = container.getBoundingClientRect();
@@ -187,63 +223,48 @@ const VoiceNotePlayer = ({ url, duration, sender, isOwn }: { url: string; durati
     }, []);
 
     return (
-        <div className="flex items-center gap-4 min-w-[280px]">
+        <div className="flex items-center gap-2.5 min-w-[220px] max-w-[280px] select-none relative pb-4">
             <audio ref={audioRef} src={url} preload="metadata" />
-
-            <div className="relative flex-shrink-0">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
-                    {sender?.avatar_url ? (
-                        <img src={sender.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                        <UserPlus className="w-6 h-6 text-white/50" />
-                    )}
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-transparent flex items-center justify-center">
-                    <Mic className="w-3 h-3 text-white" />
-                </div>
-            </div>
 
             <button
                 onClick={togglePlay}
-                className="w-10 h-10 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0"
+                className="w-7 h-7 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 flex-shrink-0 border border-white/10"
             >
                 {isPlaying ? (
-                    <Pause className="w-8 h-8 text-white/90 fill-current" />
+                    <Pause className="w-3.5 h-3.5 text-white/90 fill-current" />
                 ) : (
-                    <Play className="w-8 h-8 text-white/90 fill-current ml-1" />
+                    <Play className="w-3.5 h-3.5 text-white/90 fill-current ml-0.5" />
                 )}
             </button>
 
-            <div className="flex-1 flex flex-col justify-center min-w-[150px]">
+            <div
+                id={`waveform-${url}`}
+                className="flex-1 h-8 flex items-center justify-between cursor-pointer relative group touch-none"
+                onMouseDown={(e) => { e.stopPropagation(); setIsDragging(true); handleScrub(e); }}
+                onTouchStart={(e) => { e.stopPropagation(); setIsDragging(true); handleScrub(e); }}
+            >
+                {waveform.map((h, i) => {
+                    const barProgress = (i / (waveform.length - 1)) * 100;
+                    const isActive = progress >= barProgress;
+                    return (
+                        <div
+                            key={i}
+                            className={`w-[2px] rounded-full transition-colors duration-200`}
+                            style={{
+                                height: `${h}%`,
+                                backgroundColor: isActive ? 'var(--primary, #60a5fa)' : 'rgba(255,255,255,0.12)'
+                            }}
+                        />
+                    );
+                })}
+
                 <div
-                    id={`waveform-${url}`}
-                    className="h-8 flex items-center cursor-pointer relative group gap-[2px] touch-none"
-                    onMouseDown={(e) => { setIsDragging(true); handleScrub(e); }}
-                    onTouchStart={(e) => { setIsDragging(true); handleScrub(e); }}
-                >
-                    {waveform.map((h, i) => {
-                        const barProgress = (i / (waveform.length - 1)) * 100;
-                        const isActive = progress >= barProgress;
-                        return (
-                            <div
-                                key={i}
-                                className={`w-[2.5px] rounded-full transition-colors duration-200`}
-                                style={{
-                                    height: `${h}%`,
-                                    backgroundColor: isActive ? '#60a5fa' : 'rgba(255,255,255,0.2)'
-                                }}
-                            />
-                        );
-                    })}
+                    className={`absolute top-1/2 w-2.5 h-2.5 bg-blue-400 rounded-full shadow-md z-10 transition-transform active:scale-150 ${isDragging ? 'scale-150' : 'group-hover:scale-125'}`}
+                    style={{ left: `${progress}%`, transform: 'translate(-50%, -50%)' }}
+                />
 
-                    <div
-                        className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-blue-400 rounded-full shadow-md z-10 transition-transform active:scale-150 ${isDragging ? 'scale-150' : 'group-hover:scale-125'}`}
-                        style={{ left: `calc(${progress}% - 7px)` }}
-                    />
-                </div>
-
-                <div className="flex items-center justify-between mt-1">
-                    <span className="text-[11px] text-white/70 font-medium tracking-wide">
+                <div className="absolute -bottom-3.5 left-0">
+                    <span className="text-[10px] text-white/30 font-bold tracking-tight">
                         {formatTime(currentTime)}
                     </span>
                 </div>
@@ -496,17 +517,27 @@ const MessageBubble = ({
                         </div>
                     )}
                     {msg.type === 'voice' && msg.media_url && (
-                        <div className={`px-2 py-2 relative text-white transition-all duration-300 ${isOwn ? 'bg-[#005c4b]' : 'bg-[#202c33] border border-white/5'} ${bubbleRadius}`}>
+                        <div className={`px-3 py-2 relative text-white transition-all duration-300 backdrop-blur-xl border shadow-lg ${isOwn ? 'bg-primary/[0.08] border-primary/10' : 'bg-white/[0.05] border-white/8'} ${bubbleRadius}`}>
                             <VoiceNotePlayer
                                 url={msg.media_url}
                                 duration={msg.media_duration}
                                 sender={msg.sender}
                                 isOwn={isOwn}
                             />
-                            {/* Inner Bubble Timestamp for Voice Notes to match WhatsApp layout precisely */}
+                            {/* Inner Bubble Timestamp */}
                             <div className="absolute bottom-1 right-2 flex items-center gap-1">
-                                <span className="text-[10px] text-white/60 font-medium">{timeStr}</span>
-                                {isOwn && <CheckCheck className="w-3.5 h-3.5 text-blue-400" />}
+                                <span className="text-[9px] text-white/30 font-bold uppercase tracking-wider">{timeStr}</span>
+                                {isOwn && (
+                                    <div className="flex items-center">
+                                        {msg.read_at ? (
+                                            <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+                                        ) : msg.delivered_at ? (
+                                            <CheckCheck className="w-3.5 h-3.5 text-white/40" />
+                                        ) : (
+                                            <Check className="w-3.5 h-3.5 text-white/40" />
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             {msg.is_pinned && (
                                 <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg">
@@ -521,7 +552,17 @@ const MessageBubble = ({
                 {msg.type !== 'voice' && (
                     <span className={`text-[9px] text-white/20 font-black uppercase tracking-widest mt-1 animate-premium-in ${isOwn ? 'flex items-center gap-1.5 ml-auto' : 'mr-auto'}`}>
                         {timeStr}
-                        {isOwn && <CheckCheck className="w-3.5 h-3.5 text-primary/40" />}
+                        {isOwn && (
+                            <div className="flex items-center">
+                                {msg.read_at ? (
+                                    <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+                                ) : msg.delivered_at ? (
+                                    <CheckCheck className="w-3.5 h-3.5 text-white/40" />
+                                ) : (
+                                    <Check className="w-3.5 h-3.5 text-white/40" />
+                                )}
+                            </div>
+                        )}
                     </span>
                 )}
             </div>
@@ -582,268 +623,7 @@ const DeleteConfirmationModal = ({
     );
 };
 
-// ─── Incoming Call Modal ───────────────────────────────────────────────────────
-const IncomingCallModal = ({
-    callerName, callType, onAccept, onReject
-}: { callerName: string; callType: 'audio' | 'video'; onAccept: () => void; onReject: () => void }) => {
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
-            <div className="relative z-10 flex flex-col items-center gap-6 p-8 rounded-3xl bg-zinc-900 border border-white/10 shadow-2xl w-72 animate-in zoom-in-95 duration-300">
-                <div className="w-20 h-20 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center text-2xl font-semibold text-white">
-                    {callerName[0]}
-                </div>
-                <div className="text-center">
-                    <p className="text-white/40 text-[10px] font-medium uppercase tracking-wider">Incoming {callType} call</p>
-                    <h3 className="text-white text-xl font-bold mt-1">{callerName}</h3>
-                </div>
-                <div className="flex items-center gap-4">
-                    <button onClick={onReject} className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95">
-                        <PhoneOff className="w-5 h-5 text-white" />
-                    </button>
-                    <button onClick={onAccept} className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg transition-all active:scale-95">
-                        <Phone className="w-5 h-5 text-white" />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
-// ─── Active Call Modal ─────────────────────────────────────────────────────────
-const ActiveCallModal = ({
-    callType, otherUserName, duration, onHangup, isMuted, toggleMute, isCameraOff, toggleCamera, otherUserAvatar,
-    facingMode, toggleFacingMode, isLocalVideoMain, setIsLocalVideoMain, onMinimize, status
-}: {
-    callType: 'audio' | 'video';
-    otherUserName: string;
-    duration: number;
-    onHangup: () => void;
-    isMuted: boolean;
-    toggleMute: () => void;
-    isCameraOff: boolean;
-    toggleCamera: () => void;
-    otherUserAvatar?: string;
-    facingMode: 'user' | 'environment';
-    toggleFacingMode: () => void;
-    isLocalVideoMain: boolean;
-    setIsLocalVideoMain: (val: boolean) => void;
-    onMinimize?: () => void;
-    status: 'calling' | 'ringing' | 'connected' | null;
-}) => {
-    const formatDuration = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-
-    const [pos, setPos] = useState({ x: 24, y: 24 }); // Initial position from top-right
-    const [isDragging, setIsDragging] = useState(false);
-    const dragStartPos = useRef({ x: 0, y: 0 });
-    const hasMovedRef = useRef(false);
-    const dragInitialPos = useRef({ x: 0, y: 0 });
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-        if (isLocalVideoMain) return;
-        setIsDragging(true);
-        hasMovedRef.current = false;
-        dragInitialPos.current = { x: e.clientX, y: e.clientY };
-        dragStartPos.current = { x: e.clientX + pos.x, y: e.clientY - pos.y };
-    };
-
-    const handleMouseMove = useCallback((e: MouseEvent) => {
-        if (!isDragging) return;
-
-        // Only mark as moved if drag distance is more than 5px to avoid accidental drag triggers on simple click
-        const dx = Math.abs(e.clientX - dragInitialPos.current.x);
-        const dy = Math.abs(e.clientY - dragInitialPos.current.y);
-        if (dx > 5 || dy > 5) {
-            hasMovedRef.current = true;
-        }
-
-        setPos({
-            x: dragStartPos.current.x - e.clientX,
-            y: e.clientY - dragStartPos.current.y
-        });
-    }, [isDragging]);
-
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    useEffect(() => {
-        if (isDragging) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-        } else {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        }
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isDragging, handleMouseMove, handleMouseUp]);
-
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden animate-in fade-in duration-500 bg-black">
-            {/* Background Layer: Remote Video or Avatar */}
-            <div
-                className={`absolute inset-0 transition-opacity duration-700 ${isLocalVideoMain ? 'opacity-20' : 'opacity-100'}`}
-                onClick={() => isLocalVideoMain && setIsLocalVideoMain(false)}
-            >
-                {callType === 'video' ? (
-                    <div id="agora-remote-video" className="w-full h-full">
-                        {!isLocalVideoMain && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/60 z-10">
-                                <div className="w-12 h-12 border-2 border-white/10 border-t-white rounded-full animate-spin mb-4" />
-                                <div className="text-white/40 text-sm">Connecting...</div>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-zinc-950">
-                        {otherUserAvatar ? (
-                            <img src={otherUserAvatar} alt="" className="w-full h-full object-cover opacity-20 blur-3xl scale-125" />
-                        ) : (
-                            <div className="w-full h-full bg-zinc-900" />
-                        )}
-                    </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/60 pointer-events-none" />
-            </div>
-
-            {/* Local Video - Floating Panel (Draggable) */}
-            {callType === 'video' && (
-                <div
-                    onMouseDown={handleMouseDown}
-                    style={!isLocalVideoMain ? {
-                        position: 'absolute',
-                        top: `${pos.y}px`,
-                        right: `${pos.x}px`,
-                        transform: isDragging ? 'scale(1.02)' : 'scale(1)',
-                        transition: isDragging ? 'none' : 'all 0.4s ease-out'
-                    } : {}}
-                    className={`absolute z-[200] cursor-grab active:cursor-grabbing touch-none select-none ${isLocalVideoMain
-                        ? 'inset-0'
-                        : 'w-32 h-44 md:w-40 md:h-52 rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-900 ring-1 ring-white/5'
-                        }`}
-                    onClick={(e) => {
-                        if (hasMovedRef.current) {
-                            e.stopPropagation();
-                            return;
-                        }
-                        if (!isLocalVideoMain) setIsLocalVideoMain(true);
-                    }}
-                >
-                    <div id="agora-local-video" className="w-full h-full relative">
-                        {/* Drag overlay to catch events even if video captures them */}
-                        <div className="absolute inset-0 z-10 pointer-events-auto" />
-
-                        {isLocalVideoMain && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsLocalVideoMain(false);
-                                }}
-                                className="absolute top-6 right-6 z-50 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all active:scale-95"
-                                title="Exit full screen"
-                            >
-                                <Minimize2 className="w-5 h-5" />
-                            </button>
-                        )}
-                        {isCameraOff && (
-                            <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                                <VideoOff className="w-6 h-6 text-white/10" />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Main Content Overlay - Minimal for better focus */}
-            <div className={`relative z-20 flex flex-col items-center justify-between h-full py-16 md:py-24 px-6 w-full max-w-lg transition-opacity duration-500 ${isLocalVideoMain ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                {/* Simplified Header for active calls */}
-                <div className="text-center">
-                    {callType === 'audio' && (
-                        <div className="flex flex-col items-center mb-6">
-                            <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-zinc-800 border-2 border-white/5 flex items-center justify-center shadow-2xl overflow-hidden ring-4 ring-white/[0.02]">
-                                {otherUserAvatar ? (
-                                    <img src={otherUserAvatar} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span className="text-4xl font-black text-white/10 tracking-tighter">{otherUserName[0]}</span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom Bar - Matched to Reference Image */}
-                <div className="absolute bottom-12 left-0 right-0 flex items-end justify-between px-4 sm:px-10">
-                    {/* Left Actions */}
-                    <div className="flex items-center gap-2 sm:gap-4 py-2">
-                        <button
-                            onClick={onMinimize}
-                            className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md"
-                        >
-                            <MessageSquare className="w-4 h-4" />
-                        </button>
-                        <button className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md">
-                            <UserPlus className="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    {/* Center Controls */}
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="flex items-center gap-3 sm:gap-5">
-                            <button
-                                onClick={toggleMute}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-md border border-white/10 ${isMuted ? 'bg-red-500/80 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                            >
-                                {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                            </button>
-
-                            {callType === 'video' && (
-                                <button
-                                    onClick={toggleCamera}
-                                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-md border border-white/10 ${isCameraOff ? 'bg-red-500/80 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                                >
-                                    {isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                                </button>
-                            )}
-
-                            <button
-                                onClick={onHangup}
-                                className="w-12 h-12 rounded-full bg-red-600/90 hover:bg-red-500 flex items-center justify-center shadow-lg transition-transform active:scale-95 backdrop-blur-md border border-white/10"
-                            >
-                                <PhoneOff className="w-5 h-5 text-white" />
-                            </button>
-                        </div>
-
-                        {/* Duration Timer below controls */}
-                        <div className="text-white/40 text-[11px] font-medium tabular-nums tracking-[0.2em] flex flex-col items-center">
-                            {status === 'connected' ? (
-                                <span>00:{formatDuration(duration)}:00</span>
-                            ) : (
-                                <span className="animate-pulse flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
-                                    {status === 'ringing' ? 'RINGING...' : 'CALLING...'}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    {/* Right Actions */}
-                    <div className="flex items-center gap-2 sm:gap-4 py-2">
-                        <button
-                            onClick={() => setIsLocalVideoMain(!isLocalVideoMain)}
-                            className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md"
-                        >
-                            <Minimize2 className="w-4 h-4" />
-                        </button>
-                        <button className="w-9 h-9 rounded-full bg-zinc-900/40 hover:bg-zinc-800/60 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-md">
-                            <Settings className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // ─── Voice Recorder Component ──────────────────────────────────────────────────
 // ─── Voice Recorder Component ──────────────────────────────────────────────────
@@ -1904,7 +1684,8 @@ const ImageViewerModal = ({ url, onClose, onEdit }: { url: string; onClose: () =
 
 // ─── Main Communications Page ──────────────────────────────────────────────────
 export default function Communications() {
-    const { userProfile } = useTheme();
+    const { settings, userProfile } = useTheme();
+    const navigate = useNavigate();
     const currentUserId = userProfile?.id;
 
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -1916,12 +1697,14 @@ export default function Communications() {
     const [isSending, setIsSending] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showNewChat, setShowNewChat] = useState(false);
+    const [presenceState, setPresenceState] = useState<Record<string, any>>({});
     const [replyTo, setReplyTo] = useState<Message | null>(null);
     const [isVoiceRecording, setIsVoiceRecording] = useState(false);
     const [isSendingVoice, setIsSendingVoice] = useState(false);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
     const [longPressConvoId, setLongPressConvoId] = useState<string | null>(null);
     const [longPressActive, setLongPressActive] = useState<string | null>(null);
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
     const [showForwardModal, setShowForwardModal] = useState(false);
     const [pendingImages, setPendingImages] = useState<string[]>([]);
@@ -1934,18 +1717,42 @@ export default function Communications() {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showAttachMenu, setShowAttachMenu] = useState(false);
 
-    // Call state
-    const [activeCall, setActiveCall] = useState<{ type: 'audio' | 'video'; otherUser: Profile; channelId: string; conversationId: string } | null>(null);
-    const [incomingCall, setIncomingCall] = useState<{ callId: string; type: 'audio' | 'video'; caller: Profile; channelId: string; conversationId: string } | null>(null);
-    const [callDuration, setCallDuration] = useState(0);
-    const [callStatus, setCallStatus] = useState<'calling' | 'ringing' | 'connected' | null>(null);
-    const ringingAudioRef = useRef<HTMLAudioElement | null>(null);
-    const ringTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [isMuted, setIsMuted] = useState(false);
-    const [isCameraOff, setIsCameraOff] = useState(false);
+    // Ringtone settings (persisted in localStorage)
+    const PRESET_RINGTONES = [
+        { id: 'classic', label: 'Classic Phone', url: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' },
+        { id: 'modern', label: 'Modern Ring', url: 'https://assets.mixkit.co/active_storage/sfx/918/918-preview.mp3' },
+        { id: 'soft', label: 'Soft Bell', url: 'https://assets.mixkit.co/active_storage/sfx/1352/1352-preview.mp3' },
+        { id: 'digital', label: 'Digital', url: 'https://assets.mixkit.co/active_storage/sfx/1353/1353-preview.mp3' },
+        { id: 'chime', label: 'Chime', url: 'https://assets.mixkit.co/active_storage/sfx/956/956-preview.mp3' },
+    ];
+    const [ringtoneUrl, setRingtoneUrl] = useState<string>(
+        () => localStorage.getItem('healy_ringtone_url') || 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'
+    );
+    const [ringtonePreviewAudio, setRingtonePreviewAudio] = useState<HTMLAudioElement | null>(null);
+    const ringtoneFileRef = useRef<HTMLInputElement>(null);
+
+    // ─── Global Call State (persists across pages via CallContext) ──────────────
+    const {
+        activeCall,
+        incomingCall,
+        callStatus,
+        callDuration,
+        isMuted,
+        isCameraOff,
+        isCallMinimized,
+        initiateCall: globalInitiateCall,
+        acceptCall: globalAcceptCall,
+        rejectCall: globalRejectCall,
+        hangupCall: globalHangupCall,
+        toggleMute: globalToggleMute,
+        toggleCamera: globalToggleCamera,
+        setIsCallMinimized,
+        setIncomingCall,
+    } = useCall();
+
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [isLocalVideoMain, setIsLocalVideoMain] = useState(false);
-    const [isCallMinimized, setIsCallMinimized] = useState(false);
+
 
     // Group consecutive call events
     const groupedMessages = useMemo(() => {
@@ -1971,11 +1778,6 @@ export default function Communications() {
         return result;
     }, [messages]);
 
-    const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
-    const localAudioRef = useRef<ILocalAudioTrack | null>(null);
-    const localVideoRef = useRef<ILocalVideoTrack | null>(null);
-    const callTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const activeCallRef = useRef<{ type: 'audio' | 'video'; otherUser: Profile; channelId: string; conversationId: string } | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2035,18 +1837,21 @@ export default function Communications() {
 
         // Update when tab becomes visible again
         const handleVisibilityChange = () => {
+            if (activeCall) return; // Stay "in chat" if a call is active even if hidden
             setInChat(document.visibilityState === 'visible');
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('beforeunload', () => setInChat(false));
+        window.addEventListener('beforeunload', () => {
+            if (!activeCall) setInChat(false);
+        });
 
         return () => {
             setInChat(false);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('beforeunload', () => setInChat(false));
         };
-    }, [currentUserId]);
+    }, [currentUserId, activeCall]);
 
     // ─── Auto-resize textarea ───────────────────────────────────────────────────
     useEffect(() => {
@@ -2179,332 +1984,53 @@ export default function Communications() {
         return () => document.removeEventListener('click', handleClickOutside);
     }, [menuOpenId]);
 
-    // ─── Agora RTC Actions ────────────────────────────────────────────────────────
-    const fetchAgoraToken = async (channelName: string) => {
+
+
+    const markAsRead = useCallback(async (convoId: string) => {
+        if (!currentUserId) return;
         try {
-            const { data, error } = await supabase.functions.invoke('agora-token', {
-                body: { channelName, userAccount: currentUserId }
-            });
-            if (error) throw error;
-            return data.token;
-        } catch (err) {
-            console.error('Error fetching Agora token:', err);
-            return null;
-        }
-    };
-
-    const joinAgoraChannel = async (channelId: string, callType: 'audio' | 'video') => {
-        // Clear any existing timer and reset duration
-        if (callTimerRef.current) clearInterval(callTimerRef.current);
-        setCallDuration(0);
-
-        try {
-            const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-            agoraClientRef.current = client;
-
-            // Timer will now only start when the remote user is connected (user-published)
-            // setCallDuration(0) already called above
-
-
-            client.on('user-published', async (user, mediaType) => {
-                await client.subscribe(user, mediaType);
-
-                // When remote user joins, stop ringing and start timer
-                setCallStatus('connected');
-                if (ringTimeoutRef.current) {
-                    clearTimeout(ringTimeoutRef.current);
-                    ringTimeoutRef.current = null;
-                }
-                if (ringingAudioRef.current) {
-                    ringingAudioRef.current.pause();
-                    ringingAudioRef.current.currentTime = 0;
-                }
-                if (!callTimerRef.current) {
-                    callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
-                }
-
-                if (mediaType === 'video') {
-                    const remoteEl = document.getElementById('agora-remote-video');
-                    if (remoteEl) user.videoTrack?.play(remoteEl);
-                }
-                if (mediaType === 'audio') {
-                    user.audioTrack?.play();
-                }
-            });
-
-            client.on('user-unpublished', (user, mediaType) => {
-                if (mediaType === 'video') {
-                    user.videoTrack?.stop();
-                }
-            });
-
-            client.on('user-left', () => {
-                hangupCall(false);
-                toast('Call ended — other user left', { icon: '📞' });
-            });
-
-            const token = await fetchAgoraToken(channelId);
-            if (!token) {
-                toast.error('Failed to get security token for call');
-                // Cleanup on failure
-                if (callTimerRef.current) clearInterval(callTimerRef.current);
-                setCallDuration(0);
-                setActiveCall(null);
-                activeCallRef.current = null;
-                return;
-            }
-
-            await client.join(AGORA_APP_ID, channelId, token, currentUserId || undefined);
-
-            const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-            localAudioRef.current = audioTrack;
-
-            if (callType === 'video') {
-                try {
-                    const videoTrack = await AgoraRTC.createCameraVideoTrack();
-                    localVideoRef.current = videoTrack;
-                    await client.publish([audioTrack, videoTrack]);
-                    const localEl = document.getElementById('agora-local-video');
-                    if (localEl) videoTrack.play(localEl);
-                } catch (videoErr: any) {
-                    console.error('Camera access failed:', videoErr);
-                    // Handle missing camera device gracefully
-                    if (videoErr.name === 'NotFoundError' || videoErr.message?.includes('DEVICE_NOT_FOUND')) {
-                        toast.error('No camera detected. Switching to audio call.', { icon: '📷' });
-                        await client.publish([audioTrack]);
-                    } else {
-                        throw videoErr;
-                    }
-                }
-            } else {
-                await client.publish([audioTrack]);
-            }
-        } catch (err: any) {
-            if (callTimerRef.current) clearInterval(callTimerRef.current);
-            setCallDuration(0);
-            setActiveCall(null);
-            activeCallRef.current = null;
-            toast.error('Failed to join call: ' + (err?.message || 'Unknown error'));
-        }
-    };
-
-    const leaveAgoraChannel = async () => {
-        try {
-            localAudioRef.current?.stop();
-            localAudioRef.current?.close();
-            localAudioRef.current = null;
-            localVideoRef.current?.stop();
-            localVideoRef.current?.close();
-            localVideoRef.current = null;
-            if (agoraClientRef.current) {
-                await agoraClientRef.current.leave();
-                agoraClientRef.current = null;
-            }
-        } catch (err) {
-            console.error('Agora leave error:', err);
-        }
-    };
-
-    const hangupCall = async (isInitiator = false) => {
-        if (callTimerRef.current) clearInterval(callTimerRef.current);
-        const dur = callDuration;
-        const callSnapshot = activeCallRef.current || activeCall;
-
-        if (ringTimeoutRef.current) {
-            clearTimeout(ringTimeoutRef.current);
-            ringTimeoutRef.current = null;
-        }
-
-        if (ringingAudioRef.current) {
-            ringingAudioRef.current.pause();
-            ringingAudioRef.current.currentTime = 0;
-        }
-
-        setCallStatus(null);
-        await leaveAgoraChannel();
-
-        setActiveCall(null);
-        activeCallRef.current = null;
-        setCallDuration(0);
-        setIsMuted(false);
-        setIsCameraOff(false);
-        setFacingMode('user');
-        setIsLocalVideoMain(false);
-
-        if (callSnapshot && isInitiator) {
-            // Check if WE were the caller by checking if we still have an activeConvo.otherUser
-            // set in initiateCall. Actually, a better way: 
-            // In initiating: we set activeCall.conversationId.
-            // Let's use the call_record to be certain who the caller was.
-            const { data: callRec } = await supabase.from('call_records')
-                .select('caller_id')
-                .eq('agora_channel_id', callSnapshot.channelId)
-                .single();
-
-            await supabase.from('call_records')
-                .update({ status: 'ended', ended_at: new Date().toISOString() })
-                .eq('agora_channel_id', callSnapshot.channelId);
-
-            // Always insert a message to record the call event
-            await supabase.from('messages').insert({
-                conversation_id: callSnapshot.conversationId,
-                sender_id: currentUserId,
-                type: 'call_event',
-                call_status: dur > 0 ? 'answered' : 'missed',
-                call_duration: dur > 0 ? dur : undefined,
-                call_type: callSnapshot.type,
-                caller_id: callRec?.caller_id // Now correctly identify the original caller
-            });
-        }
-    };
-
-    const initiateCall = async (callType: 'audio' | 'video') => {
-        if (!activeConvo || !currentUserId || !activeConvo.otherUser) return;
-        const channelId = `call_${activeConvo.id}_${Date.now()} `;
-
-        const { error } = await supabase.from('call_records').insert({
-            conversation_id: activeConvo.id,
-            caller_id: currentUserId,
-            call_type: callType,
-            status: 'ringing',
-            agora_channel_id: channelId
-        });
-
-        if (error) { toast.error('Failed to start call'); return; }
-
-        setActiveCall({ type: callType, otherUser: activeConvo.otherUser, channelId, conversationId: activeConvo.id });
-        activeCallRef.current = { type: callType, otherUser: activeConvo.otherUser, channelId, conversationId: activeConvo.id };
-
-        // Determine if online (ringing) or offline (calling)
-        const lastSeen = activeConvo.otherUser.last_seen;
-        const isOnline = lastSeen && (Date.now() - new Date(lastSeen).getTime() < 60000);
-        const initialStatus = isOnline ? 'ringing' : 'calling';
-        setCallStatus(initialStatus);
-
-        if (isOnline) {
-            const playRingtone = () => {
-                if (activeCallRef.current && !ringingAudioRef.current) {
-                    // Modern digital ringtone
-                    ringingAudioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1352/1352-preview.mp3');
-                }
-
-                if (ringingAudioRef.current && activeCallRef.current) {
-                    ringingAudioRef.current.play().catch(e => console.error('Ringing sound error:', e));
-
-                    // Cadence: Play once, wait 2.5s after it ends, then play again
-                    ringingAudioRef.current.onended = () => {
-                        if (activeCallRef.current) {
-                            ringTimeoutRef.current = setTimeout(() => {
-                                playRingtone();
-                            }, 2500);
-                        }
-                    };
-                }
-            };
-            playRingtone();
-        }
-
-        toast(`${initialStatus === 'ringing' ? 'Ringing' : 'Calling'} ${activeConvo.otherUser.full_name}...`, { icon: callType === 'video' ? '🎥' : '📞' });
-
-        await joinAgoraChannel(channelId, callType);
-    };
-
-    const acceptCall = async () => {
-        if (!incomingCall) return;
-        const call = incomingCall;
-
-        await supabase.from('call_records')
-            .update({ status: 'answered' })
-            .eq('id', call.callId);
-
-        setActiveCall({ type: call.type, otherUser: call.caller, channelId: call.channelId, conversationId: call.conversationId });
-        activeCallRef.current = { type: call.type, otherUser: call.caller, channelId: call.channelId, conversationId: call.conversationId };
-        setCallStatus('connected'); // Recipient direct to connected
-        setIncomingCall(null);
-
-        await joinAgoraChannel(call.channelId, call.type);
-    };
-
-    const rejectCall = async () => {
-        if (!incomingCall) return;
-
-        await supabase.from('call_records')
-            .update({ status: 'rejected' })
-            .eq('id', incomingCall.callId);
-
-        await supabase.from('messages').insert({
-            conversation_id: incomingCall.conversationId,
-            sender_id: currentUserId,
-            type: 'call_event',
-            call_status: 'missed',
-            call_type: incomingCall.type,
-            caller_id: incomingCall.caller.id
-        });
-        setIncomingCall(null);
-    };
-
-    const markAsRead = async (convoId: string) => {
-        try {
-            const { error } = await supabase
+            // 1. Update conversation participant's last_read_at
+            const { error: partError } = await supabase
                 .from('conversation_participants')
                 .update({ last_read_at: new Date().toISOString() })
                 .eq('conversation_id', convoId)
                 .eq('user_id', currentUserId);
-            if (error) throw error;
+            if (partError) throw partError;
+
+            // 2. Update message read_at for all messages in the conversation not sent by current user
+            const { error: msgError } = await supabase
+                .from('messages')
+                .update({ read_at: new Date().toISOString() })
+                .eq('conversation_id', convoId)
+                .neq('sender_id', currentUserId)
+                .is('read_at', null);
+
+            if (msgError) console.error('Failed to update message read status:', msgError);
+
             setConversations(prev => prev.map(c => c.id === convoId ? { ...c, unreadCount: 0 } : c));
         } catch (err) {
             console.error('Failed to mark as read:', err);
         }
-    };
+    }, [currentUserId]);
 
-    const handleToggleMute = async () => {
-        if (localAudioRef.current) {
-            const newMuted = !isMuted;
-            await localAudioRef.current.setMuted(newMuted);
-            setIsMuted(newMuted);
+    const markMessagesAsDelivered = useCallback(async (convoId: string) => {
+        if (!currentUserId) return;
+        try {
+            const { error } = await supabase
+                .from('messages')
+                .update({ delivered_at: new Date().toISOString() })
+                .eq('conversation_id', convoId)
+                .neq('sender_id', currentUserId)
+                .is('delivered_at', null);
+            if (error) console.error('Failed to mark messages as delivered:', error);
+        } catch (err) {
+            console.error('Failed to mark as delivered:', err);
         }
-    };
+    }, [currentUserId]);
 
-    const handleToggleCamera = async () => {
-        if (localVideoRef.current) {
-            const newOff = !isCameraOff;
-            await localVideoRef.current.setMuted(newOff);
-            setIsCameraOff(newOff);
-        }
-    };
 
-    const handleToggleFacingMode = async () => {
-        if (localVideoRef.current && agoraClientRef.current) {
-            const newMode = facingMode === 'user' ? 'environment' : 'user';
 
-            try {
-                // Create new track with new facing mode first
-                const newTrack = await AgoraRTC.createCameraVideoTrack({
-                    facingMode: newMode
-                });
 
-                // Unpublish old track and publish new one
-                await agoraClientRef.current.unpublish([localVideoRef.current]);
-
-                // Stop and close old track
-                localVideoRef.current.stop();
-                localVideoRef.current.close();
-
-                await agoraClientRef.current.publish([newTrack]);
-
-                // Play in the local element
-                const localEl = document.getElementById('agora-local-video');
-                if (localEl) newTrack.play(localEl);
-
-                localVideoRef.current = newTrack;
-                setFacingMode(newMode);
-                toast.success(`Switched to ${newMode === 'user' ? 'front' : 'back'} camera`);
-            } catch (err) {
-                console.error('Failed to switch camera:', err);
-                toast.error('Could not switch camera. Device may not support multiple cameras.');
-            }
-        }
-    };
 
     // ─── Load conversations ──────────────────────────────────────────────────────
     const loadConversations = useCallback(async () => {
@@ -2516,7 +2042,11 @@ export default function Communications() {
             .select('conversation_id, last_read_at, is_hidden, cleared_at')
             .eq('user_id', currentUserId);
 
-        if (pErr || !participations?.length) return;
+        if (pErr) {
+            console.error('[loadConversations] Error fetching participations:', pErr);
+            return;
+        }
+        if (!participations?.length) return;
         const convoIds = participations.map(p => p.conversation_id);
 
         // Step 2: Get all conversations (flat, no joins)
@@ -2526,7 +2056,11 @@ export default function Communications() {
             .in('id', convoIds)
             .order('updated_at', { ascending: false });
 
-        if (cErr || !convos?.length) return;
+        if (cErr) {
+            console.error('[loadConversations] Error fetching conversations:', cErr);
+            return;
+        }
+        if (!convos?.length) return;
 
         // Step 3: Get all participants for these conversations (flat)
         const { data: allParticipants } = await supabase
@@ -2540,6 +2074,10 @@ export default function Communications() {
             supabase.from('profiles').select('id, full_name, role, avatar_url, last_seen, is_in_chat').in('id', allUserIds),
             supabase.from('coaches').select('profile_id, avatar_url').in('profile_id', allUserIds)
         ]);
+
+        if (profilesRes.error) {
+            console.error('[loadConversations] Error fetching profiles:', profilesRes.error);
+        }
 
         const coachAvatarMap: Record<string, string> = {};
         (coachesRes.data || []).forEach(c => { if (c.avatar_url) coachAvatarMap[c.profile_id] = c.avatar_url; });
@@ -2593,6 +2131,7 @@ export default function Communications() {
             const unread = (unreadMsgs || []).filter(m => {
                 if (m.conversation_id !== c.id) return false;
                 if (myParticipation?.cleared_at && new Date(m.created_at) <= new Date(myParticipation.cleared_at)) return false;
+                if (myParticipation?.last_read_at && new Date(m.created_at) <= new Date(myParticipation.last_read_at)) return false;
                 return true;
             }).length;
 
@@ -2630,7 +2169,7 @@ export default function Communications() {
 
         let query = supabase
             .from('messages')
-            .select('id, conversation_id, sender_id, content, type, media_url, media_duration, call_status, call_duration, call_type, caller_id, created_at, is_deleted, reply_to_id, is_pinned, deleted_for_users')
+            .select('id, conversation_id, sender_id, content, type, media_url, media_duration, call_status, call_duration, call_type, caller_id, created_at, is_deleted, reply_to_id, is_pinned, deleted_for_users, delivered_at, read_at')
             .eq('conversation_id', convoId);
 
         if (clearedAt) {
@@ -2683,13 +2222,10 @@ export default function Communications() {
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
 
-        // Mark as read
-        await supabase
-            .from('conversation_participants')
-            .update({ last_read_at: new Date().toISOString() })
-            .eq('conversation_id', convoId)
-            .eq('user_id', currentUserId);
-    }, [currentUserId]);
+        // Mark as delivered and read
+        markMessagesAsDelivered(convoId);
+        markAsRead(convoId);
+    }, [currentUserId, markAsRead, markMessagesAsDelivered]);
 
     const togglePinMessage = async (msgId: string, isPinned: boolean) => {
         const { error } = await supabase.from('messages').update({ is_pinned: !isPinned }).eq('id', msgId);
@@ -2814,72 +2350,65 @@ export default function Communications() {
                         const newMsg = { ...payload.new, sender } as Message;
                         setMessages(prev => [...prev, newMsg]);
                         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
+                        // If message is from someone else, mark as delivered since we just received it
+                        if (payload.new.sender_id !== currentUserId) {
+                            supabase.from('messages').update({ delivered_at: new Date().toISOString() }).eq('id', payload.new.id).then();
+                            // If we are currently active in this tab, mark as read too
+                            if (document.visibilityState === 'visible') {
+                                supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', payload.new.id).then();
+                                markAsRead(activeConvo.id);
+                            }
+                        }
                     } else if (payload.eventType === 'UPDATE') {
                         setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
                     } else if (payload.eventType === 'DELETE') {
                         setMessages(prev => prev.filter(m => m.id !== payload.old.id));
                     }
-                    loadConversations();
+                    // loadConversations is handled by the global listener now
                 }
             )
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [activeConvo, loadConversations]);
+    }, [activeConvo]);
 
-    // ─── Incoming call subscription ────────────────────────────────────────────────
+    // Global Message Listener (updates sidebar for ALL chats instantly)
     useEffect(() => {
         if (!currentUserId) return;
-
         const channel = supabase
-            .channel(`calls:${currentUserId} `)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_records' },
-                async (payload) => {
-                    const call = payload.new as any;
-                    if (call.caller_id === currentUserId) return;
-
-                    // Check if we're in the conversation
-                    const { data: isParticipant } = await supabase
-                        .from('conversation_participants')
-                        .select('id')
-                        .eq('conversation_id', call.conversation_id)
-                        .eq('user_id', currentUserId)
-                        .maybeSingle();
-
-                    if (!isParticipant) return;
-
-                    const [profileRes, coachRes] = await Promise.all([
-                        supabase.from('profiles').select('*').eq('id', call.caller_id).single(),
-                        supabase.from('coaches').select('avatar_url').eq('profile_id', call.caller_id).maybeSingle()
-                    ]);
-                    const caller = profileRes.data ? {
-                        ...profileRes.data,
-                        avatar_url: profileRes.data.avatar_url || coachRes.data?.avatar_url
-                    } : null;
-                    if (caller) {
-                        setIncomingCall({
-                            callId: call.id,
-                            type: call.call_type,
-                            caller,
-                            channelId: call.agora_channel_id,
-                            conversationId: call.conversation_id
-                        });
-                    }
-                }
-            )
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'call_records' },
-                (payload) => {
-                    const call = payload.new as any;
-                    if (call.status === 'ended' || call.status === 'rejected') {
-                        setIncomingCall(null);
-                        if (activeCall) hangupCall(false);
-                    }
-                }
+            .channel('global-messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
+                () => { loadConversations(); }
             )
             .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [currentUserId, loadConversations]);
+
+    // Supabase Presence (Instant online/offline)
+    useEffect(() => {
+        if (!currentUserId) return;
+        const channel = supabase.channel('global-presence', {
+            config: { presence: { key: currentUserId } }
+        });
+
+        channel
+            .on('presence', { event: 'sync' }, () => {
+                setPresenceState(channel.presenceState());
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.track({
+                        online_at: new Date().toISOString(),
+                        user_id: currentUserId
+                    });
+                }
+            });
 
         return () => { supabase.removeChannel(channel); };
-    }, [currentUserId, activeCall]);
+    }, [currentUserId]);
+
+
 
     // ─── Profile changes subscription ─────────────────────────────────────────────
     useEffect(() => {
@@ -2964,7 +2493,7 @@ export default function Communications() {
                 textareaRef.current.style.height = 'auto';
             }
 
-            await supabase.from('messages').insert({
+            const { error: msgError } = await supabase.from('messages').insert({
                 conversation_id: activeConvo.id,
                 sender_id: currentUserId,
                 content,
@@ -2972,7 +2501,23 @@ export default function Communications() {
                 reply_to_id: msgReplyToId
             });
 
-            await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+            if (msgError) {
+                console.error('[sendMessage] Insert failed:', msgError);
+                toast.error(`Failed to send: ${msgError.message}`);
+                setIsSending(false);
+                return;
+            }
+
+            // Use upsert-style update that any participant can do
+            const { error: convError } = await supabase
+                .from('conversations')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', activeConvo.id);
+
+            if (convError) {
+                console.warn('[sendMessage] Could not update conversation timestamp:', convError.message);
+            }
+
             playMessageSentSound();
             loadConversations();
         }
@@ -3248,91 +2793,7 @@ export default function Communications() {
                     />
                 )}
 
-                {/* ── Incoming Call Overlay ── */}
-                {incomingCall && (
-                    <IncomingCallModal
-                        callerName={incomingCall.caller.full_name}
-                        callType={incomingCall.type}
-                        onAccept={acceptCall}
-                        onReject={rejectCall}
-                    />
-                )}
 
-                {/* ── Active Call Overlay ── */}
-                {activeCall && !isCallMinimized && (
-                    <ActiveCallModal
-                        callType={activeCall.type}
-                        status={callStatus}
-                        otherUserName={activeCall.otherUser.full_name}
-                        otherUserAvatar={activeCall.otherUser.avatar_url}
-                        duration={callDuration}
-                        onHangup={() => hangupCall(true)}
-                        onMinimize={() => {
-                            setIsCallMinimized(true);
-                            // If we have an active call, ensure the chat for that user is open
-                            const relatedConvo = conversations.find(c => c.id === activeCall.conversationId);
-                            if (relatedConvo) setActiveConvo(relatedConvo);
-                        }}
-                        isMuted={isMuted}
-                        toggleMute={handleToggleMute}
-                        isCameraOff={isCameraOff}
-                        toggleCamera={handleToggleCamera}
-                        facingMode={facingMode}
-                        toggleFacingMode={handleToggleFacingMode}
-                        isLocalVideoMain={isLocalVideoMain}
-                        setIsLocalVideoMain={setIsLocalVideoMain}
-                    />
-                )}
-
-                {/* ── Minimized Call Bubble ── */}
-                {activeCall && isCallMinimized && (
-                    <div className="fixed bottom-24 right-6 z-[10000] flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
-                        <div className="relative group p-1 bg-white/[0.03] backdrop-blur-2xl rounded-full border border-white/10 shadow-2xl">
-                            <div className="relative">
-                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent p-0.5 relative overflow-hidden">
-                                    {activeCall.otherUser.avatar_url ? (
-                                        <img src={activeCall.otherUser.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
-                                    ) : (
-                                        <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center text-lg font-bold text-white">
-                                            {activeCall.otherUser.full_name[0]}
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => setIsCallMinimized(false)}>
-                                        <Maximize2 className="w-5 h-5 text-white" />
-                                    </div>
-                                </div>
-                                <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-emerald-500 border-2 border-[#1A1D21] rounded-full animate-pulse shadow-lg" />
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col items-center gap-2">
-                            <div className="px-2.5 py-1 bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-full shadow-lg">
-                                <span className="text-[10px] font-black text-white/90 tabular-nums tracking-wider uppercase">
-                                    {String(Math.floor(callDuration / 60)).padStart(2, '0')}:{String(callDuration % 60).padStart(2, '0')}
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-2">
-                                <button
-                                    onClick={handleToggleMute}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 border backdrop-blur-md ${isMuted
-                                        ? 'bg-red-500/20 border-red-500/40 text-red-500'
-                                        : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
-                                        }`}
-                                >
-                                    {isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                                </button>
-
-                                <button
-                                    onClick={() => hangupCall(true)}
-                                    className="w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-all active:scale-90 border border-white/10"
-                                >
-                                    <PhoneOff className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* ─────────────── LEFT: Conversation List & Portal ─────────────── */}
                 <div className={`
@@ -3342,46 +2803,24 @@ export default function Communications() {
                 `}>
                     {/* Panel header */}
                     <div className="p-5 border-b border-white/5 safe-area-pt-large flex flex-col items-center">
-                        <div className="w-full flex items-center justify-between mb-8">
-                            <div className="leading-relaxed">
-                                <h1 className="text-white font-black text-xl tracking-tight">Chat</h1>
-                                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest leading-none mt-1">{activeTab}</p>
-                            </div>
+                        <div className="w-full flex items-center mb-4 md:mb-8 transition-all gap-4">
                             <button
-                                onClick={() => setShowNewChat(true)}
-                                className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center hover:bg-primary/20 transition-all"
+                                onClick={() => window.dispatchEvent(new CustomEvent('openMobileSidebar'))}
+                                className="md:hidden group/back w-11 h-11 rounded-full bg-white/[0.03] border border-white/10 flex items-center justify-center transition-all duration-500 hover:bg-primary/10 hover:border-primary/20 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] backdrop-blur-3xl"
+                                title="Back to Dashboard"
                             >
-                                <Plus className="w-4 h-4" />
+                                <LayoutDashboard className="w-4 h-4 text-white/40 group-hover/back:text-primary group-hover/back:drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)] transition-all duration-500" />
                             </button>
+
+                            <div className="leading-relaxed flex-1">
+                                <h1 className="text-white font-black text-xl tracking-tight">
+                                    {settings.academy_name} Chat
+                                </h1>
+                                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest leading-none mt-1 hidden md:block">{activeTab}</p>
+                            </div>
                         </div>
 
-                        {/* Centered Navigation Tabs - No background */}
-                        <div className="flex items-center gap-6 mb-6">
-                            <button
-                                onClick={() => { setActiveTab('chats'); setShowNewChat(false); }}
-                                className={`flex flex-col items-center gap-1.5 transition-all group ${activeTab === 'chats' ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                title="Chats"
-                            >
-                                <MessageSquare className={`w-5 h-5 transition-transform ${activeTab === 'chats' ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                <div className={`w-1 h-1 rounded-full transition-all ${activeTab === 'chats' ? 'bg-primary scale-100' : 'bg-transparent scale-0'}`} />
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('calls')}
-                                className={`flex flex-col items-center gap-1.5 transition-all group ${activeTab === 'calls' ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                title="Recent Calls"
-                            >
-                                <Phone className={`w-5 h-5 transition-transform ${activeTab === 'calls' ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                <div className={`w-1 h-1 rounded-full transition-all ${activeTab === 'calls' ? 'bg-primary scale-100' : 'bg-transparent scale-0'}`} />
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('settings')}
-                                className={`flex flex-col items-center gap-1.5 transition-all group ${activeTab === 'settings' ? 'text-primary' : 'text-white/20 hover:text-white/40'}`}
-                                title="Settings"
-                            >
-                                <Settings className={`w-5 h-5 transition-transform ${activeTab === 'settings' ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                <div className={`w-1 h-1 rounded-full transition-all ${activeTab === 'settings' ? 'bg-primary scale-100' : 'bg-transparent scale-0'}`} />
-                            </button>
-                        </div>
+
 
                         {activeTab !== 'settings' && (
                             <div className="w-full flex items-center gap-3 group/search">
@@ -3423,8 +2862,9 @@ export default function Communications() {
                                         {filteredUsers.map(user => {
                                             const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
                                             const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
-                                            const isOnline = user.is_in_chat && isRecentlyActive;
-                                            const isAway = !user.is_in_chat && isRecentlyActive;
+                                            const isActuallyOnline = presenceState[user.id] !== undefined;
+                                            const isOnline = isActuallyOnline || (user.is_in_chat && isRecentlyActive);
+                                            const isAway = !isActuallyOnline && (!user.is_in_chat && isRecentlyActive);
 
                                             const roleColor = {
                                                 admin: 'from-rose-500 to-pink-600',
@@ -3464,9 +2904,9 @@ export default function Communications() {
                                                             }
                                                         </div>
                                                         {/* Online indicator */}
-                                                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0E0E11] ${isOnline ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]' :
-                                                            isAway ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]' :
-                                                                'bg-white/20'
+                                                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0E0E11] ${isOnline ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] animate-pulse' :
+                                                            isAway ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]' :
+                                                                'bg-white/10'
                                                             }`} />
                                                     </div>
 
@@ -3558,12 +2998,13 @@ export default function Communications() {
                                                         if (!prof) return null;
                                                         const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
                                                         const isRecentlyActive = lastSeenDate && (new Date().getTime() - lastSeenDate.getTime()) < 6000;
-                                                        const isOnline = prof.is_in_chat && isRecentlyActive;
-                                                        const isAway = !prof.is_in_chat && isRecentlyActive;
+                                                        const isActuallyOnline = presenceState[prof.id] !== undefined;
+                                                        const isOnline = isActuallyOnline || (prof.is_in_chat && isRecentlyActive);
+                                                        const isAway = !isActuallyOnline && (!prof.is_in_chat && isRecentlyActive);
 
-                                                        if (isOnline) return <p className="text-emerald-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Online</p>;
-                                                        if (isAway) return <p className="text-amber-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Away</p>;
-                                                        return <p className="text-white/20 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Offline</p>;
+                                                        if (isOnline) return <p className="text-emerald-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1 drop-shadow-[0_0_4px_rgba(52,211,153,0.4)]">Online</p>;
+                                                        if (isAway) return <p className="text-amber-400 text-[8px] font-black uppercase tracking-widest leading-none mb-1 drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]">Away</p>;
+                                                        return <p className="text-white/10 text-[8px] font-black uppercase tracking-widest leading-none mb-1">Offline</p>;
                                                     })()}
                                                     <div className="flex items-center justify-between gap-2">
                                                         <p className="text-white font-black text-sm truncate flex-1 min-w-0">{name}</p>
@@ -3571,6 +3012,11 @@ export default function Communications() {
                                                             <span className="text-white/25 text-[9px] font-bold">
                                                                 {convo.lastMessage ? new Date(convo.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                                             </span>
+                                                            {convo.unreadCount > 0 && (
+                                                                <span className="min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[9px] font-black text-white flex items-center justify-center flex-shrink-0 animate-in fade-in zoom-in duration-300">
+                                                                    {convo.unreadCount > 9 ? '9+' : convo.unreadCount}
+                                                                </span>
+                                                            )}
                                                             {/* Premium Options Menu */}
                                                             <div className="relative">
                                                                 <button
@@ -3591,8 +3037,7 @@ export default function Communications() {
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                setActiveConvo(convo);
-                                                                                initiateCall('audio');
+                                                                                globalInitiateCall('audio', convo.otherUser as any, convo.id);
                                                                                 setMenuOpenId(null);
                                                                             }}
                                                                             className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/70 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
@@ -3606,8 +3051,7 @@ export default function Communications() {
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                setActiveConvo(convo);
-                                                                                initiateCall('video');
+                                                                                globalInitiateCall('video', convo.otherUser as any, convo.id);
                                                                                 setMenuOpenId(null);
                                                                             }}
                                                                             className="w-full text-left px-3 py-2 text-[11px] font-bold tracking-wide text-white/70 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-3 transition-all group/item"
@@ -3664,11 +3108,6 @@ export default function Communications() {
                                                     </div>
                                                     <div className="flex items-center justify-between gap-2 mt-0.5">
                                                         <p className="text-white/35 text-xs truncate flex-1 min-w-0">{lastText}</p>
-                                                        {convo.unreadCount > 0 && (
-                                                            <span className="min-w-[20px] h-5 px-1.5 bg-primary rounded-full text-[10px] font-black text-white flex items-center justify-center flex-shrink-0">
-                                                                {convo.unreadCount > 9 ? '9+' : convo.unreadCount}
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3781,7 +3220,7 @@ export default function Communications() {
                                                                 const convo = (log as any).conversation;
                                                                 if (convo) {
                                                                     setActiveConvo(convo);
-                                                                    initiateCall('audio');
+                                                                    globalInitiateCall('audio', convo.otherUser as any, convo.id);
                                                                 }
                                                             }}
                                                             className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-white/40 hover:text-primary hover:bg-primary/10 hover:border-primary/20 flex items-center justify-center transition-all"
@@ -3795,7 +3234,7 @@ export default function Communications() {
                                                                 const convo = (log as any).conversation;
                                                                 if (convo) {
                                                                     setActiveConvo(convo);
-                                                                    initiateCall('video');
+                                                                    globalInitiateCall('video', convo.otherUser as any, convo.id);
                                                                 }
                                                             }}
                                                             className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-white/40 hover:text-primary hover:bg-primary/10 hover:border-primary/20 flex items-center justify-center transition-all"
@@ -3811,16 +3250,169 @@ export default function Communications() {
                                 )}
                             </div>
                         ) : (
-                            <div className="flex flex-col h-full items-center justify-center p-8 opacity-40 text-center gap-4">
-                                <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
-                                    <Settings className="w-8 h-8 text-white/20" />
+                            // ─── Settings Tab: Ringtone Picker ─────────────────────────
+                            <div className="flex flex-col h-full overflow-y-auto p-4 gap-5">
+                                {/* Header */}
+                                <div className="flex items-center gap-3 mt-2">
+                                    <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                        <Volume2 className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-black text-[13px] uppercase tracking-widest">Ringtone</p>
+                                        <p className="text-white/30 text-[9px] uppercase font-bold tracking-tighter">Pick from presets or your device</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-white font-black text-sm uppercase tracking-widest">Chat Settings</p>
-                                    <p className="text-white/30 text-[10px] uppercase font-bold tracking-tighter mt-1">Adjust your notification and chat preferences</p>
+
+                                {/* Preset Ringtones */}
+                                <div className="space-y-2">
+                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.2em] px-1">Presets</p>
+                                    {PRESET_RINGTONES.map(preset => {
+                                        const isActive = ringtoneUrl === preset.url;
+                                        return (
+                                            <div
+                                                key={preset.id}
+                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all cursor-pointer ${isActive
+                                                    ? 'bg-primary/10 border-primary/30'
+                                                    : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.06]'
+                                                    }`}
+                                                onClick={() => {
+                                                    ringtonePreviewAudio?.pause();
+                                                    setRingtonePreviewAudio(null);
+                                                    setRingtoneUrl(preset.url);
+                                                    localStorage.setItem('healy_ringtone_url', preset.url);
+                                                    toast.success('Ringtone changed!');
+                                                }}
+                                            >
+                                                <span className={`text-sm flex-1 font-bold text-left ${isActive ? 'text-primary' : 'text-white/70'}`}>{preset.label}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (ringtonePreviewAudio) {
+                                                                ringtonePreviewAudio.pause();
+                                                                ringtonePreviewAudio.currentTime = 0;
+                                                                setRingtonePreviewAudio(null);
+                                                            } else {
+                                                                const a = new Audio(preset.url);
+                                                                a.play().catch(() => { });
+                                                                a.onended = () => setRingtonePreviewAudio(null);
+                                                                setRingtonePreviewAudio(a);
+                                                            }
+                                                        }}
+                                                        className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary/20 transition-all"
+                                                    >
+                                                        <Play className="w-3 h-3 text-white/60" />
+                                                    </button>
+                                                    {isActive && <Check className="w-4 h-4 text-primary" />}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Upload from Device */}
+                                <div className="space-y-2">
+                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.2em] px-1">From your device</p>
+                                    <button
+                                        onClick={() => ringtoneFileRef.current?.click()}
+                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-dashed border-white/20 text-white/40 hover:text-white hover:border-primary/40 hover:bg-primary/5 transition-all"
+                                    >
+                                        <Mic className="w-4 h-4" />
+                                        <span className="text-sm font-bold">Upload Custom Ringtone (MP3 / M4A)</span>
+                                    </button>
+                                    <input
+                                        ref={ringtoneFileRef}
+                                        type="file"
+                                        accept="audio/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const url = URL.createObjectURL(file);
+                                            setRingtoneUrl(url);
+                                            localStorage.setItem('healy_ringtone_url', url);
+                                            toast.success(`"${file.name}" set as ringtone!`);
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Current Ringtone + Preview */}
+                                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
+                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.2em] mb-3">Current Ringtone</p>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-white/70 text-xs font-bold truncate flex-1">
+                                            {PRESET_RINGTONES.find(p => p.url === ringtoneUrl)?.label ?? 'Custom File'}
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                if (ringtonePreviewAudio) {
+                                                    ringtonePreviewAudio.pause();
+                                                    setRingtonePreviewAudio(null);
+                                                } else {
+                                                    const a = new Audio(ringtoneUrl);
+                                                    a.play().catch(() => toast.error('Cannot preview — tap the screen first'));
+                                                    setTimeout(() => { a.pause(); a.currentTime = 0; setRingtonePreviewAudio(null); }, 4000);
+                                                    a.onended = () => setRingtonePreviewAudio(null);
+                                                    setRingtonePreviewAudio(a);
+                                                }
+                                            }}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shrink-0 ${ringtonePreviewAudio
+                                                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                                : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
+                                                }`}
+                                        >
+                                            {ringtonePreviewAudio
+                                                ? <><Pause className="w-3 h-3" /> Stop</>
+                                                : <><Play className="w-3 h-3" /> Preview</>
+                                            }
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+
                         )}
+                    </div>
+
+                    {/* Desktop Bottom Navigation Container */}
+                    <div className="hidden md:block p-4 border-t border-white/5 bg-background/20 relative">
+                        {/* FAB: New Chat (Desktop Bottom-Right) */}
+                        {!showNewChat && activeTab === 'chats' && (
+                            <button
+                                onClick={() => setShowNewChat(true)}
+                                className="absolute -top-12 right-4 w-12 h-12 rounded-full bg-primary/20 backdrop-blur-xl text-primary shadow-2xl flex items-center justify-center active:scale-90 hover:bg-primary/30 transition-all z-50 animate-premium-in border border-white/10"
+                            >
+                                <Plus className="w-6 h-6" />
+                            </button>
+                        )}
+
+                        <div className="flex items-center justify-around w-full h-14 bg-black/20 backdrop-blur-3xl border border-white/5 rounded-2xl px-2 shadow-xl">
+                            <button
+                                onClick={() => { setActiveTab('chats'); setShowNewChat(false); }}
+                                className={`flex items-center justify-center transition-all w-full h-10 rounded-xl ${activeTab === 'chats' ? 'text-primary bg-primary/10' : 'text-white/20 hover:text-white/40 hover:bg-white/5'}`}
+                                title="Chats"
+                            >
+                                <div className="relative">
+                                    <MessageSquare className={`w-[18px] h-[18px] transition-transform ${activeTab === 'chats' ? 'scale-110 drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'group-hover:scale-110'}`} />
+                                    {conversations.some(c => c.unreadCount > 0) && (
+                                        <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-primary rounded-full border border-[#0E0E11]" />
+                                    )}
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('calls')}
+                                className={`flex items-center justify-center transition-all w-full h-10 rounded-xl ${activeTab === 'calls' ? 'text-primary bg-primary/10' : 'text-white/20 hover:text-white/40 hover:bg-white/5'}`}
+                                title="Recent Calls"
+                            >
+                                <Phone className={`w-[18px] h-[18px] transition-transform ${activeTab === 'calls' ? 'scale-110 drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'group-hover:scale-110'}`} />
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('settings')}
+                                className={`flex items-center justify-center transition-all w-full h-10 rounded-xl ${activeTab === 'settings' ? 'text-primary bg-primary/10' : 'text-white/20 hover:text-white/40 hover:bg-white/5'}`}
+                                title="Settings"
+                            >
+                                <Settings className={`w-[18px] h-[18px] transition-transform ${activeTab === 'settings' ? 'scale-110 drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'group-hover:scale-110'}`} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -3853,11 +3445,20 @@ export default function Communications() {
                                         const lastSeenDate = prof.last_seen ? new Date(prof.last_seen) : null;
                                         const now = new Date();
                                         const isRecentlyActive = lastSeenDate && (now.getTime() - lastSeenDate.getTime()) < 6000;
+                                        const isActuallyOnline = presenceState[prof.id] !== undefined;
 
-                                        if (prof.is_in_chat && isRecentlyActive) {
-                                            return <p className="text-emerald-400 text-[9px] font-black uppercase tracking-widest leading-none mb-1">Online</p>;
+                                        if (isActuallyOnline || (prof.is_in_chat && isRecentlyActive)) {
+                                            return (
+                                                <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
+                                                    <div className="relative w-2 h-2">
+                                                        <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-20 duration-500" />
+                                                        <div className="relative w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,1)]" />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">Online</span>
+                                                </div>
+                                            );
                                         }
-                                        if (isRecentlyActive) {
+                                        if (!isActuallyOnline && !prof.is_in_chat && isRecentlyActive) {
                                             return <p className="text-amber-400 text-[9px] font-black uppercase tracking-widest leading-none mb-1">Away</p>;
                                         }
                                         if (lastSeenDate) {
@@ -3932,13 +3533,13 @@ export default function Communications() {
                             {/* RIGHT: Call Buttons */}
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => initiateCall('audio')}
+                                    onClick={() => globalInitiateCall('audio', activeConvo.otherUser as any, activeConvo.id)}
                                     className="w-9 h-9 rounded-full bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-primary/15 hover:border-primary/20 flex items-center justify-center transition-all"
                                 >
                                     <Phone className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => initiateCall('video')}
+                                    onClick={() => globalInitiateCall('video', activeConvo.otherUser as any, activeConvo.id)}
                                     className="w-9 h-9 rounded-full bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-primary/15 hover:border-primary/20 flex items-center justify-center transition-all"
                                 >
                                     <Video className="w-4 h-4" />
@@ -4523,6 +4124,49 @@ export default function Communications() {
                     );
                 })()
             }
+            {/* ── Mobile Navigation & FAB ─────────────────────────────────────── */}
+            {!activeConvo && (
+                <>
+                    {/* FAB: New Chat */}
+                    {!showNewChat && activeTab === 'chats' && (
+                        <button
+                            onClick={() => setShowNewChat(true)}
+                            className="md:hidden fixed bottom-24 right-6 w-11 h-11 rounded-full bg-primary/20 backdrop-blur-xl text-primary shadow-lg flex items-center justify-center active:scale-90 hover:bg-primary/30 transition-all z-50 animate-premium-in border border-white/10"
+                        >
+                            <Plus className="w-5 h-5" />
+                        </button>
+                    )}
+
+                    {/* Fixed Mobile Bottom Nav */}
+                    <nav className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] h-14 bg-black/20 backdrop-blur-3xl border border-white/5 rounded-2xl flex items-center justify-around px-4 z-[100] shadow-2xl safe-area-pb">
+                        <button
+                            onClick={() => { setActiveTab('chats'); setShowNewChat(false); }}
+                            className={`flex items-center justify-center transition-all w-12 h-10 rounded-xl ${activeTab === 'chats' ? 'text-primary bg-primary/10' : 'text-white/30 hover:bg-white/5 active:bg-white/10'}`}
+                        >
+                            <div className="relative">
+                                <MessageSquare className={`w-[18px] h-[18px] ${activeTab === 'chats' ? 'scale-110 drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : ''}`} />
+                                {conversations.some(c => c.unreadCount > 0) && (
+                                    <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-primary rounded-full border border-[#0E0E11]" />
+                                )}
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => setActiveTab('calls')}
+                            className={`flex items-center justify-center transition-all w-12 h-10 rounded-xl ${activeTab === 'calls' ? 'text-primary bg-primary/10' : 'text-white/30 hover:bg-white/5 active:bg-white/10'}`}
+                        >
+                            <Phone className={`w-[18px] h-[18px] ${activeTab === 'calls' ? 'scale-110 drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : ''}`} />
+                        </button>
+
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={`flex items-center justify-center transition-all w-12 h-10 rounded-xl ${activeTab === 'settings' ? 'text-primary bg-primary/10' : 'text-white/30 hover:bg-white/5 active:bg-white/10'}`}
+                        >
+                            <Settings className={`w-[18px] h-[18px] ${activeTab === 'settings' ? 'scale-110 drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : ''}`} />
+                        </button>
+                    </nav>
+                </>
+            )}
         </div >
     );
 };

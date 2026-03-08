@@ -208,6 +208,25 @@ export default function DashboardLayout() {
         };
     }, []);
 
+    // Supabase Presence (Global Tracking)
+    useEffect(() => {
+        if (!userId) return;
+        const channel = supabase.channel('global-presence', {
+            config: { presence: { key: userId } }
+        });
+
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({
+                    online_at: new Date().toISOString(),
+                    user_id: userId
+                });
+            }
+        });
+
+        return () => { supabase.removeChannel(channel); };
+    }, [userId]);
+
     useEffect(() => {
         if (userProfile?.avatar_url) {
             setAvatarUrl(userProfile.avatar_url);
@@ -243,8 +262,13 @@ export default function DashboardLayout() {
 
         // Also refresh user profile on event
         window.addEventListener('gymProfileUpdated', handleProfileUpdate);
+
+        const handleOpenSidebar = () => setSidebarOpen(true);
+        window.addEventListener('openMobileSidebar', handleOpenSidebar);
+
         return () => {
             window.removeEventListener('gymProfileUpdated', handleProfileUpdate);
+            window.removeEventListener('openMobileSidebar', handleOpenSidebar);
         };
     }, []);
 
@@ -516,12 +540,28 @@ export default function DashboardLayout() {
             <aside
                 onMouseEnter={() => setIsHoveringSidebar(true)}
                 onMouseLeave={() => setIsHoveringSidebar(false)}
-                className={`fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-50 w-16 lg:w-20 bg-background/80 lg:bg-background backdrop-blur-2xl lg:backdrop-blur-none transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] transform ${isSidebarRevealed || sidebarOpen ? 'translate-x-0' : isRtl ? 'translate-x-full' : '-translate-x-full'}`}
-                style={{ top: 0, height: '100%' }}
+                className={`fixed z-50 bg-[#0a0c10]/95 lg:bg-background backdrop-blur-3xl lg:backdrop-blur-none transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col
+                    /* Mobile: Bottom Sheet Setup */
+                    bottom-0 left-0 right-0 w-full h-[100dvh]
+                    /* Desktop: Sidebar Setup */
+                    lg:inset-y-0 ${isRtl ? 'lg:right-0 lg:left-auto' : 'lg:left-0 lg:right-auto'} lg:w-20 lg:h-full lg:rounded-none lg:border-none lg:shadow-none 
+                    /* Visibility Transforms */
+                    transform ${sidebarOpen
+                        ? 'translate-y-0 lg:translate-y-0 lg:translate-x-0'
+                        : isSidebarRevealed
+                            ? `translate-y-full lg:translate-y-0 ${isRtl ? 'lg:translate-x-full lg:translate-x-0' : 'lg:-translate-x-full lg:translate-x-0'}`
+                            : `translate-y-full lg:translate-y-0 ${isRtl ? 'lg:translate-x-full' : 'lg:-translate-x-full'}`
+                    }`}
+                style={{ zIndex: 60 }}
             >
-                <div className="h-full flex flex-col relative">
+                {/* Mobile Sheet Drag Indicator */}
+                <div className="lg:hidden w-full flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onClick={() => setSidebarOpen(false)}>
+                    <div className="w-16 h-1.5 bg-white/20 rounded-full"></div>
+                </div>
+
+                <div className="w-full flex-1 flex flex-col relative overflow-y-auto lg:overflow-visible custom-scrollbar pb-6 lg:pb-0">
                     {/* Sidebar Header - Compact Logo */}
-                    <div className="pt-4 pb-4 text-center">
+                    <div className="pt-1 lg:pt-4 pb-2 lg:pb-4 text-center shrink-0">
                         <button
                             onClick={() => setIsLogoModalOpen(true)}
                             onMouseEnter={playHoverSound}
@@ -530,12 +570,12 @@ export default function DashboardLayout() {
                             <img
                                 src={settings.logo_url || "/logo.png"}
                                 alt="Logo"
-                                className="relative z-10 h-24 w-24 object-contain transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
+                                className="relative z-10 h-16 w-16 lg:h-24 lg:w-24 object-contain transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
                             />
                         </button>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center py-4 lg:py-6 space-y-4 lg:space-y-6">
+                    <div className="flex-1 flex flex-col items-stretch lg:items-center py-2 lg:py-6 px-4 lg:px-0 space-y-1 lg:space-y-6">
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.to;
@@ -544,54 +584,92 @@ export default function DashboardLayout() {
                             return (
                                 <React.Fragment key={item.to}>
                                     {isSettings && (
-                                        <div className="w-6 h-px bg-white/10 rounded-full my-1"></div>
+                                        <div className="w-full lg:w-6 h-px bg-white/10 rounded-full my-4 lg:my-1"></div>
                                     )}
-                                    <Link
-                                        to={item.to}
-                                        onClick={() => setSidebarOpen(false)}
-                                        onMouseEnter={playHoverSound}
-                                        className={`relative group flex items-center justify-center transition-all duration-300 ${isActive ? 'scale-105' : ''}`}
-                                    >
-                                        <div
-                                            className={`nav-icon-container ${isActive ? 'active' : ''} ${isSettings && !isActive ? 'bg-white/[0.03] backdrop-blur-md border border-white/[0.05] shadow-lg hover:bg-white/10 hover:border-white/20' : ''}`}
-                                            style={{ color: 'var(--color-menu-icon)' }}
-                                        >
-                                            <Icon className="w-4 h-4" />
-                                        </div>
 
-                                        {/* Premium Tooltip */}
-                                        <div className={`absolute ${isRtl ? 'right-full mr-6' : 'left-full ml-6'} px-3 py-1.5 rounded-xl bg-black/90 backdrop-blur-xl border border-white/10 text-[9px] font-black text-white uppercase tracking-widest opacity-0 ${isRtl ? 'translate-x-2' : 'translate-x-[-10px]'} pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
-                                            <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-black rotate-45 border-t border-l border-white/10`}></div>
-                                            {item.to === '/app/settings' ? t('common.settings') : t(item.label)}
+                                    {/* For Settings, wrap the link and footer buttons in a row on mobile */}
+                                    {isSettings ? (
+                                        <div className="flex flex-row lg:flex-col items-center justify-between lg:justify-center w-full lg:w-auto relative">
+                                            <Link
+                                                to={item.to}
+                                                onClick={() => setSidebarOpen(false)}
+                                                onMouseEnter={playHoverSound}
+                                                className={`relative group flex items-center justify-start lg:justify-center p-2.5 lg:p-0 rounded-2xl lg:rounded-none transition-all duration-300 ${isActive ? 'bg-primary/20 lg:bg-transparent lg:scale-105 shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.3)] lg:shadow-none border border-primary/20 lg:border-transparent' : 'hover:bg-white/5 lg:hover:bg-transparent'} flex-1`}
+                                            >
+                                                <div
+                                                    className={`nav-icon-container shrink-0 w-8 h-8 lg:w-auto lg:h-auto rounded-xl lg:rounded-none flex items-center justify-center ${isActive ? 'active text-primary lg:bg-transparent' : 'bg-transparent text-white/50 lg:text-[var(--color-menu-icon)]'} lg:bg-white/[0.03] lg:backdrop-blur-md lg:border lg:border-white/[0.05] lg:shadow-lg lg:hover:bg-white/10 lg:hover:border-white/20`}
+                                                    style={{ color: !isActive ? 'var(--color-menu-icon)' : undefined }}
+                                                >
+                                                    <Icon className={`w-4 h-4 lg:w-4 lg:h-4 ${isActive ? 'text-primary' : ''}`} />
+                                                </div>
+
+                                                {/* Mobile Label */}
+                                                <span className={`block lg:hidden ml-3 font-black uppercase tracking-widest text-[11px] transition-colors ${isActive ? 'text-primary' : 'text-white/60 group-hover:text-white'}`}>
+                                                    {t('common.settings')}
+                                                </span>
+
+                                                {/* Premium Desktop Tooltip */}
+                                                <div className={`hidden lg:block absolute ${isRtl ? 'right-full mr-6' : 'left-full ml-6'} px-3 py-1.5 rounded-xl bg-black/90 backdrop-blur-xl border border-white/10 text-[9px] font-black text-white uppercase tracking-widest opacity-0 ${isRtl ? 'translate-x-2' : 'translate-x-[-10px]'} pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
+                                                    <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-black rotate-45 border-t border-l border-white/10`}></div>
+                                                    {t('common.settings')}
+                                                </div>
+                                            </Link>
+
+                                            {/* Mobile Actions (Beside Settings) & Desktop Footer (Below Settings) */}
+                                            <div className="flex flex-row lg:flex-col items-center gap-2 lg:gap-6 shrink-0 lg:mt-6">
+                                                <button
+                                                    onClick={() => {
+                                                        const newLang = i18n.language === 'en' ? 'ar' : 'en';
+                                                        i18n.changeLanguage(newLang);
+                                                        document.dir = newLang === 'ar' ? 'rtl' : 'ltr';
+                                                        updateSettings({ language: newLang });
+                                                    }}
+                                                    onMouseEnter={playHoverSound}
+                                                    className="w-10 h-10 flex items-center justify-center text-muted hover:text-primary transition-all duration-300 bg-surface-border/20 hover:bg-primary/10 rounded-xl"
+                                                    title="Change Language"
+                                                >
+                                                    <Globe className="w-4 h-4" />
+                                                </button>
+
+                                                <button
+                                                    onClick={handleLogout}
+                                                    onMouseEnter={playHoverSound}
+                                                    className="w-10 h-10 flex items-center justify-center text-rose-500 hover:text-rose-400 transition-all duration-300 group"
+                                                    title="Logout"
+                                                >
+                                                    <LogOut className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-translate-x-1" />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </Link>
+                                    ) : (
+                                        <Link
+                                            to={item.to}
+                                            onClick={() => setSidebarOpen(false)}
+                                            onMouseEnter={playHoverSound}
+                                            className={`relative group flex items-center justify-start lg:justify-center p-2.5 lg:p-0 rounded-2xl lg:rounded-none transition-all duration-300 ${isActive ? 'bg-primary/20 lg:bg-transparent lg:scale-105 shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.3)] lg:shadow-none border border-primary/20 lg:border-transparent' : 'hover:bg-white/5 lg:hover:bg-transparent'}`}
+                                        >
+                                            <div
+                                                className={`nav-icon-container shrink-0 w-8 h-8 lg:w-auto lg:h-auto rounded-xl lg:rounded-none flex items-center justify-center ${isActive ? 'active text-primary lg:bg-transparent' : 'bg-transparent text-white/50 lg:text-[var(--color-menu-icon)]'}`}
+                                                style={{ color: !isActive ? 'var(--color-menu-icon)' : undefined }}
+                                            >
+                                                <Icon className={`w-4 h-4 lg:w-4 lg:h-4 ${isActive ? 'text-primary' : ''}`} />
+                                            </div>
+
+                                            {/* Mobile Label */}
+                                            <span className={`block lg:hidden ml-3 font-black uppercase tracking-widest text-[11px] transition-colors ${isActive ? 'text-primary' : 'text-white/60 group-hover:text-white'}`}>
+                                                {t(item.label)}
+                                            </span>
+
+                                            {/* Premium Desktop Tooltip */}
+                                            <div className={`hidden lg:block absolute ${isRtl ? 'right-full mr-6' : 'left-full ml-6'} px-3 py-1.5 rounded-xl bg-black/90 backdrop-blur-xl border border-white/10 text-[9px] font-black text-white uppercase tracking-widest opacity-0 ${isRtl ? 'translate-x-2' : 'translate-x-[-10px]'} pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 z-[100] whitespace-nowrap shadow-2xl`}>
+                                                <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? '-right-1' : '-left-1'} w-2 h-2 bg-black rotate-45 border-t border-l border-white/10`}></div>
+                                                {t(item.label)}
+                                            </div>
+                                        </Link>
+                                    )}
                                 </React.Fragment>
                             );
                         })}
-                    </div>
-
-                    {/* Sidebar Footer */}
-                    <div className="pb-8 px-2 space-y-4 lg:space-y-6 flex flex-col items-center flex-shrink-0 z-50">
-                        <button
-                            onClick={() => {
-                                const newLang = i18n.language === 'en' ? 'ar' : 'en';
-                                i18n.changeLanguage(newLang);
-                                document.dir = newLang === 'ar' ? 'rtl' : 'ltr';
-                                updateSettings({ language: newLang });
-                            }}
-                            onMouseEnter={playHoverSound}
-                            className="w-10 h-10 flex items-center justify-center text-muted hover:text-primary transition-all duration-300 bg-surface-border/20 hover:bg-primary/10 rounded-xl"
-                        >
-                            <Globe className="w-4 h-4" />
-                        </button>
-
-                        <button
-                            onClick={handleLogout}
-                            onMouseEnter={playHoverSound}
-                            className="w-10 h-10 flex items-center justify-center text-rose-500 hover:text-rose-400 transition-all duration-300 group"
-                        >
-                            <LogOut className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-translate-x-1" />
-                        </button>
                     </div>
                 </div>
             </aside>

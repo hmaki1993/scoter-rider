@@ -304,43 +304,43 @@ export default function HeadCoachDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* Attendance Card */}
-                <div className="pastel-card pastel-blue group col-span-1 md:col-span-2 flex flex-col justify-between">
+                <div className="glass-card bg-primary/[0.03] group col-span-1 md:col-span-2 flex flex-col justify-between p-6 rounded-[2.5rem] relative overflow-hidden">
                     <div className="flex items-center justify-between mb-4 relative z-10">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-                                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCheckedIn ? 'bg-emerald-600 shadow-[0_0_10px_2px_rgba(5,150,105,0.4)] animate-pulse' : 'bg-rose-600'}`}></span>
-                                <span className={isCheckedIn ? 'text-emerald-700' : 'text-rose-700'}>
+                                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCheckedIn ? 'bg-primary shadow-[0_0_10px_2px_rgba(var(--primary-rgb),0.4)] animate-pulse' : 'bg-rose-600'}`}></span>
+                                <span className={isCheckedIn ? 'text-primary' : 'text-rose-500'}>
                                     {isCheckedIn ? t('coaches.workingNow') : t('coaches.away')}
                                 </span>
                             </p>
-                            <h2 className="text-lg font-black text-black uppercase tracking-tight mt-1">{t('common.attendance')}</h2>
+                            <h2 className="text-lg font-black text-white uppercase tracking-tight mt-1">{t('common.attendance')}</h2>
                         </div>
-                        <div className="p-3 bg-black/5 rounded-2xl text-black/60 border border-black/5">
+                        <div className="p-3 bg-white/5 rounded-2xl text-white/60 border border-white/5">
                             <Clock className="w-5 h-5" />
                         </div>
                     </div>
                     <div className="flex flex-col items-center gap-6 relative z-10">
                         {isCheckedIn ? (
-                            <div className="text-4xl sm:text-5xl md:text-6xl font-black text-black tracking-widest font-mono">
+                            <div className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-widest font-mono whitespace-nowrap">
                                 {formatTimer(elapsedTime)}
                             </div>
                         ) : dailyTotalSeconds > 0 ? (
                             <div className="flex flex-col items-center gap-1">
-                                <div className="text-4xl sm:text-5xl md:text-6xl font-black text-emerald-800 tracking-widest font-mono">
+                                <div className="text-4xl sm:text-5xl md:text-6xl font-black text-primary/80 tracking-widest font-mono whitespace-nowrap">
                                     {formatTimer(dailyTotalSeconds)}
                                 </div>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-black/5 rounded-full">
-                                    <span className="text-[9px] font-black text-black/40 uppercase tracking-[0.2em]">Shift Summary</span>
+                                <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full">
+                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Shift Summary</span>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-4xl sm:text-5xl md:text-6xl font-black text-black/10 tracking-widest font-mono">00:00:00</div>
+                            <div className="text-4xl sm:text-5xl md:text-6xl font-black text-white/10 tracking-widest font-mono whitespace-nowrap">00:00:00</div>
                         )}
                         <button
                             onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
                             className={`w-full py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] shadow-xl ${isCheckedIn
-                                ? 'bg-black/10 text-black hover:bg-black/20'
-                                : 'bg-black text-white hover:bg-zinc-900'}`}
+                                ? 'bg-white/10 text-white hover:bg-white/20'
+                                : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'}`}
                         >
                             {isCheckedIn ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                             {isCheckedIn ? t('coach.checkOut') : t('coach.checkIn')}
