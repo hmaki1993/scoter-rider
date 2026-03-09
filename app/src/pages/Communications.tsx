@@ -4138,7 +4138,7 @@ export default function Communications() {
                     )}
 
                     {/* Fixed Mobile Bottom Nav */}
-                    <nav className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] h-14 bg-black/20 backdrop-blur-3xl border border-white/5 rounded-2xl flex items-center justify-around px-4 z-[100] shadow-2xl safe-area-pb">
+                    <nav className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] h-14 bg-black/20 backdrop-blur-3xl border border-white/5 rounded-2xl flex items-center justify-around px-4 z-40 shadow-2xl safe-area-pb">
                         <button
                             onClick={() => { setActiveTab('chats'); setShowNewChat(false); }}
                             className={`flex items-center justify-center transition-all w-12 h-10 rounded-xl ${activeTab === 'chats' ? 'text-primary bg-primary/10' : 'text-white/30 hover:bg-white/5 active:bg-white/10'}`}
@@ -4170,4 +4170,3 @@ export default function Communications() {
         </div >
     );
 };
-

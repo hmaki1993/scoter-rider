@@ -126,15 +126,15 @@ export const applySettingsToRoot = (settings: GymSettings) => {
         }
     };
 
-    // Colors
-    root.style.setProperty('--color-primary', settings.primary_color);
-    root.style.setProperty('--color-secondary', settings.secondary_color);
-    root.style.setProperty('--color-background', settings.secondary_color);
-    root.style.setProperty('--color-accent', settings.accent_color || '#34d399');
+    // Colors - with safety fallbacks to prevent empty/broken strings
+    root.style.setProperty('--color-primary', settings.primary_color || '#A30000');
+    root.style.setProperty('--color-secondary', settings.secondary_color || '#0B120F');
+    root.style.setProperty('--color-background', settings.secondary_color || '#0B120F');
+    root.style.setProperty('--color-accent', settings.accent_color || settings.primary_color || '#A30000');
     root.style.setProperty('--color-surface', settings.surface_color || 'rgba(18, 46, 52, 0.7)');
-    root.style.setProperty('--color-hover', settings.hover_color || 'rgba(16, 185, 129, 0.8)');
-    root.style.setProperty('--color-hover-border', settings.hover_border_color || 'rgba(16, 185, 129, 0.3)');
-    root.style.setProperty('--color-input-bg', settings.input_bg_color || '#0f172a');
+    root.style.setProperty('--color-hover', settings.hover_color || 'rgba(163, 0, 0, 0.4)');
+    root.style.setProperty('--color-hover-border', settings.hover_border_color || 'rgba(163, 0, 0, 0.2)');
+    root.style.setProperty('--color-input-bg', settings.input_bg_color || '#070D0B');
     root.style.setProperty('--color-menu-icon', settings.menu_icon_color || '#ffffff');
     root.style.setProperty('--color-premium-badge', settings.premium_badge_color || settings.primary_color || '#A30000');
     root.style.setProperty('--color-brand-label', settings.brand_label_color || settings.primary_color || '#A30000');
@@ -187,7 +187,7 @@ export const applySettingsToRoot = (settings: GymSettings) => {
 
 interface ThemeContextType {
     settings: GymSettings;
-    updateSettings: (newSettings: Partial<GymSettings>) => Promise<void>;
+    updateSettings: (newSettings: Partial<GymSettings>) => Promise<{ success: boolean; partial: boolean; }>;
     isLoading: boolean;
     hasLoaded: boolean;
     resetToDefaults: () => Promise<void>;
@@ -457,11 +457,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                     (payload) => {
                         console.log('🔔 Realtime update for global gym settings');
                         const newGymSettings = payload.new as any;
+                        // IMPORTANT: Exclude USER_SPECIFIC_KEYS (like primary_color, secondary_color, accent_color etc.)
+                        // from gym_settings realtime updates. These keys are user-personal and should ONLY
+                        // come from user_settings realtime events. This prevents login design saves from
+                        // accidentally overriding the user's locally configured theme colors.
                         const filteredGym = Object.fromEntries(
                             Object.entries(newGymSettings).filter(([key, v]) =>
-                                v !== null && GYM_WIDE_KEYS.includes(key as any)
+                                v !== null &&
+                                (GYM_WIDE_KEYS.includes(key as any) || key.startsWith('login_')) &&
+                                !USER_SPECIFIC_KEYS.includes(key as keyof GymSettings)
                             )
                         );
+                        // Safe merge: only update non-user-specific keys from global gym settings
                         setSettings(prev => ({ ...prev, ...filteredGym }));
                     }
                 )
@@ -620,7 +627,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const updateSettings = async (newSettings: Partial<GymSettings>) => {
+    const updateSettings = async (newSettings: Partial<GymSettings>): Promise<{ success: boolean; partial: boolean; }> => {
+        let isPartial = false;
         // Optimistic update
         setSettings(prev => ({ ...prev, ...newSettings }));
 
@@ -630,7 +638,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             // If no user, we still update the local state (session-only) but skip DB save
             if (!user) {
                 console.log('💾 ThemeContext: No user for persistence, update is session-only.');
-                return;
+                return { success: true, partial: false };
             }
 
             // Build gym_settings payload
@@ -680,11 +688,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                         // FALLBACK: Some columns may not exist yet in DB schema.
                         // Retry with only the guaranteed-safe core color columns.
                         console.warn('💾 Full gym save failed (schema mismatch?), retrying with core colors...', gymError.message);
+                        isPartial = true;
                         const SAFE_CORE_KEYS = ['id', 'primary_color', 'secondary_color', 'accent_color',
                             'font_family', 'font_scale', 'academy_name', 'logo_url', 'gym_address', 'gym_phone',
                             'surface_color', 'input_bg_color', 'text_color_base', 'text_color_muted',
                             'hover_color', 'hover_border_color', 'brand_label_color', 'premium_badge_color',
                             'menu_icon_color', 'search_icon_color', 'search_bg_color', 'search_text_color', 'search_border_color',
+                            'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color', 'login_card_border_color',
+                            'login_show_logo', 'login_text_color', 'login_accent_color', 'login_logo_opacity'
                         ];
                         const safePayload: any = {};
                         SAFE_CORE_KEYS.forEach(k => { if (k in gymPayload) safePayload[k] = gymPayload[k]; });
@@ -694,17 +705,35 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                             .upsert(safePayload);
 
                         if (fallbackError) {
-                            // Last resort: only guaranteed original columns
-                            console.warn('💾 Core save also failed, trying minimal save...', fallbackError.message);
-                            const { error: minError } = await supabase
-                                .from('gym_settings')
-                                .upsert({ id: gymPayload.id, primary_color: gymPayload.primary_color, secondary_color: gymPayload.secondary_color, accent_color: gymPayload.accent_color, font_family: gymPayload.font_family });
-                            if (minError) {
-                                console.error('💾 GYM SETTINGS SAVE FAILED COMPLETELY:', minError);
-                                throw minError;
+                            // Last resort: only guaranteed original columns, and ONLY if we actually have updates for them
+                            const MINIMAL_KEYS = ['primary_color', 'secondary_color', 'accent_color', 'font_family'];
+                            const minPayload: any = { id: gymPayload.id };
+                            let hasMinimalUpdates = false;
+
+                            MINIMAL_KEYS.forEach(k => {
+                                if (k in gymPayload) {
+                                    minPayload[k] = gymPayload[k];
+                                    hasMinimalUpdates = true;
+                                }
+                            });
+
+                            if (hasMinimalUpdates || 'academy_name' in gymPayload) {
+                                console.warn('💾 Core save failed, trying minimal save for theme colors...', fallbackError.message);
+                                if ('academy_name' in gymPayload) minPayload.academy_name = gymPayload.academy_name;
+
+                                const { error: minError } = await supabase
+                                    .from('gym_settings')
+                                    .upsert(minPayload);
+                                if (minError) {
+                                    console.error('💾 GYM SETTINGS SAVE FAILED COMPLETELY:', minError);
+                                    throw minError;
+                                }
+                            } else {
+                                console.error('💾 GYM SETTINGS SAVE FAILED: No safe columns to fallback to.', fallbackError);
+                                throw fallbackError;
                             }
                         }
-                        console.log('💾 GYM SETTINGS SAVED WITH CORE COLORS (run migration to enable full save)');
+                        console.log('💾 GYM SETTINGS SAVED WITH PARTIAL FALLBACK (run migration to enable full save)');
                     } else {
                         console.log('💾 GYM SETTINGS SAVED SUCCESSFULLY');
                     }
@@ -729,6 +758,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 }
                 console.log('💾 USER SETTINGS SAVED SUCCESSFULLY');
             }
+
+            return { success: true, partial: isPartial };
         } catch (error: any) {
             console.error('Error updating theme:', error);
             throw error; // Rethrow to let caller handle if needed

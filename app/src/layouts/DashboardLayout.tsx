@@ -519,11 +519,11 @@ export default function DashboardLayout() {
     };
 
     return (
-        <div className="h-[100dvh] flex bg-background font-cairo overflow-hidden">
+        <div className="fixed inset-0 w-full flex bg-background font-cairo overflow-hidden">
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] lg:hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
@@ -549,10 +549,10 @@ export default function DashboardLayout() {
                     transform ${sidebarOpen
                         ? 'translate-y-0 lg:translate-y-0 lg:translate-x-0'
                         : isSidebarRevealed
-                            ? `translate-y-full lg:translate-y-0 ${isRtl ? 'lg:translate-x-full lg:translate-x-0' : 'lg:-translate-x-full lg:translate-x-0'}`
+                            ? `translate-y-full lg:translate-y-0 lg:translate-x-0`
                             : `translate-y-full lg:translate-y-0 ${isRtl ? 'lg:translate-x-full' : 'lg:-translate-x-full'}`
                     }`}
-                style={{ zIndex: 60 }}
+                style={{ zIndex: 200 }}
             >
                 {/* Mobile Sheet Drag Indicator */}
                 <div className="lg:hidden w-full flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onClick={() => setSidebarOpen(false)}>
@@ -675,7 +675,7 @@ export default function DashboardLayout() {
             </aside>
 
             {/* Main Content Area */}
-            <div className={`flex-1 flex flex-col min-w-0 h-[100dvh] transition-all duration-500 ${isChatView && !isHoveringSidebar ? 'lg:m-0' : (isRtl ? 'lg:mr-20' : 'lg:ml-20')}`}>
+            <div className={`flex-1 flex flex-col min-w-0 h-full transition-all duration-500 ${isChatView && !isHoveringSidebar ? 'lg:m-0' : (isRtl ? 'lg:mr-20' : 'lg:ml-20')}`}>
                 {/* Header - Branding */}
                 {!location.pathname.includes('/communications') && (
                     <header className={`relative z-30 w-full pt-4 lg:pt-0 px-4 sm:px-6 lg:px-0 flex flex-col items-center lg:items-stretch`}>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { getResponsiveLoginSettings } from '../utils/theme';
 import { LoginRenderer } from './settings/components/LoginRenderer';
 
 export default function EpicLogin() {
@@ -65,7 +66,7 @@ export default function EpicLogin() {
     return (
         <div className="fixed inset-0 w-full h-screen bg-black overflow-hidden select-none">
             <LoginRenderer
-                activeSettings={settings}
+                activeSettings={getResponsiveLoginSettings(settings, isMobile)}
                 designMode={isMobile ? 'mobile' : 'desktop'}
                 email={email}
                 setEmail={setEmail}

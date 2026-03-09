@@ -90,6 +90,40 @@ export const initializeTheme = () => {
         applyThemeStyles(savedTheme);
     } catch (error) {
         console.error('Failed to load theme:', error);
-        applyThemeStyles('midnight');
     }
+};
+
+export const getResponsiveLoginSettings = (settings: any, isMobile: boolean) => {
+    if (!isMobile) return settings;
+    return {
+        ...settings,
+        login_bg_url: settings.login_mobile_bg_url || settings.login_bg_url,
+        login_logo_url: settings.login_mobile_logo_url || settings.login_logo_url || settings.logo_url,
+        login_card_opacity: settings.login_mobile_card_opacity ?? settings.login_card_opacity,
+        login_card_color: settings.login_mobile_card_color || settings.login_card_color,
+        login_card_border_color: settings.login_mobile_card_border_color || settings.login_card_border_color,
+        login_card_scale: settings.login_mobile_card_scale ?? settings.login_card_scale,
+        login_show_logo: settings.login_mobile_show_logo ?? settings.login_show_logo,
+        login_text_color: settings.login_mobile_text_color || settings.login_text_color,
+        login_accent_color: settings.login_mobile_accent_color || settings.login_accent_color,
+        login_logo_opacity: settings.login_mobile_logo_opacity ?? settings.login_logo_opacity,
+        login_logo_scale: settings.login_mobile_logo_scale ?? settings.login_logo_scale,
+        login_logo_x_offset: settings.login_mobile_logo_x_offset ?? settings.login_logo_x_offset ?? 0,
+        login_logo_y_offset: settings.login_mobile_logo_y_offset ?? settings.login_logo_y_offset ?? -220,
+        login_bg_blur: settings.login_mobile_bg_blur ?? settings.login_bg_blur,
+        login_bg_brightness: settings.login_mobile_bg_brightness ?? settings.login_bg_brightness,
+        login_bg_zoom: settings.login_mobile_bg_zoom ?? settings.login_bg_zoom,
+        login_bg_x_offset: settings.login_mobile_bg_x_offset ?? settings.login_bg_x_offset ?? 0,
+        login_bg_y_offset: settings.login_mobile_bg_y_offset ?? settings.login_bg_y_offset ?? 0,
+        login_bg_fit: settings.login_mobile_bg_fit || settings.login_bg_fit,
+        login_bg_opacity: settings.login_mobile_bg_opacity ?? settings.login_bg_opacity,
+        login_card_x_offset: settings.login_mobile_card_x_offset ?? settings.login_card_x_offset ?? 0,
+        login_card_y_offset: settings.login_mobile_card_y_offset ?? settings.login_card_y_offset ?? 0,
+        login_card_width: settings.login_mobile_card_width ?? settings.login_card_width,
+        login_card_height: settings.login_mobile_card_height ?? settings.login_card_height,
+        login_heading_size: settings.login_mobile_heading_size ?? settings.login_heading_size,
+        login_input_size: settings.login_mobile_input_size ?? settings.login_input_size,
+        login_label_size: settings.login_mobile_label_size ?? settings.login_label_size,
+        academy_name: settings.academy_name,
+    };
 };

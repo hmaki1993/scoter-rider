@@ -14,6 +14,14 @@ i18n
         resources: {
             en: {
                 translation: {
+                    login: {
+                        emailLabel: 'Email Address',
+                        passwordLabel: 'Password',
+                        academyLabel: 'Academy',
+                        switchLanguage: 'Switch to {{lang}}',
+                        switchToEnglish: 'Switch to English',
+                        switchToArabic: 'Switch to Arabic'
+                    },
                     common: {
                         dashboard: 'Dashboard',
                         today: 'Today',
@@ -261,7 +269,33 @@ i18n
                             serene: 'Serene Snow',
                             lavender: 'Royal Lavender',
                             coffee: 'Morning Coffee'
-                        }
+                        },
+                        loginDesigner: 'Login Designer',
+                        environmentPerspective: 'Environment & Perspective',
+                        backgroundControl: 'Background Control',
+                        zoom: 'Zoom',
+                        brightness: 'Brightness',
+                        bgOpacity: 'BG Opacity',
+                        fitMode: 'Fit Mode',
+                        bgXOffset: 'BG X Offset',
+                        bgYOffset: 'BG Y Offset',
+                        logoAppearance: 'Logo Appearance',
+                        scale: 'Scale',
+                        logoOpacity: 'Logo Opacity',
+                        xOffset: 'X Offset',
+                        yOffsetVertical: 'Y Offset (Vertical)',
+                        cardPositionLayout: 'Card Position & Layout',
+                        cardOpacity: 'Card Opacity',
+                        cardGlowSize: 'Card Glow Size',
+                        openMediaLibrary: 'Open Media Library',
+                        saveLoginPageDesign: 'Save Login Page Design',
+                        pixelPerfect: 'Pixel Perfect',
+                        fullScreen: 'Full Screen',
+                        liveScreenPreview: 'Live Screen Preview',
+                        holdDragToMove: 'Hold & Drag to move',
+                        center: 'Center',
+                        visible: 'Visible',
+                        hidden: 'Hidden'
                     },
                     students: {
                         title: 'Gymnast Management',
@@ -482,6 +516,14 @@ i18n
             },
             ar: {
                 translation: {
+                    login: {
+                        emailLabel: 'البريد الإلكتروني',
+                        passwordLabel: 'كلمة السر',
+                        academyLabel: 'أكاديمية',
+                        switchLanguage: 'تغيير إلى {{lang}}',
+                        switchToEnglish: 'تغيير إلى الإنجليزية',
+                        switchToArabic: 'تغيير إلى العربية'
+                    },
                     common: {
                         dashboard: 'لوحة التحكم',
                         today: 'اليوم',
@@ -722,7 +764,33 @@ i18n
                             serene: 'ثلج هادئ',
                             lavender: 'لافندر ملكي',
                             coffee: 'قهوة الصباح'
-                        }
+                        },
+                        loginDesigner: 'مصمم صفحة الدخول',
+                        environmentPerspective: 'البيئة والمنظور',
+                        backgroundControl: 'التحكم في الخلفية',
+                        zoom: 'الزوم (Zoom)',
+                        brightness: 'السطوع (Brightness)',
+                        bgOpacity: 'شفافية الخلفية',
+                        fitMode: 'نمط الاحتواء (Fit Mode)',
+                        bgXOffset: 'إزاحة X للخلفية',
+                        bgYOffset: 'إزاحة Y للخلفية',
+                        logoAppearance: 'مظهر الشعار',
+                        scale: 'الحجم (Scale)',
+                        logoOpacity: 'شفافية الشعار',
+                        xOffset: 'إزاحة X',
+                        yOffsetVertical: 'إزاحة Y (رأسي)',
+                        cardPositionLayout: 'موضع وتخطيط البطاقة',
+                        cardOpacity: 'شفافية البطاقة',
+                        cardGlowSize: 'حجم توهج البطاقة',
+                        openMediaLibrary: 'فتح مكتبة الوسائط',
+                        saveLoginPageDesign: 'حفظ تصميم صفحة الدخول',
+                        pixelPerfect: 'دقة بكسل مثالية',
+                        fullScreen: 'ملء الشاشة',
+                        liveScreenPreview: 'معاينة مباشرة للشاشة',
+                        holdDragToMove: 'اضغط واسحب للتحريك',
+                        center: 'توسيط',
+                        visible: 'مرئي',
+                        hidden: 'مخفي'
                     },
                     students: {
                         title: 'إدارة اللاعبين',

@@ -125,7 +125,15 @@ export function PremiumColorPicker({ label, value, onChange, description }: { la
                         <div className="text-[6px] text-white/20 font-bold uppercase tracking-widest truncate">RGBA({r}, {g}, {b}, {opacity})</div>
                     </div>
                     <div className="relative group/slider pt-1">
-                        <input type="range" min="0" max="100" value={Math.round(opacity * 100)} onChange={(e) => handleOpacityChange(parseInt(e.target.value))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary group-hover/slider:bg-white/20 transition-all" />
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={Math.round(opacity * 100)}
+                            onChange={(e) => handleOpacityChange(parseInt(e.target.value))}
+                            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary group-hover/slider:bg-white/20 transition-all"
+                            style={{ direction: 'ltr' }}
+                        />
                     </div>
                 </div>
             </div>

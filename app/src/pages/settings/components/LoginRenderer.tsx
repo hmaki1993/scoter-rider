@@ -109,7 +109,7 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
 
             {/* Content Stage - Preserving 1080p parity (or fluid if FullScreen) */}
             <div
-                className={`${isFullScreen ? "relative w-full h-full" : "absolute"} flex flex-col items-center justify-center transition-transform duration-500 ease-out pointer-events-none z-10`}
+                className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ease-out pointer-events-none z-10"
                 style={isFullScreen ? undefined : {
                     width: `${targetWidth}px`,
                     height: `${targetHeight}px`,
@@ -120,25 +120,23 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
                     transformOrigin: 'center center'
                 }}
             >
-                {/* Logo Layer - Absolute aligned like actual Login page */}
+                {/* Logo Layer - Relative to flex container for robust stacking */}
                 {activeSettings.login_show_logo !== false && (
                     <div
-                        className="absolute z-20 flex items-center justify-center pointer-events-none"
+                        className="z-20 flex items-center justify-center pointer-events-none mb-6 md:mb-8 transition-all duration-500"
                         style={{
-                            top: '50%',
-                            left: '50%',
-                            transform: `translate(-50%, -50%) translateX(${activeSettings.login_logo_x_offset ?? 0}px) translateY(${activeSettings.login_logo_y_offset ?? -220}px) scale(${activeSettings.login_logo_scale as number || 1.0})`,
+                            transform: `translateX(${activeSettings.login_logo_x_offset ?? 0}px) translateY(${activeSettings.login_logo_y_offset ?? 0}px) scale(${activeSettings.login_logo_scale as number || 1.0})`,
                             transformOrigin: 'center center',
-                            width: '160px',
-                            height: '160px',
+                            width: '120px',
+                            height: '120px',
                         }}
                     >
-                        <div className="absolute inset-[-30px] bg-[#D4AF37]/10 blur-3xl rounded-full opacity-40"></div>
+                        <div className="absolute inset-[-20px] bg-[#D4AF37]/10 blur-3xl rounded-full opacity-40"></div>
                         <img
                             src={logoPath}
                             alt="Academy Logo"
-                            className="w-full h-full object-contain drop-shadow-2xl transition-all duration-700"
-                            style={{ opacity: activeSettings.login_logo_opacity !== undefined ? (activeSettings.login_logo_opacity as number) : 0.8 }}
+                            className="w-full h-full object-contain drop-shadow-2xl transition-all duration-700 relative z-10"
+                            style={{ opacity: activeSettings.login_logo_opacity !== undefined ? (activeSettings.login_logo_opacity as number) : 1.0 }}
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                     </div>
@@ -147,21 +145,25 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
                 <div
                     className="relative group/page z-10 pointer-events-auto"
                     style={{
-                        width: `${activeSettings.login_card_width ?? (designMode === 'mobile' ? 340 : 448)}px`,
-                        height: activeSettings.login_card_height ? `${activeSettings.login_card_height}px` : 'auto'
+                        width: designMode === 'mobile' ? '100%' : `${activeSettings.login_card_width ?? 448}px`,
+                        maxWidth: `${activeSettings.login_card_width ?? (designMode === 'mobile' ? 360 : 448)}px`,
+                        minHeight: activeSettings.login_card_height ? `${activeSettings.login_card_height}px` : (designMode === 'mobile' ? 'auto' : '600px'),
+                        display: 'flex',
+                        flexDirection: 'column'
                     }}
                 >
                     {/* Login Card Layer */}
                     <div
-                        className="group/card hover:!opacity-100 focus-within:!opacity-100 border rounded-[3rem] p-8 md:p-12 h-full transition-all duration-700 ease-out flex flex-col justify-center overflow-hidden shadow-[inset_0_0_80px_rgba(255,255,255,0.03)] relative before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.05] before:to-transparent before:pointer-events-none"
+                        className={`group/card hover:!opacity-100 focus-within:!opacity-100 border transition-all duration-700 ease-out flex flex-col justify-center overflow-hidden shadow-[inset_0_0_80px_rgba(255,255,255,0.03)] relative before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.05] before:to-transparent before:pointer-events-none ${designMode === 'mobile' ? 'rounded-[1.75rem] p-6 sm:p-7' : 'rounded-[3rem] p-8 md:p-12'}`}
                         style={{
                             backgroundColor: (activeSettings.login_card_color as string) || '#000000',
                             border: activeSettings.login_card_border_color ? `${activeSettings.login_card_border_width ?? 1}px solid ${activeSettings.login_card_border_color as string}` : undefined,
-                            boxShadow: activeSettings.login_card_border_color ? `0 0 ${activeSettings.login_card_glow_size ?? 60}px -15px color-mix(in srgb, ${activeSettings.login_card_border_color as string}, transparent ${100 - Number(activeSettings.login_card_glow_opacity ?? 50)}%)` : undefined,
+                            boxShadow: activeSettings.login_card_border_color ? `0 10px ${activeSettings.login_card_glow_size ?? 60}px -15px ${activeSettings.login_card_border_color as string}` : undefined,
                             opacity: (activeSettings.login_card_opacity as number) ?? 0.45,
                             transform: `scale(${activeSettings.login_card_scale as number || 1.0}) translate(${(activeSettings.login_card_x_offset as number || 0)}px, ${(activeSettings.login_card_y_offset as number || 0)}px)`,
                             backdropFilter: 'blur(24px)',
-                            WebkitBackdropFilter: 'blur(24px)'
+                            WebkitBackdropFilter: 'blur(24px)',
+                            flex: 1
                         }}
                     >
                         <div className="text-center mb-6">
@@ -171,7 +173,7 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
                             <div className="flex items-center justify-center gap-4">
                                 <div className="h-[1px] w-8" style={{ backgroundColor: `${(activeSettings.login_accent_color as string) || '#D4AF37'}4d` }}></div>
                                 <span className="font-black uppercase tracking-[0.5em] opacity-80" style={{ color: (activeSettings.login_accent_color as string) || '#D4AF37', fontSize: activeSettings.login_label_size ? `${activeSettings.login_label_size}px` : '11px' }}>
-                                    Academy
+                                    {t('login.academyLabel')}
                                 </span>
                                 <div className="h-[1px] w-8" style={{ backgroundColor: `${(activeSettings.login_accent_color as string) || '#D4AF37'}4d` }}></div>
                             </div>
@@ -186,14 +188,13 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
                         <form onSubmit={handleLogin} className="space-y-5 w-full" noValidate>
                             <div className="space-y-2.5 w-full text-left group/email relative">
                                 <label className="block font-black uppercase tracking-[0.4em] transition-all duration-500 text-left pl-2 group-focus-within/email:text-white group-hover/email:text-white/80" style={{ color: `${(activeSettings.login_text_color as string) || '#ffffff'}66`, fontSize: activeSettings.login_label_size ? `${activeSettings.login_label_size}px` : '11px' }}>
-                                    Email Address
+                                    {t('login.emailLabel')}
                                 </label>
                                 <div className="relative rounded-2xl overflow-hidden transition-all duration-500 border border-white/5 bg-white/[0.02] shadow-[inset_0_2px_15px_rgba(255,255,255,0.02)] group-focus-within/email:border-white/20 group-focus-within/email:bg-white/[0.06] group-focus-within/email:shadow-[inset_0_2px_20px_rgba(255,255,255,0.04),0_0_20px_rgba(255,255,255,0.05)] group-hover/email:border-white/10">
                                     <div className="absolute inset-0 bg-gradient-to-r from-white/[0.03] to-transparent opacity-0 group-focus-within/email:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                                     <input
                                         type="email"
                                         required
-                                        readOnly={isPreview}
                                         className="relative w-full bg-transparent py-4 px-8 transition-all font-bold text-white tracking-widest !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
                                         style={{
                                             backgroundColor: 'rgba(255,255,255,0.03)',
@@ -210,14 +211,13 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
 
                             <div className="space-y-2.5 w-full pt-4 text-left group/pass relative">
                                 <label className="block font-black uppercase tracking-[0.4em] transition-all duration-500 text-left pl-2 group-focus-within/pass:text-white group-hover/pass:text-white/80" style={{ color: `${(activeSettings.login_text_color as string) || '#ffffff'}66`, fontSize: activeSettings.login_label_size ? `${activeSettings.login_label_size}px` : '11px' }}>
-                                    Password
+                                    {t('login.passwordLabel')}
                                 </label>
                                 <div className="relative rounded-2xl overflow-hidden transition-all duration-500 border border-white/5 bg-white/[0.02] shadow-[inset_0_2px_15px_rgba(255,255,255,0.02)] group-focus-within/pass:border-white/20 group-focus-within/pass:bg-white/[0.06] group-focus-within/pass:shadow-[inset_0_2px_20px_rgba(255,255,255,0.04),0_0_20px_rgba(255,255,255,0.05)] group-hover/pass:border-white/10">
                                     <div className="absolute inset-0 bg-gradient-to-r from-white/[0.03] to-transparent opacity-0 group-focus-within/pass:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                                     <input
                                         type="password"
                                         required
-                                        readOnly={isPreview}
                                         className="relative w-full bg-transparent py-4 px-8 transition-all font-bold text-white tracking-widest !outline-none !shadow-none !border-transparent !ring-0 focus:!border-transparent focus:!ring-0 focus:!outline-none focus:!shadow-none"
                                         style={{
                                             backgroundColor: 'rgba(255,255,255,0.03)',
@@ -270,7 +270,7 @@ export const LoginRenderer: React.FC<LoginRendererProps> = ({
                                 }}
                             >
                                 <Globe className="w-3.5 h-3.5" />
-                                {i18n.language === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+                                {i18n.language === 'en' ? t('login.switchToArabic') : t('login.switchToEnglish')}
                             </button>
                             <span className="font-black uppercase tracking-[0.4em] mt-2" style={{ color: `${(activeSettings.login_text_color as string) || '#ffffff'}1a`, fontSize: activeSettings.login_label_size ? `${Math.max(9, (activeSettings.login_label_size as number) - 2)}px` : '9px' }}>
                                 © 2026 {(activeSettings.academy_name as string) || 'Epic Gymnastic Academy'}
