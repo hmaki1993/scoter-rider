@@ -35,7 +35,7 @@ serve(async (req) => {
             vapidPrivateKey
         );
 
-        const { receiver_id, action, call_type, caller_id, conversation_id } = await req.json();
+        const { receiver_id, action, call_type, caller_id, conversation_id, call_id } = await req.json();
 
         if (!receiver_id || !action) {
             throw new Error('Missing required fields');
@@ -73,7 +73,9 @@ serve(async (req) => {
 
         const payload = JSON.stringify({
             type: action === 'incoming' ? 'incoming_call' : 'call_ended',
+            call_id: call_id,
             call_type: call_type || 'audio',
+            caller_id: caller_id,
             caller_name: callerName,
             caller_avatar: callerAvatar,
             conversation_id: conversation_id

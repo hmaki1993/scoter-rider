@@ -564,15 +564,15 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
 
         const channelId = `call_${conversationId}_${Date.now()}`;
 
-        const { error } = await supabase.from('call_records').insert({
+        const { data: callRec, error } = await supabase.from('call_records').insert({
             conversation_id: conversationId,
             caller_id: currentUserId,
             call_type: callType,
             status: 'ringing',
             agora_channel_id: channelId
-        });
+        }).select('id').single();
 
-        if (error) { toast.error('Failed to start call'); return; }
+        if (error || !callRec) { toast.error('Failed to start call'); return; }
 
         const info: ActiveCallInfo = { type: callType, otherUser, channelId, conversationId };
         setActiveCall(info);
@@ -607,8 +607,10 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
 
         // Trigger background push notification for receiver
         supabase.functions.invoke('send-call-push', {
+            headers: { 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
             body: {
                 action: 'incoming',
+                call_id: callRec.id,
                 call_type: callType,
                 caller_id: currentUserId,
                 receiver_id: otherUser.id,
@@ -777,6 +779,67 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
             setIsCameraOff(newOff);
         }
     };
+
+    // ─── URL State Recovery (Notification Click) ──────────────────────────────
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const callId = params.get('call_id');
+        const callerId = params.get('caller_id');
+        const type = params.get('type') as 'audio' | 'video';
+        const convId = params.get('conv_id');
+
+        if (callId && callerId && currentUserId && !incomingCall && !activeCall) {
+            console.log('[CallContext] Recovering call state from URL:', { callId, callerId });
+
+            async function recoverCall() {
+                try {
+                    // Check if call is still ringing
+                    const { data: callRec } = await supabase
+                        .from('call_records')
+                        .select('status, agora_channel_id')
+                        .eq('id', callId)
+                        .single();
+
+                    if (!callRec || callRec.status !== 'ringing') return;
+
+                    // Fetch caller profile
+                    const [profileRes, coachRes] = await Promise.all([
+                        supabase.from('profiles').select('*').eq('id', callerId).single(),
+                        supabase.from('coaches').select('avatar_url').eq('profile_id', callerId).maybeSingle()
+                    ]);
+
+                    if (profileRes.data) {
+                        const caller: CallProfile = {
+                            ...profileRes.data,
+                            avatar_url: profileRes.data.avatar_url || coachRes.data?.avatar_url
+                        };
+                        setIncomingCall({
+                            callId: callId!,
+                            type: type || 'audio',
+                            caller,
+                            channelId: callRec.agora_channel_id,
+                            conversationId: convId || ''
+                        });
+
+                        // Play ringtone (User interaction might be needed, but showing UI is first step)
+                        const ringtoneUrl = localStorage.getItem('healy_ringtone_url') || 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3';
+                        if (!incomingRingtoneRef.current) {
+                            incomingRingtoneRef.current = new Audio(ringtoneUrl);
+                            incomingRingtoneRef.current.loop = true;
+                        }
+                        incomingRingtoneRef.current.play().catch(() => { });
+
+                        // Clear params from URL to prevent re-triggering on refresh
+                        const newUrl = window.location.pathname;
+                        window.history.replaceState({}, '', newUrl);
+                    }
+                } catch (err) {
+                    console.error('[CallContext] Failed to recover call:', err);
+                }
+            }
+            recoverCall();
+        }
+    }, [currentUserId, incomingCall, activeCall]);
 
     // ─── Incoming Call Subscription ───────────────────────────────────────────
     useEffect(() => {

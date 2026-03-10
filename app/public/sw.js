@@ -84,7 +84,10 @@ self.addEventListener('push', (event) => {
             ],
             data: {
                 url: '/app/communications',
-                conversation_id: data.conversation_id
+                conversation_id: data.conversation_id,
+                call_id: data.call_id,
+                caller_id: data.caller_id,
+                call_type: data.call_type || 'audio'
             },
             actions: [
                 { action: 'answer', title: '✅ Answer' },
@@ -123,9 +126,19 @@ self.addEventListener('message', (event) => {
 // ─── Notification Clicks ───────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
     console.log('[SW] Clicked:', event.action);
+    const data = event.notification.data || {};
     event.notification.close();
 
-    const urlToOpen = new URL(event.notification.data?.url || '/app/communications', self.location.origin).href;
+    // Build URL with state recovery parameters
+    let urlToOpen = new URL(data.url || '/app/communications', self.location.origin);
+    if (data.call_id) {
+        urlToOpen.searchParams.set('call_id', data.call_id);
+        urlToOpen.searchParams.set('caller_id', data.caller_id);
+        urlToOpen.searchParams.set('type', data.call_type);
+        urlToOpen.searchParams.set('conv_id', data.conversation_id);
+    }
+
+    const finalUrlStr = urlToOpen.href;
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
@@ -135,11 +148,15 @@ self.addEventListener('notificationclick', (event) => {
                 target.focus();
                 if (event.action === 'answer') target.postMessage({ type: 'ACCEPT_CALL_ACTION' });
                 else if (event.action === 'decline') target.postMessage({ type: 'REJECT_CALL_ACTION' });
-                else if (event.notification.tag === 'active-call') target.postMessage({ type: 'FOCUS_CALL' });
+                else if (data.type === 'active_call') target.postMessage({ type: 'FOCUS_CALL' });
+                else {
+                    // Even if window exists, navigate to the recovery URL to trigger the overlay
+                    target.navigate(finalUrlStr);
+                }
             } else {
-                let finalUrl = urlToOpen;
-                if (event.action === 'answer') finalUrl += '#action=answer';
-                return self.clients.openWindow(finalUrl);
+                let openUrl = finalUrlStr;
+                if (event.action === 'answer') openUrl += '#action=answer';
+                return self.clients.openWindow(openUrl);
             }
         })
     );
