@@ -1,4 +1,4 @@
-// ─── Healy Service Worker v2 ───────────────────────────────────────────────
+// ─── Healy Service Worker v2.1 (Fix: Cold Start Call Recovery) ───────────────
 // Industrial-grade background call handling & persistent notifications
 
 let activeCallKeepaliveTimer = null;

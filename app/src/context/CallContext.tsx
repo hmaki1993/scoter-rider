@@ -781,64 +781,88 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     };
 
     // ─── URL State Recovery (Notification Click) ──────────────────────────────
+    // ─── URL Metadata Capture (Stage 1) ──────────────────────────────────────
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const callId = params.get('call_id');
-        const callerId = params.get('caller_id');
-        const type = params.get('type') as 'audio' | 'video';
-        const convId = params.get('conv_id');
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
+        const urlCallId = urlParams.get('call_id') || hashParams.get('call_id');
 
-        if (callId && callerId && currentUserId && !incomingCall && !activeCall) {
-            console.log('[CallContext] Recovering call state from URL:', { callId, callerId });
-
-            async function recoverCall() {
-                try {
-                    // Check if call is still ringing
-                    const { data: callRec } = await supabase
-                        .from('call_records')
-                        .select('status, agora_channel_id')
-                        .eq('id', callId)
-                        .single();
-
-                    if (!callRec || callRec.status !== 'ringing') return;
-
-                    // Fetch caller profile
-                    const [profileRes, coachRes] = await Promise.all([
-                        supabase.from('profiles').select('*').eq('id', callerId).single(),
-                        supabase.from('coaches').select('avatar_url').eq('profile_id', callerId).maybeSingle()
-                    ]);
-
-                    if (profileRes.data) {
-                        const caller: CallProfile = {
-                            ...profileRes.data,
-                            avatar_url: profileRes.data.avatar_url || coachRes.data?.avatar_url
-                        };
-                        setIncomingCall({
-                            callId: callId!,
-                            type: type || 'audio',
-                            caller,
-                            channelId: callRec.agora_channel_id,
-                            conversationId: convId || ''
-                        });
-
-                        // Play ringtone (User interaction might be needed, but showing UI is first step)
-                        const ringtoneUrl = localStorage.getItem('healy_ringtone_url') || 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3';
-                        if (!incomingRingtoneRef.current) {
-                            incomingRingtoneRef.current = new Audio(ringtoneUrl);
-                            incomingRingtoneRef.current.loop = true;
-                        }
-                        incomingRingtoneRef.current.play().catch(() => { });
-
-                        // Clear params from URL to prevent re-triggering on refresh
-                        const newUrl = window.location.pathname;
-                        window.history.replaceState({}, '', newUrl);
-                    }
-                } catch (err) {
-                    console.error('[CallContext] Failed to recover call:', err);
-                }
-            }
-            recoverCall();
+        if (urlCallId) {
+            console.log('[CallContext] Capture Stage - Found call metadata in URL:', urlCallId);
+            sessionStorage.setItem('healy_pending_call', JSON.stringify({
+                callId: urlCallId,
+                callerId: urlParams.get('caller_id') || hashParams.get('caller_id'),
+                type: urlParams.get('type') || hashParams.get('type'),
+                convId: urlParams.get('conv_id') || hashParams.get('conv_id'),
+                timestamp: Date.now()
+            }));
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
         }
+    }, []);
+
+    // ─── Call Recovery Execution (Stage 2) ─────────────────────────────────────
+    useEffect(() => {
+        const pendingJson = sessionStorage.getItem('healy_pending_call');
+        if (!pendingJson || !currentUserId || incomingCall || activeCall) return;
+
+        const pending = JSON.parse(pendingJson);
+        if (Date.now() - pending.timestamp > 300000) {
+            sessionStorage.removeItem('healy_pending_call');
+            return;
+        }
+
+        async function recoverCall() {
+            try {
+                const { callId, callerId, type, convId } = pending;
+                console.log('[CallContext] Recovery Stage - Checking call record:', callId);
+
+                const { data: callRec, error: recError } = await supabase
+                    .from('call_records')
+                    .select('status, agora_channel_id')
+                    .eq('id', callId)
+                    .single();
+
+                if (recError || !callRec || callRec.status !== 'ringing') {
+                    console.log('[CallContext] Recovery Stage - Record invalid or ended');
+                    sessionStorage.removeItem('healy_pending_call');
+                    return;
+                }
+
+                const [profileRes, coachRes] = await Promise.all([
+                    supabase.from('profiles').select('*').eq('id', callerId).single(),
+                    supabase.from('coaches').select('avatar_url').eq('profile_id', callerId).maybeSingle()
+                ]);
+
+                if (profileRes.data) {
+                    const caller: CallProfile = {
+                        ...profileRes.data,
+                        avatar_url: profileRes.data.avatar_url || coachRes.data?.avatar_url
+                    };
+                    setIncomingCall({
+                        callId: callId,
+                        type: (type as any) || 'audio',
+                        caller,
+                        channelId: callRec.agora_channel_id,
+                        conversationId: convId || ''
+                    });
+
+                    sessionStorage.removeItem('healy_pending_call');
+                    console.log('[CallContext] Recovery Stage - Success!');
+
+                    const ringtoneUrl = localStorage.getItem('healy_ringtone_url') || 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3';
+                    if (!incomingRingtoneRef.current) {
+                        incomingRingtoneRef.current = new Audio(ringtoneUrl);
+                        incomingRingtoneRef.current.loop = true;
+                    }
+                    incomingRingtoneRef.current.play().catch(() => { });
+                }
+            } catch (err) {
+                console.error('[CallContext] Recovery Stage - Error:', err);
+                sessionStorage.removeItem('healy_pending_call');
+            }
+        }
+        recoverCall();
     }, [currentUserId, incomingCall, activeCall]);
 
     // ─── Incoming Call Subscription ───────────────────────────────────────────
