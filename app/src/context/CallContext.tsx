@@ -9,8 +9,12 @@ const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
 // Helper function for VAPID key
 function urlBase64ToUint8Array(base64String: string) {
     try {
-        // Aggressive cleaning to handle .env weirdness
-        const cleaned = base64String.trim().replace(/^["'](.+(?=["']$))["']$/, '$1');
+        // Super aggressive cleaning: remove anything that isn't a Base64URL character
+        // This handles cases where a '=' might have been accidentally included at the start
+        const cleaned = base64String.trim()
+            .replace(/^["'](.+)["']$/, '$1') // Remove quotes
+            .replace(/^=/, '');              // Remove accidental leading '='
+
         const padding = '='.repeat((4 - cleaned.length % 4) % 4);
         const base64 = (cleaned + padding).replace(/\-/g, '+').replace(/_/g, '/');
         const rawData = window.atob(base64);
@@ -20,7 +24,7 @@ function urlBase64ToUint8Array(base64String: string) {
         }
         return outputArray;
     } catch (err) {
-        console.error('[Call] VAPID Key decoding failed. Key value:', base64String);
+        console.error('[Call] VAPID Key decoding failed. Value:', base64String);
         throw new Error('Invalid VAPID Public Key format. Make sure it is a valid Base64URL string.');
     }
 }
