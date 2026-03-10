@@ -61,6 +61,11 @@ interface CallContextType {
 
     // For Communications.tsx to set incoming calls
     setIncomingCall: (call: IncomingCallInfo | null) => void;
+
+    // Diagnostic & Testing
+    realtimeStatus: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR' | 'INITIAL';
+    pushReady: boolean;
+    sendTestPush: () => Promise<void>;
 }
 
 const CallContext = createContext<CallContextType | undefined>(undefined);
@@ -73,6 +78,8 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
     const [isCallMinimized, setIsCallMinimized] = useState(false);
+    const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR' | 'INITIAL'>('INITIAL');
+    const [pushReady, setPushReady] = useState(false);
 
     const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
     const localAudioRef = useRef<ILocalAudioTrack | null>(null);
@@ -276,9 +283,16 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
 
         async function setupPushNotifications() {
             try {
-                if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+                if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                    console.warn('[Call] Push notifications not supported in this browser.');
+                    return;
+                }
 
+                console.log('[Call] Setting up push notifications with VAPID:', VAPID_PUBLIC_KEY?.substring(0, 10) + '...');
                 const registration = await navigator.serviceWorker.register('/sw.js');
+
+                // Wait for service worker to be ready
+                await navigator.serviceWorker.ready;
 
                 // Request permission
                 if (Notification.permission === 'default') {
@@ -298,14 +312,26 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                 }
 
                 // Save to database
-                await supabase.from('profiles').update({
+                const { error: updateError } = await supabase.from('profiles').update({
                     push_subscription: JSON.parse(JSON.stringify(subscription))
                 }).eq('id', currentUserId);
 
-                console.log('[Call] Push subscription successful and saved.');
+                if (updateError) {
+                    console.error('[Call] Failed to save subscription to DB:', updateError);
+                    toast.error('فشل في حفظ اشتراك الإشعارات في قاعدة البيانات');
+                } else {
+                    console.log('[Call] Push subscription successful and saved.');
+                    setPushReady(true);
+                }
 
-            } catch (err) {
+            } catch (err: any) {
                 console.error('[Call] Failed to setup push notifications:', err);
+                setPushReady(false);
+                if (err.message?.includes('registration failed')) {
+                    toast.error('فشل تسجيل الـ Service Worker - تأكد من استخدام HTTPS');
+                } else {
+                    toast.error('خطأ في إعداد الإشعارات: ' + (err.message || 'Unknown error'));
+                }
             }
         }
 
@@ -588,6 +614,27 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         }
     };
 
+    // ─── Test Push Notification ──────────────────────────────────────────────
+    const sendTestPush = async () => {
+        if (!currentUserId) return;
+        toast.loading('Sending test push...', { id: 'test-push' });
+        try {
+            const { error } = await supabase.functions.invoke('send-call-push', {
+                body: {
+                    action: 'incoming',
+                    call_type: 'audio',
+                    caller_id: currentUserId,
+                    receiver_id: currentUserId,
+                    conversation_id: 'test-convo'
+                }
+            });
+            if (error) throw error;
+            toast.success('Test push sent! Lock your screen now.', { id: 'test-push' });
+        } catch (err: any) {
+            console.error('[Call] Test push failed:', err);
+            toast.error('Test push failed: ' + (err.message || 'Unknown error'), { id: 'test-push' });
+        }
+    };
     // ─── Accept Call ──────────────────────────────────────────────────────────
     const acceptCall = async () => {
         if (!incomingCall) return;
@@ -767,9 +814,18 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                     }
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log(`[CallContext] Realtime status for user ${currentUserId}:`, status);
+                setRealtimeStatus(status as any);
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('[CallContext] Realtime channel error. Calls will not ring!');
+                }
+            });
 
-        return () => { supabase.removeChannel(channel); };
+        return () => {
+            console.log('[CallContext] Cleaning up realtime channel');
+            supabase.removeChannel(channel);
+        };
     }, [currentUserId, hangupCall, stopAllAudio]);
 
     // ─── Service Worker Message Listener ──────────────────────────────────────
@@ -818,6 +874,9 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
             toggleCamera,
             setIsCallMinimized,
             setIncomingCall,
+            realtimeStatus,
+            pushReady,
+            sendTestPush,
         }}>
             {children}
         </CallContext.Provider>

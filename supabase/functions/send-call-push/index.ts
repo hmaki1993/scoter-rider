@@ -79,7 +79,18 @@ serve(async (req) => {
         });
 
         // Send push
-        await webpush.sendNotification(subscription, payload);
+        try {
+            await webpush.sendNotification(subscription, payload);
+            console.log('[Push] Successfully delivered to push service');
+        } catch (pushErr: any) {
+            console.error('[Push] Error sending notification:', pushErr);
+            // If the subscription is no longer valid, we should probably clear it
+            if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+                console.log('[Push] Subscription expired or not found. Clearing from DB.');
+                await supabaseClient.from('profiles').update({ push_subscription: null }).eq('id', receiver_id);
+            }
+            throw pushErr;
+        }
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,7 +99,11 @@ serve(async (req) => {
 
     } catch (err: any) {
         console.error('Edge Function Error:', err);
-        return new Response(JSON.stringify({ error: err.message }), {
+        return new Response(JSON.stringify({
+            error: err.message,
+            stack: err.stack,
+            details: err.details || 'No additional details'
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });

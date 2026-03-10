@@ -18,6 +18,8 @@ export default function GlobalCallOverlay() {
         toggleMute,
         toggleCamera,
         setIsCallMinimized,
+        realtimeStatus,
+        pushReady,
     } = useCall();
 
     const localVideoRef = useRef<HTMLDivElement>(null);
@@ -25,60 +27,95 @@ export default function GlobalCallOverlay() {
 
     const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+    // ─── Diagnostic Footer ────────────────────────────────────────────────────
+    const renderDiagnostic = () => {
+        if (activeCall) return null;
+        return (
+            <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2 pointer-events-none">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
+                    <div className={`w-2 h-2 rounded-full ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 animate-pulse'}`} />
+                    <span className="text-[10px] font-black text-white/60 uppercase tracking-tighter">
+                        RT: {realtimeStatus}
+                    </span>
+                    <div className="w-[1px] h-3 bg-white/10 mx-1" />
+                    <div className={`w-2 h-2 rounded-full ${pushReady ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-white/20'}`} />
+                    <span className="text-[10px] font-black text-white/60 uppercase tracking-tighter">
+                        Push: {pushReady ? 'Ready' : 'Off'}
+                    </span>
+                </div>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        useCall().sendTestPush();
+                    }}
+                    className={`pointer-events-auto px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${pushReady
+                            ? 'bg-blue-600 text-white shadow-[0_10px_20px_rgba(59,130,246,0.3)] hover:bg-blue-500'
+                            : 'bg-white/10 text-white/30 cursor-not-allowed'
+                        }`}
+                >
+                    Test Push Alert
+                </button>
+            </div>
+        );
+    };
+
     // ─── Incoming Call Notification ───────────────────────────────────────────
     if (incomingCall && !activeCall) {
         const caller = incomingCall.caller;
         return (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
-                <div className="flex flex-col items-center gap-6 p-8 w-[320px] rounded-3xl bg-white/[0.04] border border-white/10 backdrop-blur-3xl shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
-                    {/* Avatar */}
-                    <div className="relative">
-                        <div className="absolute -inset-3 rounded-full border-2 border-emerald-400/30 animate-ping" />
-                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl">
-                            {caller?.avatar_url
-                                ? <img src={caller.avatar_url} className="w-full h-full object-cover" alt="" />
-                                : <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-black text-3xl">{caller?.full_name?.[0] || 'G'}</div>
-                            }
-                        </div>
-                    </div>
-
-                    <div className="text-center">
-                        <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Incoming {incomingCall?.type} call</p>
-                        <p className="text-white font-black text-xl">{caller?.full_name || 'Generic User'}</p>
-                        <p className="text-white/30 text-xs font-bold mt-0.5">{caller?.role}</p>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-8 mt-2">
-                        {/* Reject */}
-                        <div className="flex flex-col items-center gap-2">
-                            <button
-                                onClick={rejectCall}
-                                className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-all active:scale-95 hover:scale-105"
-                            >
-                                <PhoneOff className="w-7 h-7" />
-                            </button>
-                            <span className="text-white/30 text-[9px] font-black uppercase tracking-wider">Decline</span>
+            <>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-6 p-8 w-[320px] rounded-3xl bg-white/[0.04] border border-white/10 backdrop-blur-3xl shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
+                        {/* Avatar */}
+                        <div className="relative">
+                            <div className="absolute -inset-3 rounded-full border-2 border-emerald-400/30 animate-ping" />
+                            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl">
+                                {caller?.avatar_url
+                                    ? <img src={caller.avatar_url} className="w-full h-full object-cover" alt="" />
+                                    : <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-black text-3xl">{caller?.full_name?.[0] || 'G'}</div>
+                                }
+                            </div>
                         </div>
 
-                        {/* Accept */}
-                        <div className="flex flex-col items-center gap-2">
-                            <button
-                                onClick={acceptCall}
-                                className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-[0_0_30px_rgba(52,211,153,0.5)] transition-all active:scale-95 hover:scale-105 animate-pulse"
-                            >
-                                {incomingCall.type === 'video' ? <Video className="w-7 h-7" /> : <Phone className="w-7 h-7" />}
-                            </button>
-                            <span className="text-white/30 text-[9px] font-black uppercase tracking-wider">Accept</span>
+                        <div className="text-center">
+                            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Incoming {incomingCall?.type} call</p>
+                            <p className="text-white font-black text-xl">{caller?.full_name || 'Generic User'}</p>
+                            <p className="text-white/30 text-xs font-bold mt-0.5">{caller?.role}</p>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-8 mt-2">
+                            {/* Reject */}
+                            <div className="flex flex-col items-center gap-2">
+                                <button
+                                    onClick={rejectCall}
+                                    className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-all active:scale-95 hover:scale-105"
+                                >
+                                    <PhoneOff className="w-7 h-7" />
+                                </button>
+                                <span className="text-white/30 text-[9px] font-black uppercase tracking-wider">Decline</span>
+                            </div>
+
+                            {/* Accept */}
+                            <div className="flex flex-col items-center gap-2">
+                                <button
+                                    onClick={acceptCall}
+                                    className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-[0_0_30px_rgba(52,211,153,0.5)] transition-all active:scale-95 hover:scale-105 animate-pulse"
+                                >
+                                    {incomingCall.type === 'video' ? <Video className="w-7 h-7" /> : <Phone className="w-7 h-7" />}
+                                </button>
+                                <span className="text-white/30 text-[9px] font-black uppercase tracking-wider">Accept</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+                {renderDiagnostic()}
+            </>
         );
     }
 
     // ─── Active Call UI ───────────────────────────────────────────────────────
-    if (!activeCall) return null;
+    if (!activeCall) return renderDiagnostic();
 
     const otherUser = activeCall.otherUser;
     const isConnected = callStatus === 'connected';
