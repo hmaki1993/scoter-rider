@@ -60,58 +60,62 @@ export default function GlobalCallOverlay() {
         );
     };
 
-    // ─── Incoming Call Notification ───────────────────────────────────────────
+    // ─── Incoming Call Banner (Premium Floating Card) ─────────────────────────
     if (incomingCall && !activeCall) {
         const caller = incomingCall.caller;
         return (
-            <>
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="flex flex-col items-center gap-6 p-8 w-[320px] rounded-3xl bg-white/[0.04] border border-white/10 backdrop-blur-3xl shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
-                        {/* Avatar */}
-                        <div className="relative">
-                            <div className="absolute -inset-3 rounded-full border-2 border-emerald-400/30 animate-ping" />
-                            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl">
-                                {caller?.avatar_url
-                                    ? <img src={caller.avatar_url} className="w-full h-full object-cover" alt="" />
-                                    : <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-black text-3xl">{caller?.full_name?.[0] || 'G'}</div>
-                                }
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-[95%] max-w-[400px] animate-in slide-in-from-top duration-500 ease-out">
+                <div className="relative group overflow-hidden rounded-[2rem] bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] transition-all hover:bg-black/50">
+                    {/* Pulsing background glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 animate-pulse" />
+
+                    <div className="relative flex items-center justify-between p-4 pl-5">
+                        <div className="flex items-center gap-4">
+                            {/* Animated Avatar */}
+                            <div className="relative">
+                                <div className="absolute -inset-1.5 rounded-full border border-emerald-500/30 animate-[ping_2s_infinite]" />
+                                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 shadow-xl bg-[#121417]">
+                                    {caller?.avatar_url
+                                        ? <img src={caller.avatar_url} className="w-full h-full object-cover" alt="" />
+                                        : <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center text-white font-black text-xl">{caller?.full_name?.[0] || 'G'}</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <p className="text-white font-black text-base tracking-tight leading-tight mb-0.5">{caller?.full_name || 'Inbound Call'}</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex gap-0.5">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className="w-1 h-1 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                                        ))}
+                                    </div>
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.1em]">Incoming {incomingCall.type} Call</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="text-center">
-                            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Incoming {incomingCall?.type} call</p>
-                            <p className="text-white font-black text-xl">{caller?.full_name || 'Generic User'}</p>
-                            <p className="text-white/30 text-xs font-bold mt-0.5">{caller?.role}</p>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-8 mt-2">
-                            {/* Reject */}
-                            <div className="flex flex-col items-center gap-2">
-                                <button
-                                    onClick={rejectCall}
-                                    className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-all active:scale-95 hover:scale-105"
-                                >
-                                    <PhoneOff className="w-7 h-7" />
-                                </button>
-                                <span className="text-white/30 text-[9px] font-black uppercase tracking-wider">Decline</span>
-                            </div>
-
-                            {/* Accept */}
-                            <div className="flex flex-col items-center gap-2">
-                                <button
-                                    onClick={acceptCall}
-                                    className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-[0_0_30px_rgba(52,211,153,0.5)] transition-all active:scale-95 hover:scale-105 animate-pulse"
-                                >
-                                    {incomingCall.type === 'video' ? <Video className="w-7 h-7" /> : <Phone className="w-7 h-7" />}
-                                </button>
-                                <span className="text-white/30 text-[9px] font-black uppercase tracking-wider">Accept</span>
-                            </div>
+                        {/* High-Visibility Actions */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={rejectCall}
+                                className="w-11 h-11 rounded-full bg-red-500/90 hover:bg-red-600 text-white flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(239,68,68,0.4)] transition-all hover:scale-110 active:scale-90"
+                                title="Decline"
+                            >
+                                <PhoneOff className="w-5 h-5 fill-white" />
+                            </button>
+                            <button
+                                onClick={acceptCall}
+                                className="w-13 h-13 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-[0_12px_24px_-4px_rgba(16,185,129,0.5)] transition-all hover:scale-110 active:scale-95 animate-[pulse_1.5s_infinite]"
+                                title="Answer"
+                            >
+                                {incomingCall.type === 'video' ? <Video className="w-6 h-6 fill-white" /> : <Phone className="w-6 h-6 fill-white" />}
+                            </button>
                         </div>
                     </div>
                 </div>
                 {renderDiagnostic()}
-            </>
+            </div>
         );
     }
 
