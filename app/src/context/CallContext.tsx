@@ -634,9 +634,16 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     // ─── Test Push Notification ──────────────────────────────────────────────
     const sendTestPush = async () => {
         if (!currentUserId) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[Call] Test Push - Session status:', !!session);
+
         toast.loading('Sending test push...', { id: 'test-push' });
         try {
             const { error } = await supabase.functions.invoke('send-call-push', {
+                headers: {
+                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+                },
                 body: {
                     action: 'incoming',
                     call_type: 'audio',
