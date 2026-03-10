@@ -8,14 +8,21 @@ const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
 
 // Helper function for VAPID key
 function urlBase64ToUint8Array(base64String: string) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
+    try {
+        // Aggressive cleaning to handle .env weirdness
+        const cleaned = base64String.trim().replace(/^["'](.+(?=["']$))["']$/, '$1');
+        const padding = '='.repeat((4 - cleaned.length % 4) % 4);
+        const base64 = (cleaned + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    } catch (err) {
+        console.error('[Call] VAPID Key decoding failed. Key value:', base64String);
+        throw new Error('Invalid VAPID Public Key format. Make sure it is a valid Base64URL string.');
     }
-    return outputArray;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -288,7 +295,13 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                     return;
                 }
 
-                console.log('[Call] Setting up push notifications with VAPID:', VAPID_PUBLIC_KEY?.substring(0, 10) + '...');
+                console.log('[Call] Setting up push notifications...');
+                if (!VAPID_PUBLIC_KEY) {
+                    console.error('[Call] VITE_VAPID_PUBLIC_KEY is missing!');
+                    return;
+                }
+
+                const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
                 const registration = await navigator.serviceWorker.register('/sw.js');
 
                 // Wait for service worker to be ready
@@ -307,7 +320,7 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                 if (!subscription) {
                     subscription = await registration.pushManager.subscribe({
                         userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                        applicationServerKey: applicationServerKey
                     });
                 }
 
