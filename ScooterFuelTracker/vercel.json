@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm install && ./node_modules/.bin/tsc -b && ./node_modules/.bin/vite build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}
