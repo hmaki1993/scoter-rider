@@ -51,97 +51,92 @@ function App() {
   return (
     <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Scrollable Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <div>
-            <h1 className="logo-text" style={{ margin: 0, fontSize: '30px', letterSpacing: '-1.2px' }}>Fuel Tracker</h1>
-            <div className="subtitle-text" style={{ fontSize: '13px', marginTop: '2px', letterSpacing: '0.5px' }}>Premium Intelligence System</div>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              className="glass-button" 
-              style={{ 
-                padding: '12px', 
-                borderRadius: '50%',
-                background: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                borderColor: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)',
-                transition: 'all 0.3s ease'
-              }} 
-              onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
-              title={tracker.settings.enableAlerts ? "Mute Alerts" : "Unmute Alerts"}
-            >
-              {tracker.settings.enableAlerts ? (
-                <Bell size={20} color="var(--accent-color)" />
-              ) : (
-                <BellOff size={20} color="var(--text-secondary)" />
-              )}
-            </button>
-            <button className="glass-button" style={{ padding: '12px', borderRadius: '50%' }} onClick={() => setShowSettings(true)}>
-              <Settings size={20} />
-            </button>
-          </div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div>
+          <h1 className="logo-text" style={{ margin: 0, fontSize: '30px', letterSpacing: '-1.2px' }}>Fuel Tracker</h1>
+          <div className="subtitle-text" style={{ fontSize: '13px', marginTop: '2px', letterSpacing: '0.5px' }}>Premium Intelligence System</div>
         </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="glass-button" 
+            style={{ 
+              padding: '12px', 
+              borderRadius: '50%',
+              background: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+              borderColor: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)',
+              transition: 'all 0.3s ease'
+            }} 
+            onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
+          >
+            {tracker.settings.enableAlerts ? (
+              <Bell size={20} color="var(--accent-color)" />
+            ) : (
+              <BellOff size={20} color="var(--text-secondary)" />
+            )}
+          </button>
+          <button className="glass-button" style={{ padding: '12px', borderRadius: '50%' }} onClick={() => setShowSettings(true)}>
+            <Settings size={20} />
+          </button>
+        </div>
+      </div>
 
-        {/* Main Status Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-          {/* Main Status Dashboard */}
-          <div className="glass-panel" style={{ padding: '20px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-            {/* Decorative background glow for danger/warning */}
-            <div style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              width: '180px', height: '180px', borderRadius: '50%',
-              background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
-              filter: 'blur(50px)', opacity: 0.1, zIndex: 0
-            }} />
+      {/* Centered Content Block */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px' }}>
+        {/* Main Status Dashboard */}
+        <div className="glass-panel" style={{ padding: '20px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: '180px', height: '180px', borderRadius: '50%',
+            background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
+            filter: 'blur(50px)', opacity: 0.1, zIndex: 0
+          }} />
 
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', opacity: 0.7 }}>
-                Estimated Range
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', opacity: 0.7 }}>
+              Estimated Range
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '3px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '54px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
+                {Math.max(0, Math.round(tracker.rangeRemainingKm))}
+              </span>
+              <span style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '8px' }}>km</span>
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '2.5px', overflow: 'hidden', marginBottom: '12px' }}>
+              <div style={{ 
+                height: '100%', 
+                width: `${tracker.fuelPercentage}%`, 
+                background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
+                transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 0 6px currentColor'
+              }} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', fontSize: '10px' }}>
+                <Droplets size={12} />
+                <span>{tracker.fuelState.estimatedFuelLiters.toFixed(1)} L left</span>
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '3px', marginBottom: '10px' }}>
-                <span style={{ fontSize: '54px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
-                  {Math.max(0, Math.round(tracker.rangeRemainingKm))}
-                </span>
-                <span style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '8px' }}>km</span>
-              </div>
-
-              {/* Progress Bar */}
-              <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '2.5px', overflow: 'hidden', marginBottom: '12px' }}>
-                <div style={{ 
-                  height: '100%', 
-                  width: `${tracker.fuelPercentage}%`, 
-                  background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
-                  transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: '0 0 6px currentColor'
-                }} />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', fontSize: '10px' }}>
-                  <Droplets size={12} />
-                  <span>{tracker.fuelState.estimatedFuelLiters.toFixed(1)} L left</span>
-                </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
-                  Empty at: <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{Math.round(tracker.fuelState.lastOdo + tracker.rangeRemainingKm)}</span> km
-                </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
+                Empty at: <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{Math.round(tracker.fuelState.lastOdo + tracker.rangeRemainingKm)}</span> km
               </div>
             </div>
           </div>
-
-          {/* Warning Message Integration */}
-          {tracker.isWarning && (
-            <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: '1px solid rgba(255, 51, 102, 0.3)', background: 'rgba(255, 51, 102, 0.05)', backdropFilter: 'blur(10px)', borderRadius: '16px', animation: 'pulse 2s infinite', position: 'relative' }}>
-              <AlertTriangle color="var(--danger-color)" size={24} style={{ position: 'absolute', left: '20px' }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: '700', color: 'var(--danger-color)', fontSize: '15px', letterSpacing: '0.3px', marginBottom: '2px' }}>Refuel Needed Soon!</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.9 }}>You might run out of fuel shortly.</div>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* Warning Card */}
+        {tracker.isWarning && (
+          <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: '1px solid rgba(255, 51, 102, 0.3)', background: 'rgba(255, 51, 102, 0.05)', backdropFilter: 'blur(10px)', borderRadius: '16px', animation: 'pulse 2s infinite', position: 'relative' }}>
+            <AlertTriangle color="var(--danger-color)" size={24} style={{ position: 'absolute', left: '20px' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: '700', color: 'var(--danger-color)', fontSize: '15px', letterSpacing: '0.3px', marginBottom: '2px' }}>Refuel Needed Soon!</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.9 }}>You might run out of fuel shortly.</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Center - Fixed at bottom */}
@@ -173,13 +168,9 @@ function App() {
         </button>
       </div>
 
-      {/* REFUEL MODAL */}
+      {/* MODALS */}
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
-      
-      {/* SYNC ODO MODAL */}
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
-      
-      {/* SETTINGS MODAL */}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
       
     </div>
