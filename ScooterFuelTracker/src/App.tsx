@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell } from 'lucide-react';
+import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell, BellOff } from 'lucide-react';
 import gsap from 'gsap';
 import './index.css';
 
@@ -59,8 +59,25 @@ function App() {
             <h1 className="logo-text" style={{ margin: 0, fontSize: '30px', letterSpacing: '-1.2px' }}>Fuel Tracker</h1>
             <div className="subtitle-text" style={{ fontSize: '13px', marginTop: '2px', letterSpacing: '0.5px' }}>Premium Intelligence System</div>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {tracker.settings.enableAlerts && <Bell size={20} color="var(--accent-color)" style={{ opacity: 0.6 }} />}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              className="glass-button" 
+              style={{ 
+                padding: '12px', 
+                borderRadius: '50%',
+                background: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                borderColor: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)',
+                transition: 'all 0.3s ease'
+              }} 
+              onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
+              title={tracker.settings.enableAlerts ? "Mute Alerts" : "Unmute Alerts"}
+            >
+              {tracker.settings.enableAlerts ? (
+                <Bell size={20} color="var(--accent-color)" />
+              ) : (
+                <BellOff size={20} color="var(--text-secondary)" />
+              )}
+            </button>
             <button className="glass-button" style={{ padding: '12px', borderRadius: '50%' }} onClick={() => setShowSettings(true)}>
               <Settings size={20} />
             </button>
