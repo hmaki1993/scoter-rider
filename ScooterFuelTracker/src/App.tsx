@@ -99,7 +99,7 @@ function App() {
             
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '3px', marginBottom: '10px' }}>
               <span style={{ fontSize: '54px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
-                {Math.max(0, Math.round(tracker.rangeRemainingKm))}
+                {Math.max(0, tracker.rangeRemainingKm).toFixed(1)}
               </span>
               <span style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '8px' }}>km</span>
             </div>
@@ -121,7 +121,7 @@ function App() {
                 <span>{tracker.fuelState.estimatedFuelLiters.toFixed(1)} L left</span>
               </div>
               <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
-                Empty at: <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{Math.round(tracker.fuelState.lastOdo + tracker.rangeRemainingKm)}</span> km
+                Empty at: <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{(tracker.fuelState.lastOdo + tracker.rangeRemainingKm).toFixed(1)}</span> km
               </div>
             </div>
           </div>
