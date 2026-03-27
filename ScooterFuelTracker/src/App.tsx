@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Navigation, NavigationOff, Bell } from 'lucide-react';
+import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell } from 'lucide-react';
 import gsap from 'gsap';
 import './index.css';
 
 function App() {
   const tracker = useFuelTracker();
   const [showRefuel, setShowRefuel] = useState(false);
+  const [showSync, setShowSync] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
   const appRef = useRef<HTMLDivElement>(null);
 
-  // Initial Entrance Animation
+  // Initial Entrance Animation & Update Check
   useEffect(() => {
     if (appRef.current) {
       gsap.fromTo(
@@ -20,106 +21,146 @@ function App() {
         { y: 0, opacity: 1, scale: 1, duration: 0.8, stagger: 0.1, ease: "power4.out" }
       );
     }
+
+    // --- Update Check Logic ---
+    const checkForUpdate = async () => {
+      try {
+        const CURRENT_VERSION = '1.1.0';
+        // ملاحظة: استبدل هذا الرابط برابط GitHub بتاعك لما ترفعه (مثلاً: https://raw.githubusercontent.com/.../version.json)
+        const UPDATE_URL = './version.json'; 
+        
+        const response = await fetch(UPDATE_URL, { cache: 'no-store' });
+        const data = await response.json();
+
+        if (data.version && data.version !== CURRENT_VERSION) {
+          const message = `يوجد تحديث جديد (الإصدار ${data.version})\n\n${data.notes || ''}\n\nهل تريد التحميل الآن؟`;
+          if (window.confirm(message)) {
+            window.open(data.url, '_system');
+          }
+        }
+      } catch (error) {
+        console.error('Update check failed:', error);
+      }
+    };
+
+    // تشغيل الفحص بعد ثانية من فتح التطبيق
+    const timer = setTimeout(checkForUpdate, 1500);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <div>
-          <h1 className="text-gradient" style={{ margin: 0, fontSize: '28px', letterSpacing: '-0.5px' }}>SYM 200</h1>
-          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>Fuel Tracker System</div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          {tracker.settings.enableAlerts && <Bell size={20} color="var(--accent-color)" style={{ opacity: 0.6 }} />}
-          <button className="glass-button" style={{ padding: '12px', borderRadius: '50%' }} onClick={() => setShowSettings(true)}>
-            <Settings size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Status Dashboard */}
-      <div className="glass-panel" style={{ padding: '32px 24px', textAlign: 'center', marginBottom: '24px', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative background glow for danger/warning */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: '250px', height: '250px', borderRadius: '50%',
-          background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
-          filter: 'blur(80px)', opacity: 0.15, zIndex: 0
-        }} />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '24px' }}>
-            Estimated Range
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '4px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '72px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-              {Math.max(0, Math.round(tracker.rangeRemainingKm))}
-            </span>
-            <span style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '12px' }}>km</span>
-          </div>
-
-          {/* Progress Bar */}
-          <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', marginBottom: '24px' }}>
-            <div style={{ 
-              height: '100%', 
-              width: `${tracker.fuelPercentage}%`, 
-              background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
-              transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 0 10px currentColor'
-            }} />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--text-secondary)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Droplets size={16} /> {tracker.fuelState.estimatedFuelLiters.toFixed(1)} L left</span>
-            <span>Empty at: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(tracker.runOutOdo)}</strong> km</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Warning Message */}
-      {tracker.isWarning && (
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', gap: '16px', alignItems: 'center', border: '1px solid rgba(255, 51, 102, 0.3)', background: 'rgba(255, 51, 102, 0.05)', marginBottom: '24px', animation: 'pulse 2s infinite' }}>
-          <div style={{ background: 'rgba(255, 51, 102, 0.2)', padding: '12px', borderRadius: '50%' }}>
-            <AlertTriangle color="var(--danger-color)" size={24} />
-          </div>
+      {/* Scrollable Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <div>
-            <div style={{ fontWeight: '600', color: 'var(--danger-color)', fontSize: '16px' }}>Refuel Needed Soon!</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>You might run out of fuel shortly.</div>
+            <h1 className="logo-text" style={{ margin: 0, fontSize: '30px', letterSpacing: '-1.2px' }}>Fuel Tracker</h1>
+            <div className="subtitle-text" style={{ fontSize: '13px', marginTop: '2px', letterSpacing: '0.5px' }}>Premium Intelligence System</div>
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {tracker.settings.enableAlerts && <Bell size={20} color="var(--accent-color)" style={{ opacity: 0.6 }} />}
+            <button className="glass-button" style={{ padding: '12px', borderRadius: '50%' }} onClick={() => setShowSettings(true)}>
+              <Settings size={20} />
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Action Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: 'auto', marginBottom: '16px' }}>
-        <button className="glass-button" style={{ flexDirection: 'column', gap: '8px', padding: '20px 16px', borderColor: tracker.isTracking ? 'var(--accent-color)' : 'var(--glass-border)' }} onClick={() => tracker.isTracking ? tracker.stopTracking() : tracker.startTracking()}>
-          <div style={{ background: tracker.isTracking ? 'rgba(0, 240, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)', padding: '12px', borderRadius: '50%', color: tracker.isTracking ? 'var(--accent-color)' : 'var(--text-primary)' }}>
-            {tracker.isTracking ? <NavigationOff size={24} /> : <Navigation size={24} />}
+        {/* Main Status Block */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+          {/* Main Status Dashboard */}
+          <div className="glass-panel" style={{ padding: '20px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+            {/* Decorative background glow for danger/warning */}
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              width: '180px', height: '180px', borderRadius: '50%',
+              background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
+              filter: 'blur(50px)', opacity: 0.1, zIndex: 0
+            }} />
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', opacity: 0.7 }}>
+                Estimated Range
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '3px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '54px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
+                  {Math.max(0, Math.round(tracker.rangeRemainingKm))}
+                </span>
+                <span style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '8px' }}>km</span>
+              </div>
+
+              {/* Progress Bar */}
+              <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '2.5px', overflow: 'hidden', marginBottom: '12px' }}>
+                <div style={{ 
+                  height: '100%', 
+                  width: `${tracker.fuelPercentage}%`, 
+                  background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
+                  transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 0 6px currentColor'
+                }} />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', fontSize: '10px' }}>
+                  <Droplets size={12} />
+                  <span>{tracker.fuelState.estimatedFuelLiters.toFixed(1)} L left</span>
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
+                  Empty at: <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{Math.round(tracker.fuelState.lastOdo + tracker.rangeRemainingKm)}</span> km
+                </div>
+              </div>
+            </div>
           </div>
-          <span style={{ fontSize: '14px' }}>{tracker.isTracking ? 'Stop Ride' : 'Track Ride'}</span>
-        </button>
-        <button className="glass-button" style={{ flexDirection: 'column', gap: '8px', padding: '20px 16px' }} onClick={() => setShowRefuel(true)}>
-          <div style={{ background: 'rgba(0, 240, 255, 0.1)', padding: '12px', borderRadius: '50%', color: 'var(--accent-color)' }}>
-            <Fuel size={24} />
-          </div>
-          <span style={{ fontSize: '14px' }}>Log Refuel</span>
-        </button>
+
+          {/* Warning Message Integration */}
+          {tracker.isWarning && (
+            <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: '1px solid rgba(255, 51, 102, 0.3)', background: 'rgba(255, 51, 102, 0.05)', backdropFilter: 'blur(10px)', borderRadius: '16px', animation: 'pulse 2s infinite', position: 'relative' }}>
+              <AlertTriangle color="var(--danger-color)" size={24} style={{ position: 'absolute', left: '20px' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '700', color: 'var(--danger-color)', fontSize: '15px', letterSpacing: '0.3px', marginBottom: '2px' }}>Refuel Needed Soon!</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.9 }}>You might run out of fuel shortly.</div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <button className="glass-button" style={{ width: '100%', gap: '12px', padding: '16px' }} onClick={() => {
-        const odo = prompt('Manual Odometer Entry (km):', tracker.fuelState.lastOdo.toFixed(1));
-        if (odo && !isNaN(Number(odo)) && Number(odo) > tracker.fuelState.lastOdo) {
-          tracker.updateCurrentOdo(Number(odo));
-        }
-      }}>
-        <MapPin size={18} />
-        <span style={{ fontSize: '14px' }}>Sync Manual Odo</span>
-      </button>
+      {/* Action Center - Fixed at bottom */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: 'auto', marginBottom: '8px' }}>
+        <button 
+          className="glass-button" 
+          style={{ width: '100%', gap: '12px', padding: '16px', borderRadius: '16px' }} 
+          onClick={() => setShowSync(true)}
+        >
+          <MapPin size={18} />
+          <span style={{ fontSize: '14px', fontWeight: '600' }}>Sync Manual Odometer</span>
+        </button>
+
+        <button 
+          className="glass-button" 
+          style={{ 
+            width: '100%', 
+            gap: '12px', 
+            padding: '18px', 
+            borderRadius: '16px',
+            background: 'rgba(0, 240, 255, 0.08)', 
+            borderColor: 'rgba(0, 240, 255, 0.4)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+          }} 
+          onClick={() => setShowRefuel(true)}
+        >
+          <Fuel size={20} color="var(--accent-color)" />
+          <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--accent-color)' }}>Log Refuel Now</span>
+        </button>
+      </div>
 
       {/* REFUEL MODAL */}
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
+      
+      {/* SYNC ODO MODAL */}
+      {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       
       {/* SETTINGS MODAL */}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
@@ -129,6 +170,102 @@ function App() {
 }
 
 // Inline Modal Components for simplicity in this PWA
+const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void }) => {
+  const [odo, setOdo] = useState('0.0');
+
+  const handleSync = () => {
+    const val = Number(odo);
+    if (!isNaN(val) && val > 0) {
+      tracker.updateCurrentOdo(val);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', animation: 'fadeIn 0.3s ease', backdropFilter: 'blur(12px)', background: 'rgba(0,0,0,0.6)' }}>
+      <div 
+        className="modal-content glass-panel" 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          animation: 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)', 
+          background: 'rgba(255, 255, 255, 0.05)', 
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '24px',
+          width: '90%',
+          maxWidth: '400px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MapPin size={20} color="var(--danger-color)" />
+            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Sync Odometer 🛵</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255, 0, 0, 0.15)', border: '1px solid rgba(255, 0, 0, 0.3)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom: '24px', textAlign: 'left' }}>
+          <label style={{ color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '10px', display: 'block', opacity: 0.8 }}>Enter current scooter odometer reading (km)</label>
+          <div style={{ position: 'relative' }}>
+            <input 
+              type="number" 
+              step="0.1"
+              value={odo} 
+              onChange={e => setOdo(e.target.value)}
+              style={{ 
+                width: '100%', 
+                padding: '16px', 
+                fontSize: '24px', 
+                fontWeight: '700', 
+                border: '1px solid rgba(255, 255, 255, 0.15)', 
+                background: 'transparent', 
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                textAlign: 'center',
+                color: '#ffffff',
+                borderRadius: '16px',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+                outline: 'none',
+              }}
+              autoFocus
+            />
+          </div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', lineHeight: '1.4', textAlign: 'center' }}>
+            Adjust the value to match your scooter's screen <br/>
+            <span style={{ color: 'var(--danger-color)', opacity: 0.5 }}>Fuel range will be updated automatically</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button 
+            className="glass-button" 
+            style={{ 
+              width: 'auto', 
+              minWidth: '220px',
+              padding: '14px 32px', 
+              fontWeight: '700', 
+              gap: '12px', 
+              background: 'rgba(255, 0, 0, 0.05)', 
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              color: '#fff',
+              fontSize: '15px',
+              border: '1px solid rgba(255, 0, 0, 0.4)',
+              boxShadow: '0 8px 32px rgba(255, 0, 0, 0.1)',
+              borderRadius: '16px',
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              transition: 'all 0.3s ease'
+            }} 
+            onClick={handleSync}
+          >
+            <RotateCcw size={18} />
+            Save Sync ✨
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
   const [odo, setOdo] = useState(tracker.fuelState.lastOdo === 0 ? '' : tracker.fuelState.lastOdo.toFixed(1));
   const [inputValue, setInputValue] = useState('');
@@ -150,8 +287,8 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
-      <div className="glass-panel" style={{ width: '100%', padding: '32px 24px', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '32px 24px', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>Log Refuel</h2>
           <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '4px' }}>
@@ -195,7 +332,6 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const [avg, setAvg] = useState((tracker.settings.avgConsumption || 30).toString());
   const [cap, setCap] = useState((tracker.settings.tankCapacity || 7.5).toString());
   const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.0).toString());
-  const [auto, setAuto] = useState(!!tracker.settings.autoTrack);
   const [alerts, setAlerts] = useState(!!tracker.settings.enableAlerts);
 
   const handleSave = () => {
@@ -204,15 +340,14 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
       avgConsumption: Number(avg), 
       tankCapacity: Number(cap),
       fuelPricePerLiter: Number(price),
-      autoTrack: auto,
       enableAlerts: alerts
     });
     onClose();
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
-      <div className="glass-panel" style={{ width: '100%', padding: '32px 24px', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '32px 24px', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
         <h2 style={{ margin: '0 0 24px 0', fontSize: '24px' }}>Settings</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -231,13 +366,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Current price for Octane 92</div>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}>
-            <input type="checkbox" id="autoTrack" checked={auto} onChange={e => setAuto(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--accent-color)' }} />
-            <div style={{ flex: 1 }}>
-              <label htmlFor="autoTrack" style={{ color: 'var(--text-primary)', fontWeight: '500', display: 'block' }}>Auto-Start Tracking</label>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>GPS starts on app load</span>
-            </div>
-          </div>
+          {/* Auto-start removed as it is now always on by default */}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}>
             <input type="checkbox" id="enableAlerts" checked={alerts} onChange={e => setAlerts(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--accent-color)' }} />
@@ -245,6 +374,14 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               <label htmlFor="enableAlerts" style={{ color: 'var(--text-primary)', fontWeight: '500', display: 'block' }}>Sound & Vibrate Alert</label>
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Warn when fuel is low</span>
             </div>
+            <button 
+              type="button" 
+              className="glass-button" 
+              style={{ padding: '8px 12px', fontSize: '12px', background: 'rgba(255,255,255,0.05)' }}
+              onClick={() => tracker.playWarningSound(true)}
+            >
+              Test Alarm
+            </button>
           </div>
           
           <div style={{ borderTop: '1px solid var(--glass-border)', margin: '12px 0', paddingTop: '24px' }}>

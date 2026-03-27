@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Geolocation } from '@capacitor/geolocation';
 
 export interface FuelSettings {
   tankCapacity: number; // Liters
@@ -22,6 +23,7 @@ export interface RefuelLog {
   litersAdded: number;
   pricePaid?: number;
   isFullTank: boolean;
+  fuelBeforeRefuel?: number;
 }
 
 const DEFAULT_SETTINGS: FuelSettings = {
@@ -50,33 +52,105 @@ export const useFuelTracker = () => {
   });
 
   const [isTracking, setIsTracking] = useState(false);
-  const [lastPosition, setLastPosition] = useState<GeolocationPosition | null>(null);
-  const watchId = useRef<number | null>(null);
+  const [isMuted, setIsMuted] = useState(false); // Manually silence alerts for the current ride
+  const lastPositionRef = useRef<GeolocationPosition | any | null>(null);
+  const watchId = useRef<string | null>(null);
   const wakeLock = useRef<any>(null);
+  const lastNotifiedStepRef = useRef<number>(999); // Track the last 2km step we alerted (15, 13, 11...)
 
-  // Audio warning (simple beep)
-  const playWarningSound = () => {
-    if (!settings.enableAlerts) return;
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.5);
+  // Register Notification Actions
+  useEffect(() => {
+    (async () => {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
       
-      if ("vibrate" in navigator) {
-        navigator.vibrate([200, 100, 200]);
+      // Register the action type
+      await LocalNotifications.registerActionTypes({
+        types: [
+          {
+            id: 'FUEL_ALARM_ACTIONS',
+            actions: [
+              {
+                id: 'silence',
+                title: 'إيقاف 🔇',
+                foreground: false, // Don't bring app to front, just mute
+              }
+            ]
+          }
+        ]
+      });
+
+      // Create a high-importance channel for "Heads-up" notifications
+      await LocalNotifications.createChannel({
+        id: 'fuel_alerts',
+        name: 'Fuel Alerts',
+        description: 'Critical fuel reminders',
+        importance: 5, // High importance for pop-up behavior
+        visibility: 1, // Public
+        sound: 'alarm.wav',
+        vibration: true
+      });
+
+      // Add listener for action
+      const listener = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+        if (action.actionId === 'silence') {
+          setIsMuted(true);
+          // Stop native alarm if playing
+          import('@capacitor/core').then(({ registerPlugin }) => {
+            const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
+            AlarmPlugin.stopAlarm().catch(() => {});
+          });
+          LocalNotifications.removeAllDeliveredNotifications();
+        }
+      });
+
+      return () => {
+        listener.remove();
+      };
+    })();
+  }, []);
+
+  // Audio warning (Aggressive Alarm)
+  const playWarningSound = (isAlarm: boolean = false) => {
+    if (!settings.enableAlerts || isMuted) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContext();
+      
+      const playBeep = (freq: number, startTime: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square'; // Very harsh and piercing
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.5, startTime); // Max safe gain for square wave
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      if (isAlarm) {
+        // Native Alarm (Overrides Silent Mode)
+        import('@capacitor/core').then(({ registerPlugin }) => {
+          const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
+          AlarmPlugin.playAlarm().catch((e: any) => console.warn('Native alarm failed', e));
+        });
+
+        // Aggressive siren (Web Audio fallback)
+        for (let i = 0; i < 8; i++) {
+          const freq = i % 2 === 0 ? 800 : 1500; // Alternating "Siren" tones
+          playBeep(freq, ctx.currentTime + i * 0.2, 0.15);
+        }
+        if (navigator.vibrate) {
+          // Continuous aggressive pulses
+          navigator.vibrate([400, 100, 400, 100, 400, 100, 400]);
+        }
+      } else {
+        playBeep(600, ctx.currentTime, 0.4);
+        if (navigator.vibrate) navigator.vibrate(200);
       }
     } catch (e) {
-      console.error("Audio error", e);
+      console.warn('Audio failed', e);
     }
   };
 
@@ -112,20 +186,57 @@ export const useFuelTracker = () => {
     return d;
   };
 
-  const startTracking = () => {
-    if (!navigator.geolocation) return alert("Geolocation is not supported by your browser");
+  const startTracking = async () => {
+    try {
+      const hasPerm = await Geolocation.checkPermissions();
+      if (hasPerm.location !== 'granted') {
+        const req = await Geolocation.requestPermissions();
+        if (req.location !== 'granted') {
+          alert("Location permission required to track fuel usage");
+          return;
+        }
+      }
+
+      // Check for background permission if on Android
+      // Note: User must manually select "Allow all the time" in settings
+      if (hasPerm.location === 'granted' && (window as any).Capacitor.getPlatform() === 'android') {
+        const message = "عشان التطبيق يفضل يحسب البنزين وأنت قافل الشاشة، لازم تختار 'Allow all the time' (السماح طوال الوقت) في الخطوة الجاية.";
+        alert(message);
+      }
+    } catch (e) {
+      console.log('Permission check issue:', e);
+    }
     
     setIsTracking(true);
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (lastPosition) {
-          const dist = calculateDistance(
-            lastPosition.coords.latitude, lastPosition.coords.longitude,
-            pos.coords.latitude, pos.coords.longitude
-          );
-          
-          if (dist > 0.01) { // Only update if moved > 10 meters to avoid jitter
-            setFuelState(prev => {
+    
+    // --- BACKGROUND GEOLOCATION ---
+    // This plugin creates a Foreground Service notification on Android
+    const { registerPlugin } = await import('@capacitor/core');
+    const BackgroundGeolocation = registerPlugin<any>('BackgroundGeolocation');
+
+    const id = await BackgroundGeolocation.addWatcher(
+      {
+        backgroundMessage: "تطبيق متتبع البنزين يعمل في الخلفية...",
+        backgroundTitle: "جاري تتبع المشوار 🛵",
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 10 // Update every 10 meters
+      },
+      (pos: any, err: any) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        if (!pos) return;
+
+        setFuelState(prev => {
+          if (lastPositionRef.current) {
+            const dist = calculateDistance(
+              lastPositionRef.current.latitude, lastPositionRef.current.longitude,
+              pos.latitude, pos.longitude
+            );
+            
+            if (dist > 0.01) {
               const consumed = dist / settings.avgConsumption;
               const newState = {
                 ...prev,
@@ -134,42 +245,86 @@ export const useFuelTracker = () => {
                 totalGpsDistance: prev.totalGpsDistance + dist
               };
 
-              // Trigger warning if crossing threshold
+              // Check for 15km threshold and 2km steps
               const rangeRemaining = newState.estimatedFuelLiters * settings.avgConsumption;
-              if (rangeRemaining <= settings.warningThreshold && (prev.estimatedFuelLiters * settings.avgConsumption) > settings.warningThreshold) {
-                playWarningSound();
-              }
+              
+              // More robust step calculation for 15, 13, 11, 9, 7, 5, 3, 1
+              const possibleSteps = [15, 13, 11, 9, 7, 5, 3, 1];
+              const activeStep = possibleSteps.find(s => rangeRemaining <= s && lastNotifiedStepRef.current > s);
 
+              if (activeStep) {
+                // Send Local Notification only if not muted
+                if (!isMuted) {
+                  import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+                    LocalNotifications.schedule({
+                      notifications: [
+                        {
+                          title: "تحذير بنزين منخفض! ⚠️",
+                          body: `باقي لك ${activeStep} كيلو بس والبنزين يخلص، خلي بالك!`,
+                          id: activeStep, // Unique ID per step
+                          schedule: { at: new Date(Date.now() + 1000) },
+                          sound: 'alarm.wav',
+                          actionTypeId: 'FUEL_ALARM_ACTIONS',
+                          channelId: 'fuel_alerts', // Use high importance channel
+                          attachments: [],
+                          extra: null
+                        }
+                      ]
+                    });
+                  });
+                  playWarningSound(true); // Play "Alarm" version
+                }
+                lastNotifiedStepRef.current = activeStep;
+              }
+              // Normal threshold warning (only if above 15km to avoid double alerts)
+              else if (rangeRemaining > 15 && rangeRemaining <= settings.warningThreshold && (prev.estimatedFuelLiters * settings.avgConsumption) > settings.warningThreshold) {
+                if (!isMuted) playWarningSound(false);
+              }
+              
+              lastPositionRef.current = pos;
               return newState;
-            });
+            }
+            return prev;
+          } else {
+            lastPositionRef.current = pos;
+            return prev;
           }
-        }
-        setLastPosition(pos);
-      },
-      (err: any) => console.error(err),
-      { enableHighAccuracy: true }
+        });
+      }
     );
     
+    watchId.current = id;
     requestWakeLock();
   };
 
-  const stopTracking = () => {
+  const stopTracking = async () => {
     if (watchId.current !== null) {
-      navigator.geolocation.clearWatch(watchId.current);
+      const { registerPlugin } = await import('@capacitor/core');
+      const BackgroundGeolocation = registerPlugin<any>('BackgroundGeolocation');
+      await BackgroundGeolocation.removeWatcher({ id: watchId.current });
       watchId.current = null;
     }
     setIsTracking(false);
-    setLastPosition(null);
+    lastPositionRef.current = null;
     releaseWakeLock();
   };
 
-  // Auto-start tracking if enabled
+  // Auto-start tracking on load (Always on now as per user request)
   useEffect(() => {
-    if (settings.autoTrack) {
-      startTracking();
+    if (!isTracking) {
+      // Delay slightly to ensure permissions are handled or UI is ready
+      const timer = setTimeout(() => {
+        startTracking();
+      }, 1000);
+      return () => {
+        clearTimeout(timer);
+        stopTracking(); // Ensure tracking is stopped when component unmounts
+      };
     }
-    return () => stopTracking();
-  }, [settings.autoTrack]);
+    return () => {
+      stopTracking(); // This cleanup runs if isTracking becomes true or effect re-runs
+    };
+  }, []);
 
   // Save to local storage whenever state changes
   useEffect(() => {
@@ -188,41 +343,55 @@ export const useFuelTracker = () => {
    * Refuel action: user adds fuel at a specific odometer reading.
    */
   const addRefuel = (odo: number, liters: number, price: number | undefined, isFullTank: boolean) => {
+    let baseFuelAmount = 0;
+    let isEditingLastLog = false;
+    let prevLog: RefuelLog | null = null;
+
+    if (logs.length > 0 && logs[0].odo === odo) {
+      isEditingLastLog = true;
+      prevLog = logs[0];
+      baseFuelAmount = prevLog.fuelBeforeRefuel !== undefined ? prevLog.fuelBeforeRefuel : 0;
+    } else if (fuelState.lastOdo > 0 && odo > fuelState.lastOdo) {
+      const distanceDriven = odo - fuelState.lastOdo;
+      const consumed = distanceDriven / settings.avgConsumption;
+      baseFuelAmount = Math.max(0, fuelState.estimatedFuelLiters - consumed);
+    } else {
+      baseFuelAmount = fuelState.estimatedFuelLiters;
+    }
+
+    let newFuelAmount = 0;
+    if (isFullTank) {
+      newFuelAmount = settings.tankCapacity;
+    } else {
+      newFuelAmount = Math.min(settings.tankCapacity, baseFuelAmount + liters);
+    }
+
     const newLog: RefuelLog = {
-      id: crypto.randomUUID(),
+      id: isEditingLastLog ? prevLog!.id : crypto.randomUUID(),
       date: new Date().toISOString(),
       odo,
       litersAdded: liters,
       pricePaid: price,
       isFullTank,
+      fuelBeforeRefuel: baseFuelAmount,
     };
 
-    setLogs((prev) => [newLog, ...prev]);
-
-    // Calculate new state
-    let newFuelAmount = 0;
-    
-    // First, deduct fuel consumed since last odo (if we had a previous log)
-    if (fuelState.lastOdo > 0 && odo > fuelState.lastOdo) {
-      const distanceDriven = odo - fuelState.lastOdo;
-      const consumed = distanceDriven / settings.avgConsumption;
-      newFuelAmount = Math.max(0, fuelState.estimatedFuelLiters - consumed);
-    } else {
-      // First time or odo is weird, just use what we have
-      newFuelAmount = fuelState.estimatedFuelLiters;
-    }
-
-    if (isFullTank) {
-      newFuelAmount = settings.tankCapacity;
-    } else {
-      newFuelAmount = Math.min(settings.tankCapacity, newFuelAmount + liters);
-    }
+    setLogs((prev) => {
+      if (isEditingLastLog) {
+        const updated = [...prev];
+        updated[0] = newLog;
+        return updated;
+      }
+      return [newLog, ...prev];
+    });
 
     setFuelState({
       estimatedFuelLiters: newFuelAmount,
       lastOdo: odo,
       totalGpsDistance: 0 // Reset GPS distance on refuel
     });
+    lastNotifiedStepRef.current = 999; // Reset notification tracker
+    setIsMuted(false); // Enable alerts again after refuel
   };
 
   /**
@@ -240,6 +409,7 @@ export const useFuelTracker = () => {
       lastOdo: currentOdo,
       totalGpsDistance: 0 // Reset GPS distance on manual sync
     });
+    setIsMuted(false); // Enable alerts again after sync
   };
 
   /**
@@ -249,6 +419,7 @@ export const useFuelTracker = () => {
     if (confirm('Are you sure you want to delete all data?')) {
       setLogs([]);
       setFuelState({ estimatedFuelLiters: 0, lastOdo: 0, totalGpsDistance: 0 });
+      setIsMuted(false);
     }
   };
 
@@ -274,6 +445,9 @@ export const useFuelTracker = () => {
     fuelPercentage,
     isTracking,
     startTracking,
-    stopTracking
+    stopTracking,
+    isMuted,
+    setIsMuted,
+    playWarningSound
   };
 };
