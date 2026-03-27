@@ -27,7 +27,7 @@ function App() {
       try {
         const CURRENT_VERSION = '1.1.0';
         // ملاحظة: استبدل هذا الرابط برابط GitHub بتاعك لما ترفعه (مثلاً: https://raw.githubusercontent.com/.../version.json)
-        const UPDATE_URL = './version.json'; 
+        const UPDATE_URL = 'https://raw.githubusercontent.com/hmaki1993/scoter-rider/main/public/version.json'; 
         
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
         const data = await response.json();
