@@ -229,30 +229,40 @@ export const useFuelTracker = () => {
         }
       }
 
-      // 3. Trigger GPS Hardware Toggle (Native Android Intent)
+      // 3. GPS Hardware Toggle - wait for cordova to be ready, then request High Accuracy
       if (isAndroid) {
-        try {
-          // Quick position check with high accuracy - triggers native GPS dialog on most devices.
-          const result = await Promise.race([
-            Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 3000, maximumAge: 0 }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
-          ]).catch(async (_err: any) => {
-            // If timed out or position unavailable, GPS is likely off - open Location Settings
-            const msg = "الـ GPS مقفول في موبايلك. هتنقلك للإعدادات عشان تفتحه ضروري للتتبع.";
-            alert(msg);
-            // Open Android Location Settings
-            if (win.cordova?.plugins?.diagnostic) {
-              win.cordova.plugins.diagnostic.switchToLocationSettings();
+        await new Promise<void>((resolve) => {
+          const tryGpsToggle = () => {
+            const locAcc = (win as any).cordova?.plugins?.locationAccuracy;
+            if (locAcc) {
+              locAcc.canRequest((canRequest: boolean) => {
+                if (canRequest) {
+                  locAcc.request(
+                    locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
+                    () => { console.log('GPS High Accuracy enabled'); resolve(); },
+                    (_err: any) => {
+                      // User said no - send them to settings manually
+                      alert('الـ GPS مش شغال بدقة. دوس موافق عشان تفتح إعدادات الموقع وتختار High Accuracy.');
+                      (win as any).cordova?.plugins?.diagnostic?.switchToLocationSettings?.();
+                      resolve();
+                    }
+                  );
+                } else {
+                  console.log('GPS already at high accuracy');
+                  resolve();
+                }
+              });
             } else {
-              console.log('Directing user to location settings (manual) - GPS was off');
+              // cordova plugin not ready yet, retry after delay
+              console.log('LocationAccuracy plugin not ready, retrying in 1.5s...');
+              setTimeout(tryGpsToggle, 1500);
             }
-
-          });
-          if (result) console.log('GPS is active');
-        } catch (err: any) {
-          console.warn("GPS check outcome:", err.message);
-        }
+          };
+          // Give Cordova plugins time to fully initialize inside Capacitor
+          setTimeout(tryGpsToggle, 800);
+        });
       }
+
 
       // 4. Request Background Location (Sequenced / Android 10+)
       if (isAndroid) {
@@ -323,6 +333,39 @@ export const useFuelTracker = () => {
     
     watchId.current = id;
     requestWakeLock();
+
+    // --- GPS MONITOR: Re-prompt if GPS is turned off during tracking ---
+    const win2 = window as any;
+    const gpsMonitorId = setInterval(() => {
+      Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 })
+        .catch(() => {
+          // GPS is off during active tracking - prompt user
+          const locAcc = win2.cordova?.plugins?.locationAccuracy;
+          if (locAcc) {
+            locAcc.canRequest((canRequest: boolean) => {
+              if (canRequest) {
+                locAcc.request(locAcc.REQUEST_PRIORITY_HIGH_ACCURACY, () => {}, () => {});
+              }
+            });
+          }
+          import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+            LocalNotifications.schedule({
+              notifications: [{
+                title: "⚠️ الـ GPS مقفول!",
+                body: "التتبع هيوقف. افتح الـ GPS عشان البرنامج يكمل.",
+                id: 9999,
+                schedule: { at: new Date(Date.now() + 500) },
+                channelId: 'fuel_alerts',
+                attachments: [],
+                extra: null
+              }]
+            }).catch(() => {});
+          });
+        });
+    }, 30000); // Check every 30 seconds
+
+    // Store monitor ID for cleanup on stopTracking
+    (window as any).__gpsMonitorId = gpsMonitorId;
   };
 
   const stopTracking = async () => {
@@ -335,7 +378,13 @@ export const useFuelTracker = () => {
     setIsTracking(false);
     lastPositionRef.current = null;
     releaseWakeLock();
+    // Clear GPS monitor
+    if ((window as any).__gpsMonitorId) {
+      clearInterval((window as any).__gpsMonitorId);
+      (window as any).__gpsMonitorId = null;
+    }
   };
+
 
   // Auto-start tracking on load (Always on now as per user request)
   useEffect(() => {
