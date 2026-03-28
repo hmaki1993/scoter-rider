@@ -257,42 +257,6 @@ export const useFuelTracker = () => {
                 lastOdo: prev.lastOdo + dist,
                 totalGpsDistance: prev.totalGpsDistance + dist
               };
-
-              // Check for 15km threshold and 2km steps
-              const rangeRemaining = newState.estimatedFuelLiters * settings.avgConsumption;
-              
-              // More robust step calculation for 15, 13, 11, 9, 7, 5, 3, 1
-              const possibleSteps = [15, 13, 11, 9, 7, 5, 3, 1];
-              const activeStep = possibleSteps.find(s => rangeRemaining <= s && lastNotifiedStepRef.current > s);
-
-              if (activeStep) {
-                // Send Local Notification only if not muted
-                if (!isMuted) {
-                  import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-                    LocalNotifications.schedule({
-                      notifications: [
-                        {
-                          title: "تحذير بنزين منخفض! ⚠️",
-                          body: `باقي لك ${activeStep} كيلو بس والبنزين يخلص، خلي بالك!`,
-                          id: activeStep, // Unique ID per step
-                          schedule: { at: new Date(Date.now() + 1000) },
-                          sound: 'alarm.wav',
-                          actionTypeId: 'FUEL_ALARM_ACTIONS',
-                          channelId: 'fuel_alerts', // Use high importance channel
-                          attachments: [],
-                          extra: null
-                        }
-                      ]
-                    });
-                  });
-                  playWarningSound(true); // Play "Alarm" version
-                }
-                lastNotifiedStepRef.current = activeStep;
-              }
-              // Normal threshold warning (only if above 15km to avoid double alerts)
-              else if (rangeRemaining > 15 && rangeRemaining <= settings.warningThreshold && (prev.estimatedFuelLiters * settings.avgConsumption) > settings.warningThreshold) {
-                if (!isMuted) playWarningSound(false);
-              }
               
               lastPositionRef.current = pos;
               return newState;
@@ -356,6 +320,44 @@ export const useFuelTracker = () => {
     localStorage.setItem('fuel_logs', JSON.stringify(logs));
   }, [logs]);
 
+  // Global Warning & Notification logic: triggers on any fuel change (GPS or Manual Sync)
+  useEffect(() => {
+    const rangeRemaining = fuelState.estimatedFuelLiters * settings.avgConsumption;
+    const possibleSteps = [15, 13, 11, 9, 7, 5, 3, 1];
+    const activeStep = possibleSteps.find(s => rangeRemaining <= s && lastNotifiedStepRef.current > s);
+
+    if (activeStep) {
+      if (!isMuted) {
+        import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+          LocalNotifications.schedule({
+            notifications: [
+              {
+                title: "تحذير بنزين منخفض! ⚠️",
+                body: `باقي لك ${activeStep} كيلو بس والبنزين يخلص، خلي بالك!`,
+                id: activeStep, // Unique ID per step
+                schedule: { at: new Date(Date.now() + 1000) },
+                sound: 'alarm.wav',
+                actionTypeId: 'FUEL_ALARM_ACTIONS',
+                channelId: 'fuel_alerts',
+                attachments: [],
+                extra: null
+              }
+            ]
+          }).catch(console.warn);
+        });
+        playWarningSound(true); // Play "Alarm" version
+      }
+      lastNotifiedStepRef.current = activeStep;
+    } else if (
+      rangeRemaining > 15 && 
+      rangeRemaining <= settings.warningThreshold && 
+      lastNotifiedStepRef.current > settings.warningThreshold
+    ) {
+      if (!isMuted) playWarningSound(false);
+      lastNotifiedStepRef.current = settings.warningThreshold; // Prevent standard double warnings
+    }
+  }, [fuelState.estimatedFuelLiters, settings.avgConsumption, settings.warningThreshold, isMuted]);
+
   /**
    * Refuel action: user adds fuel at a specific odometer reading.
    */
@@ -415,7 +417,19 @@ export const useFuelTracker = () => {
    * Manual Odo update (without refueling) just to sync app.
    */
   const updateCurrentOdo = (odo: number) => {
-    setFuelState(prev => ({ ...prev, lastOdo: odo }));
+    setFuelState(prev => {
+      const diff = odo - prev.lastOdo;
+      if (diff > 0) {
+        // If odometer skipped forward, calculate untracked fuel and remove it
+        const consumed = diff / settings.avgConsumption;
+        return {
+          ...prev,
+          lastOdo: odo,
+          estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed)
+        };
+      }
+      return { ...prev, lastOdo: odo };
+    });
   };
 
   const updateUserProfile = (profile: UserProfile) => {
