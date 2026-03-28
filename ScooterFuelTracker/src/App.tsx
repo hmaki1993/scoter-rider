@@ -218,7 +218,7 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
             <input 
               required
               type="text" 
-              placeholder="e.g. Ahmed Maki" 
+              placeholder="" 
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
@@ -230,7 +230,7 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
             <input 
               required
               type="tel" 
-              placeholder="01xxxxxxxxx" 
+              placeholder="" 
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
