@@ -211,11 +211,35 @@ export const useFuelTracker = () => {
       }
 
       // Check for background permission if on Android
-      // Note: User must manually select "Allow all the time" in settings
       if (hasPerm.location === 'granted' && (window as any).Capacitor.getPlatform() === 'android') {
         const message = "عشان التطبيق يفضل يحسب البنزين وأنت قافل الشاشة، لازم تختار 'Allow all the time' (السماح طوال الوقت) في الخطوة الجاية.";
         alert(message);
       }
+
+      // Automatically pop up the systemic "Turn on Location Services" dialog if GPS is turned off
+      try {
+        const win = window as any;
+        if (win.cordova && win.cordova.plugins && win.cordova.plugins.locationAccuracy) {
+          const locAcc = win.cordova.plugins.locationAccuracy;
+          await new Promise((resolve) => {
+            locAcc.canRequest((canRequest: boolean) => {
+              if (canRequest) {
+                // This triggers the native Android GPS toggle prompt
+                locAcc.request(locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
+                  () => { console.log("GPS Hardware Enabled successfully"); resolve(true); },
+                  (err: any) => { console.warn("User refused to enable GPS Hardware", err); resolve(false); }
+                );
+              } else {
+                // Already on or unable to request
+                resolve(true);
+              }
+            });
+          });
+        }
+      } catch (err) {
+        console.warn('Location accuracy check failed', err);
+      }
+
     } catch (e) {
       console.log('Permission check issue:', e);
     }

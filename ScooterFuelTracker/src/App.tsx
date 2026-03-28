@@ -9,6 +9,7 @@ function App() {
   const [showRefuel, setShowRefuel] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<{ version: string, url: string, notes: string } | null>(null);
 
   const appRef = useRef<HTMLDivElement>(null);
 
@@ -37,10 +38,11 @@ function App() {
         const data = await response.json();
 
         if (data.version && data.version !== CURRENT_VERSION) {
-          const message = `يوجد تحديث جديد (الإصدار ${data.version})\n\n${data.notes || ''}\n\nهل تريد التحميل الآن؟`;
-          if (window.confirm(message)) {
-            window.open(data.url, '_system');
-          }
+          setUpdateInfo({
+            version: data.version,
+            url: data.url,
+            notes: data.notes || ''
+          });
         }
       } catch (error) {
         console.error('Update check failed:', error);
@@ -224,6 +226,7 @@ function App() {
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
+      {updateInfo && <UpdateModal info={updateInfo} onClose={() => setUpdateInfo(null)} />}
 
     </div>
   );
@@ -634,6 +637,33 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             <button type="button" className="glass-button" style={{ flex: 1, background: 'transparent' }} onClick={onClose}>Cancel</button>
             <button type="button" className="glass-button" style={{ flex: 2, background: 'var(--text-primary)', color: '#000' }} onClick={handleSave}>Save Settings</button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UpdateModal({ info, onClose }: { info: any, onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', textAlign: 'center', border: '1px solid rgba(255, 51, 102, 0.4)', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        <div style={{ background: 'rgba(255, 51, 102, 0.1)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '2px solid var(--danger-color)', boxShadow: '0 0 20px rgba(255, 51, 102, 0.3)' }}>
+          <Settings size={34} color="var(--danger-color)" style={{ animation: 'spin 4s linear infinite' }} />
+        </div>
+        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: '#fff', fontWeight: '800' }}>تحديث جديد متاح! 🚀</h2>
+        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', fontWeight: '600' }}>
+          الإصدار {info.version} متوفر الآن
+        </div>
+        {info.notes && (
+          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '16px', borderRadius: '12px', fontSize: '13px', color: '#ddd', marginBottom: '24px', lineHeight: '1.7', textAlign: 'right', direction: 'rtl' }}>
+            {info.notes}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="glass-button" style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }} onClick={onClose}>تأجيل</button>
+          <a href={info.url} target="_blank" rel="noopener noreferrer" className="glass-button" style={{ flex: 2, background: 'var(--danger-color)', color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', border: 'none', boxShadow: '0 4px 15px rgba(255, 51, 102, 0.4)' }}>
+            تحديث الآن
+          </a>
         </div>
       </div>
     </div>
