@@ -229,24 +229,30 @@ export const useFuelTracker = () => {
         }
       }
 
-      // 3. Trigger GPS Hardware Toggle (Location Accuracy)
-      // This MUST happen after Foreground Location is granted.
-      // 3. Trigger GPS Hardware Toggle (Native way)
-      // On some Androids, a high-accuracy request will natively trigger the "Turn on GPS?" dialog.
+      // 3. Trigger GPS Hardware Toggle (Native Android Intent)
       if (isAndroid) {
         try {
-          // A "ping" to force the hardware check
-          await Geolocation.getCurrentPosition({
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
+          // Quick position check with high accuracy - triggers native GPS dialog on most devices.
+          const result = await Promise.race([
+            Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 3000, maximumAge: 0 }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+          ]).catch(async (_err: any) => {
+            // If timed out or position unavailable, GPS is likely off - open Location Settings
+            const msg = "الـ GPS مقفول في موبايلك. هتنقلك للإعدادات عشان تفتحه ضروري للتتبع.";
+            alert(msg);
+            // Open Android Location Settings
+            if (win.cordova?.plugins?.diagnostic) {
+              win.cordova.plugins.diagnostic.switchToLocationSettings();
+            } else {
+              console.log('Directing user to location settings (manual) - GPS was off');
+            }
+
           });
+          if (result) console.log('GPS is active');
         } catch (err: any) {
-          console.warn("GPS Ping (Hardware Check) outcome:", err.message);
+          console.warn("GPS check outcome:", err.message);
         }
       }
-
-
 
       // 4. Request Background Location (Sequenced / Android 10+)
       if (isAndroid) {
@@ -365,14 +371,16 @@ export const useFuelTracker = () => {
     localStorage.setItem('fuel_logs', JSON.stringify(logs));
   }, [logs]);
 
-  // Global Warning & Notification logic: triggers on any fuel change (GPS or Manual Sync)
+    // Global Warning & Notification logic: triggers on any fuel change (GPS or Manual Sync)
   useEffect(() => {
     const rangeRemaining = fuelState.estimatedFuelLiters * settings.avgConsumption;
-    const possibleSteps = [15.1, 13.1, 11.1, 9.1, 7.1, 5.1, 3.1, 1.1]; // Add small offset to trigger "at" the mark
     
-    // Find the current bucket. E.g. if range is 12.5, we are in the "13" bucket.
-    // We only notify if our lastNotifiedStep was higher than the current bucket.
+    // CRITICAL FIX: Don't alert if fuel/range is 0 (not initialized yet)
+    if (rangeRemaining <= 0) return;
+    
+    const possibleSteps = [15.1, 13.1, 11.1, 9.1, 7.1, 5.1, 3.1, 1.1];
     const activeStep = possibleSteps.find(s => rangeRemaining <= s && lastNotifiedStepRef.current > s);
+
 
     if (activeStep) {
       const displayStep = Math.floor(activeStep); // 15, 13, 11...
