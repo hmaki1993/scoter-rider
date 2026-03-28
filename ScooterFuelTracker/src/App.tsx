@@ -603,7 +603,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           <div>
             <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Fuel Price (EGP / Liter)</label>
             <input type="number" step="0.1" className="glass-input" value={price} onChange={e => setPrice(e.target.value)} />
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Current price for Octane 92</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px', opacity: 0.7 }}>Enter the price for your preferred fuel (e.g., 92 or 95)</div>
           </div>
 
           {/* Auto-start removed as it is now always on by default */}
