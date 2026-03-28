@@ -31,7 +31,7 @@ function App() {
     // --- Update Check Logic ---
     const checkForUpdate = async () => {
       try {
-        const CURRENT_VERSION = '1.2.5';
+        const CURRENT_VERSION = '1.2.6';
         const UPDATE_URL = `https://scoter-rider.vercel.app/version.json?t=${new Date().getTime()}`;
 
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
@@ -636,6 +636,9 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
             <button type="button" className="glass-button" style={{ flex: 1, background: 'transparent' }} onClick={onClose}>Cancel</button>
             <button type="button" className="glass-button" style={{ flex: 2, background: 'var(--text-primary)', color: '#000' }} onClick={handleSave}>Save Settings</button>
+          </div>
+          <div style={{ textAlign: 'center', opacity: 0.3, fontSize: '0.7rem', marginTop: '20px' }}>
+            scoter-rider-elite v1.2.6
           </div>
         </div>
       </div>

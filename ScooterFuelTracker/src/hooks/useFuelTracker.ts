@@ -231,32 +231,21 @@ export const useFuelTracker = () => {
 
       // 3. Trigger GPS Hardware Toggle (Location Accuracy)
       // This MUST happen after Foreground Location is granted.
-      const checkLocationAccuracy = async () => {
-        if (isAndroid) {
-          try {
-            const locAcc = win.cordova?.plugins?.locationAccuracy;
-            if (locAcc) {
-              locAcc.canRequest((canRequest: boolean) => {
-                if (canRequest) {
-                  locAcc.request(locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
-                    () => console.log("GPS Hardware Enabled"),
-                    (err: any) => console.warn("GPS Toggle Refused", err)
-                  );
-                }
-              });
-            } else {
-              // Plugin not yet available, retry in 1s
-              console.log("LocationAccuracy plugin not found, retrying...");
-              setTimeout(checkLocationAccuracy, 2000);
-            }
-          } catch (err) {
-            console.warn('Location accuracy check failed', err);
-          }
+      // 3. Trigger GPS Hardware Toggle (Native way)
+      // On some Androids, a high-accuracy request will natively trigger the "Turn on GPS?" dialog.
+      if (isAndroid) {
+        try {
+          // A "ping" to force the hardware check
+          await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          });
+        } catch (err: any) {
+          console.warn("GPS Ping (Hardware Check) outcome:", err.message);
         }
-      };
+      }
 
-      // Call it once permission is granted
-      checkLocationAccuracy();
 
 
       // 4. Request Background Location (Sequenced / Android 10+)
