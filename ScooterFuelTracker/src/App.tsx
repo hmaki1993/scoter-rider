@@ -31,7 +31,7 @@ function App() {
     // --- Update Check Logic ---
     const checkForUpdate = async () => {
       try {
-        const CURRENT_VERSION = '1.3.3';
+        const CURRENT_VERSION = '1.3.4';
         const UPDATE_URL = `https://scoter-rider.vercel.app/version.json?t=${new Date().getTime()}`;
 
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
@@ -186,6 +186,45 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Start Tracking Prompt */}
+      {!tracker.isTracking && (
+        <div 
+          className="glass-panel" 
+          style={{ 
+            padding: '20px', 
+            background: 'rgba(0, 240, 255, 0.05)', 
+            border: '1px solid rgba(0, 240, 255, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            alignItems: 'center',
+            textAlign: 'center',
+            marginBottom: '20px'
+          }}
+        >
+          <div style={{ color: 'var(--accent-color)', fontWeight: '700', fontSize: '15px' }}>
+            تتبع المسافات مغلق
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            دوس على الزرار تحت عشان تبدأ تحسب استهلاك البنزين والمسافة أوتوماتيك.
+          </div>
+          <button 
+            className="glass-button" 
+            style={{ 
+              width: '100%', 
+              background: 'var(--accent-color)', 
+              color: '#000',
+              fontWeight: '800',
+              padding: '14px',
+              marginTop: '8px'
+            }}
+            onClick={() => tracker.startTracking(false)}
+          >
+            بدأ تتبع الكيلومترات الآن
+          </button>
+        </div>
+      )}
 
       {/* Action Center - Fixed at bottom */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: 'auto', marginBottom: '8px' }}>
@@ -638,7 +677,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             <button type="button" className="glass-button" style={{ flex: 2, background: 'var(--text-primary)', color: '#000' }} onClick={handleSave}>Save Settings</button>
           </div>
           <div style={{ textAlign: 'center', opacity: 0.3, fontSize: '0.7rem', marginTop: '20px' }}>
-            scoter-rider-elite v1.3.3
+            scoter-rider-elite v1.3.4
           </div>
         </div>
       </div>

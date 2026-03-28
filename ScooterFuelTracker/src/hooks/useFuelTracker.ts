@@ -399,17 +399,20 @@ export const useFuelTracker = () => {
     }
   };
 
-  // Auto-start: runs on app open. Uses SILENT mode if was previously tracking.
+  // Auto-start: runs on app open. ONLY runs if we were already tracking.
+  // This prevents the Android 14 crash for fresh installs before permissions are granted.
   useEffect(() => {
     if (!isTracking) {
       const wasTracking = localStorage.getItem('was_tracking') === 'true';
-      const timer = setTimeout(() => {
-        // Silent = true means skip all permission dialogs (already granted)
-        startTracking(wasTracking ? true : false);
-      }, 1000);
-      return () => {
-        clearTimeout(timer);
-      };
+      if (wasTracking) {
+        const timer = setTimeout(() => {
+          // Silent = true means skip all permission dialogs (already granted)
+          startTracking(true);
+        }, 1000);
+        return () => {
+          clearTimeout(timer);
+        };
+      }
     }
     return undefined;
   }, []);
