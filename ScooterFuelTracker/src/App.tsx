@@ -31,7 +31,7 @@ function App() {
     const checkForUpdate = async () => {
       try {
         const CURRENT_VERSION = '1.1.0';
-        const UPDATE_URL = 'https://scoter-rider.vercel.app/version.json';
+        const UPDATE_URL = `https://scoter-rider.vercel.app/version.json?t=${new Date().getTime()}`;
 
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
         const data = await response.json();
