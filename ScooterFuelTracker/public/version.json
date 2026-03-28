@@ -1,5 +1,5 @@
 {
-  "version": "1.2.3",
+  "version": "1.2.4",
   "url": "https://scoter-rider.vercel.app/app-debug.apk",
-  "notes": "إصلاح نهائي لتصاريح الموقع في الخلفية (Allow all the time)."
+  "notes": "تم إضافة خاصية الاستمرار في العمل حتى بعد إغلاق التطبيق (Swipe-to-kill fix)."
 }

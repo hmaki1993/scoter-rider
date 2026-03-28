@@ -28,6 +28,7 @@
             android:name="com.capacitorjs.plugins.backgroundgeolocation.BackgroundGeolocationService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="location" />
 
         <provider
