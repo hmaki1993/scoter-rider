@@ -358,6 +358,22 @@ export const useFuelTracker = () => {
         });
     }, 30000);
 
+    // --- BACKGROUND MODE (PREVENT SWIPE-KILL) ---
+    const cordovaObj = (window as any).cordova;
+    if (cordovaObj?.plugins?.backgroundMode) {
+      const bm = cordovaObj.plugins.backgroundMode;
+      bm.enable();
+      bm.overrideBackButton();
+      bm.setDefaults({
+        title: "متتبع مشاوير سيم",
+        text: "التتبع شغال ومحمي من الإغلاق...",
+        color: 'F14F4D',
+        resume: true
+      });
+      bm.disableWebViewOptimizations();
+      bm.disableBatteryOptimizations();
+    }
+
     (window as any).__gpsMonitorId = gpsMonitorId;
   };
 
@@ -375,6 +391,11 @@ export const useFuelTracker = () => {
     if ((window as any).__gpsMonitorId) {
       clearInterval((window as any).__gpsMonitorId);
       (window as any).__gpsMonitorId = null;
+    }
+    // Disable background mode
+    const cordovaObj = (window as any).cordova;
+    if (cordovaObj?.plugins?.backgroundMode) {
+      cordovaObj.plugins.backgroundMode.disable();
     }
   };
 
