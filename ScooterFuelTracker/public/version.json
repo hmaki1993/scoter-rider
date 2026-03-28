@@ -1,5 +1,5 @@
 {
   "version": "1.2.0",
-  "url": "https://github.com/your-username/your-repo/releases/download/v1.2.0/app-debug.apk",
-  "notes": "تحسينات جديدة في استهلاك البطارية ودقة الـ GPS"
+  "url": "https://scoter-rider.vercel.app/app-debug.apk",
+  "notes": "تحسينات جديدة في استهلاك البطارية وتفعيل اللوكيشن أوتوماتيك"
 }
