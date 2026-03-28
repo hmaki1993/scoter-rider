@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "url": "https://scoter-rider.vercel.app/app-debug.apk",
-  "notes": "تحسينات جديدة في استهلاك البطارية وتفعيل اللوكيشن أوتوماتيك"
+  "notes": "تم إصلاح تسلسل تصاريح الموقع (Ground/Background) والـ GPS toggle."
 }
