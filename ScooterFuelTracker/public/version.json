@@ -1,5 +1,5 @@
 {
-  "version": "1.2.1",
+  "version": "1.2.2",
   "url": "https://scoter-rider.vercel.app/app-debug.apk",
-  "notes": "تم إصلاح تسلسل تصاريح الموقع (Ground/Background) والـ GPS toggle."
+  "notes": "تم إضافة رسالة توضيحية لطلب إذن التنبيهات في أندرويد 13+."
 }
