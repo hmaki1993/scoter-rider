@@ -199,90 +199,85 @@ export const useFuelTracker = () => {
     return d;
   };
 
-  const startTracking = async () => {
+  const startTracking = async (silent = false) => {
     try {
       const win = window as any;
-      const isAndroid = win.Capacitor.getPlatform() === 'android';
+      const isAndroid = win.Capacitor?.getPlatform() === 'android';
 
-      // 1. Request Notifications (Required for Foreground Service in Android 13+)
-      if (isAndroid) {
-        const { LocalNotifications } = await import('@capacitor/local-notifications');
-        const notifPerm = await LocalNotifications.checkPermissions();
-        if (notifPerm.display !== 'granted') {
-          // Explicit Rationale for Notifications on Android 13+
-          alert("عشان الأبلكيشن يفضل يحسب المسافة والتنبيهات وأنت قافل الشاشة، لازم توافق على إذن التنبيهات في الخطوة الجاية.");
-          const req = await LocalNotifications.requestPermissions();
-          if (req.display !== 'granted') {
-            alert("بدون إذن التنبيهات، البرنامج ممكن يتوقف فجأة وهو في الخلفية. من فضلك فعله من إعدادات الموبايل.");
+      if (!silent) {
+        // ═══ FULL MODE: Only run permission flow when user presses START button ═══
+
+        // 1. Request Notifications (Required for Foreground Service in Android 13+)
+        if (isAndroid) {
+          const { LocalNotifications } = await import('@capacitor/local-notifications');
+          const notifPerm = await LocalNotifications.checkPermissions();
+          if (notifPerm.display !== 'granted') {
+            alert("عشان الأبلكيشن يفضل يحسب المسافة والتنبيهات وأنت قافل الشاشة، لازم توافق على إذن التنبيهات في الخطوة الجاية.");
+            const req = await LocalNotifications.requestPermissions();
+            if (req.display !== 'granted') {
+              alert("بدون إذن التنبيهات، البرنامج ممكن يتوقف فجأة وهو في الخلفية. من فضلك فعله من إعدادات الموبايل.");
+            }
           }
         }
-      }
 
-
-      // 2. Request Foreground Location (FINE_LOCATION)
-      let currentPerms = await Geolocation.checkPermissions();
-      if (currentPerms.location !== 'granted') {
-        const req = await Geolocation.requestPermissions();
-        if (req.location !== 'granted') {
-          alert("Location permission required to track fuel usage");
-          return;
+        // 2. Request Foreground Location (FINE_LOCATION)
+        let currentPerms = await Geolocation.checkPermissions();
+        if (currentPerms.location !== 'granted') {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== 'granted') {
+            alert("Location permission required to track fuel usage");
+            return;
+          }
         }
-      }
 
-      // 3. GPS Hardware Toggle - wait for cordova to be ready, then request High Accuracy
-      if (isAndroid) {
-        await new Promise<void>((resolve) => {
-          const tryGpsToggle = () => {
-            const locAcc = (win as any).cordova?.plugins?.locationAccuracy;
-            if (locAcc) {
-              locAcc.canRequest((canRequest: boolean) => {
-                if (canRequest) {
-                  locAcc.request(
-                    locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
-                    () => { console.log('GPS High Accuracy enabled'); resolve(); },
-                    (_err: any) => {
-                      // User said no - send them to settings manually
-                      alert('الـ GPS مش شغال بدقة. دوس موافق عشان تفتح إعدادات الموقع وتختار High Accuracy.');
-                      (win as any).cordova?.plugins?.diagnostic?.switchToLocationSettings?.();
-                      resolve();
-                    }
-                  );
-                } else {
-                  console.log('GPS already at high accuracy');
-                  resolve();
-                }
-              });
-            } else {
-              // cordova plugin not ready yet, retry after delay
-              console.log('LocationAccuracy plugin not ready, retrying in 1.5s...');
-              setTimeout(tryGpsToggle, 1500);
-            }
-          };
-          // Give Cordova plugins time to fully initialize inside Capacitor
-          setTimeout(tryGpsToggle, 800);
-        });
-      }
+        // 3. GPS Hardware Toggle - wait for cordova to be ready, then request High Accuracy
+        if (isAndroid) {
+          await new Promise<void>((resolve) => {
+            const tryGpsToggle = () => {
+              const locAcc = (win as any).cordova?.plugins?.locationAccuracy;
+              if (locAcc) {
+                locAcc.canRequest((canRequest: boolean) => {
+                  if (canRequest) {
+                    locAcc.request(
+                      locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
+                      () => { console.log('GPS High Accuracy enabled'); resolve(); },
+                      (_err: any) => {
+                        alert('الـ GPS مش شغال بدقة. دوس موافق عشان تفتح إعدادات الموقع وتختار High Accuracy.');
+                        (win as any).cordova?.plugins?.diagnostic?.switchToLocationSettings?.();
+                        resolve();
+                      }
+                    );
+                  } else {
+                    console.log('GPS already at high accuracy');
+                    resolve();
+                  }
+                });
+              } else {
+                console.log('LocationAccuracy plugin not ready, retrying in 1.5s...');
+                setTimeout(tryGpsToggle, 1500);
+              }
+            };
+            setTimeout(tryGpsToggle, 800);
+          });
+        }
 
+        // 4. Request Background Location (Sequenced / Android 10+)
+        if (isAndroid) {
+          const message = "عشان التطبيق يشتغل تمام في الخلفية ويحسب المسافة وأنت قافل الشاشة، لازم تتأكد إنك مختار 'Allow all the time' (السماح طوال الوقت) في إعدادات الموقع.";
+          alert(message);
+          await Geolocation.requestPermissions();
+        }
 
-      // 4. Request Background Location (Sequenced / Android 10+)
-      if (isAndroid) {
-        // To accurately check for "Allow all the time", we often need to just try requesting it
-        // or show a manual prompt because Capacitor doesn't distinguish 'Always' vs 'While using' easily.
-        const message = "عشان التطبيق يشتغل تمام في الخلفية ويحسب المسافة وأنت قافل الشاشة، لازم تتأكد إنك مختار 'Allow all the time' (السماح طوال الوقت) في إعدادات الموقع.";
-        alert(message);
-        await Geolocation.requestPermissions();
-        // This will trigger the system to show the "Allow all the time" option or take them to Settings.
-      }
-
-
-
+      } // end !silent
 
     } catch (e) {
       console.log('Permission check issue:', e);
     }
-    
+
+    // Mark that we were tracking (for auto-restart after swipe-away)
+    localStorage.setItem('was_tracking', 'true');
     setIsTracking(true);
-    
+
     // --- BACKGROUND GEOLOCATION ---
     // This plugin creates a Foreground Service notification on Android
     const { registerPlugin } = await import('@capacitor/core');
@@ -292,7 +287,7 @@ export const useFuelTracker = () => {
       {
         backgroundMessage: "تطبيق متتبع البنزين يعمل في الخلفية...",
         backgroundTitle: "جاري تتبع المشوار 🛵",
-        requestPermissions: true,
+        requestPermissions: false, // Already handled above
         stale: false,
         distanceFilter: 10 // Update every 10 meters
       },
@@ -339,7 +334,6 @@ export const useFuelTracker = () => {
     const gpsMonitorId = setInterval(() => {
       Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 })
         .catch(() => {
-          // GPS is off during active tracking - prompt user
           const locAcc = win2.cordova?.plugins?.locationAccuracy;
           if (locAcc) {
             locAcc.canRequest((canRequest: boolean) => {
@@ -362,13 +356,13 @@ export const useFuelTracker = () => {
             }).catch(() => {});
           });
         });
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 
-    // Store monitor ID for cleanup on stopTracking
     (window as any).__gpsMonitorId = gpsMonitorId;
   };
 
   const stopTracking = async () => {
+    localStorage.setItem('was_tracking', 'false'); // Clear auto-restart flag
     if (watchId.current !== null) {
       const { registerPlugin } = await import('@capacitor/core');
       const BackgroundGeolocation = registerPlugin<any>('BackgroundGeolocation');
@@ -378,30 +372,27 @@ export const useFuelTracker = () => {
     setIsTracking(false);
     lastPositionRef.current = null;
     releaseWakeLock();
-    // Clear GPS monitor
     if ((window as any).__gpsMonitorId) {
       clearInterval((window as any).__gpsMonitorId);
       (window as any).__gpsMonitorId = null;
     }
   };
 
-
-  // Auto-start tracking on load (Always on now as per user request)
+  // Auto-start: runs on app open. Uses SILENT mode if was previously tracking.
   useEffect(() => {
     if (!isTracking) {
-      // Delay slightly to ensure permissions are handled or UI is ready
+      const wasTracking = localStorage.getItem('was_tracking') === 'true';
       const timer = setTimeout(() => {
-        startTracking();
+        // Silent = true means skip all permission dialogs (already granted)
+        startTracking(wasTracking ? true : false);
       }, 1000);
       return () => {
         clearTimeout(timer);
-        stopTracking(); // Ensure tracking is stopped when component unmounts
       };
     }
-    return () => {
-      stopTracking(); // This cleanup runs if isTracking becomes true or effect re-runs
-    };
+    return undefined;
   }, []);
+
 
   // Save to local storage whenever state changes
   useEffect(() => {
