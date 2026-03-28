@@ -31,6 +31,13 @@
             android:stopWithTask="false"
             android:foregroundServiceType="location" />
 
+        <service
+            android:name="de.appplant.cordova.plugin.background.ForegroundService"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="location" />
+
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
