@@ -201,8 +201,21 @@ export const useFuelTracker = () => {
 
   const startTracking = async () => {
     try {
-      const hasPerm = await Geolocation.checkPermissions();
-      if (hasPerm.location !== 'granted') {
+      const win = window as any;
+      const isAndroid = win.Capacitor.getPlatform() === 'android';
+
+      // 1. Request Notifications (Required for Foreground Service in Android 13+)
+      if (isAndroid) {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const notifPerm = await LocalNotifications.checkPermissions();
+        if (notifPerm.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
+        }
+      }
+
+      // 2. Request Foreground Location (FINE_LOCATION)
+      let currentPerms = await Geolocation.checkPermissions();
+      if (currentPerms.location !== 'granted') {
         const req = await Geolocation.requestPermissions();
         if (req.location !== 'granted') {
           alert("Location permission required to track fuel usage");
@@ -210,35 +223,45 @@ export const useFuelTracker = () => {
         }
       }
 
-      // Check for background permission if on Android
-      if (hasPerm.location === 'granted' && (window as any).Capacitor.getPlatform() === 'android') {
-        const message = "عشان التطبيق يفضل يحسب البنزين وأنت قافل الشاشة، لازم تختار 'Allow all the time' (السماح طوال الوقت) في الخطوة الجاية.";
-        alert(message);
+      // 3. Trigger GPS Hardware Toggle (Location Accuracy)
+      // This MUST happen after Foreground Location is granted.
+      if (isAndroid) {
+        try {
+          const locAcc = win.cordova?.plugins?.locationAccuracy;
+          if (locAcc) {
+            await new Promise((resolve) => {
+              locAcc.canRequest((canRequest: boolean) => {
+                if (canRequest) {
+                  locAcc.request(locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
+                    () => { console.log("GPS Hardware Enabled"); resolve(true); },
+                    (err: any) => { console.warn("GPS Toggle Refused", err); resolve(false); }
+                  );
+                } else {
+                  resolve(true);
+                }
+              });
+            });
+          }
+        } catch (err) {
+          console.warn('Location accuracy check failed', err);
+        }
       }
 
-      // Automatically pop up the systemic "Turn on Location Services" dialog if GPS is turned off
-      try {
-        const win = window as any;
-        if (win.cordova && win.cordova.plugins && win.cordova.plugins.locationAccuracy) {
-          const locAcc = win.cordova.plugins.locationAccuracy;
-          await new Promise((resolve) => {
-            locAcc.canRequest((canRequest: boolean) => {
-              if (canRequest) {
-                // This triggers the native Android GPS toggle prompt
-                locAcc.request(locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
-                  () => { console.log("GPS Hardware Enabled successfully"); resolve(true); },
-                  (err: any) => { console.warn("User refused to enable GPS Hardware", err); resolve(false); }
-                );
-              } else {
-                // Already on or unable to request
-                resolve(true);
-              }
-            });
-          });
+      // 4. Request Background Location (Sequenced / Android 10+)
+      if (isAndroid) {
+        const status = await Geolocation.checkPermissions();
+        // andoid 10+ requires separate background permission
+        // If we have foreground (coarse/fine) but NOT 'always' (location !== granted in some contexts or specifically checking background)
+        // In Capacitor, 'location' usually maps to the most state.
+        // We'll check if the user has opted for "While using" and guide them to "Always".
+        if (status.location !== 'granted') {
+          const message = "عشان التطبيق يشتغل تمام في الخلفية وأنت قافل الشاشة، لازم تختار 'Allow all the time' (السماح طوال الوقت) في الشاشة الجاية.";
+          alert(message);
+          await Geolocation.requestPermissions();
         }
-      } catch (err) {
-        console.warn('Location accuracy check failed', err);
       }
+
+
 
     } catch (e) {
       console.log('Permission check issue:', e);
