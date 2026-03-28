@@ -15,6 +15,7 @@ export interface UserProfile {
   phone: string;
   vehicleType: string;
   photoUrl?: string;
+  photoPosition?: { x: number, y: number, scale: number };
   registeredAt: string;
 }
 

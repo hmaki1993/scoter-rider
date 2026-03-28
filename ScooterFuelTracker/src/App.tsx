@@ -188,6 +188,53 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [vehicleType, setVehicleType] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoPos, setPhotoPos] = useState({ x: 0, y: 0, scale: 1.2 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoClick = () => {
+    if (!photo) fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+        setPhotoPos({ x: 0, y: 0, scale: 1.0 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!photo) return;
+    setIsDragging(true);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setDragStart({ x: clientX - photoPos.x, y: clientY - photoPos.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDragging) return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setPhotoPos(prev => ({
+      ...prev,
+      x: clientX - dragStart.x,
+      y: clientY - dragStart.y
+    }));
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newScale = parseFloat(e.target.value);
+    setPhotoPos(prev => ({ ...prev, scale: newScale }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,20 +243,87 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
         name,
         phone,
         vehicleType,
+        photoUrl: photo,
+        photoPosition: photoPos,
         registeredAt: new Date().toISOString()
       });
     }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div 
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onTouchMove={handleMouseMove}
+      onTouchEnd={handleMouseUp}
+    >
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', border: '1px solid rgba(255, 51, 102, 0.4)', textAlign: 'center' }}>
-        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255, 51, 102, 0.1)', border: '1px solid var(--danger-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', position: 'relative' }}>
-          <User size={40} color="var(--danger-color)" />
-          <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--danger-color)', padding: '6px', borderRadius: '50%' }}>
-            <Camera size={14} color="white" />
-          </div>
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          onChange={handleFileChange} 
+        />
+        
+        <div 
+          onClick={handlePhotoClick}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleMouseDown}
+          style={{ 
+            width: '100px', height: '100px', borderRadius: '50%', 
+            background: 'rgba(255, 51, 102, 0.05)', border: '2px solid var(--danger-color)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            margin: '0 auto 12px', position: 'relative', cursor: photo ? 'move' : 'pointer',
+            overflow: 'hidden',
+            boxShadow: '0 0 20px rgba(255, 51, 102, 0.2), inset 0 0 10px rgba(0,0,0,0.5)'
+          }}
+        >
+          {photo ? (
+            <img 
+              src={photo} 
+              alt="Profile" 
+              draggable={false}
+              style={{ 
+                height: '100%',
+                width: 'auto',
+                minWidth: '100%',
+                display: 'block',
+                transform: `translate(${photoPos.x}px, ${photoPos.y}px) scale(${photoPos.scale})`,
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                cursor: 'move',
+                touchAction: 'none'
+              }} 
+            />
+          ) : (
+            <div style={{ opacity: 0.6 }}><User size={48} color="var(--danger-color)" /></div>
+          )}
+          {!photo && (
+            <div style={{ position: 'absolute', bottom: '8px', right: '8px', color: 'white', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
+              <Camera size={18} />
+            </div>
+          )}
         </div>
+        {photo && (
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '0 20px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Zoom</span>
+              <input 
+                type="range" 
+                min="1" 
+                max="3" 
+                step="0.1" 
+                value={photoPos.scale} 
+                onChange={handleZoomChange}
+                style={{ flex: 1, accentColor: 'var(--danger-color)', height: '4px' }}
+              />
+            </div>
+            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7 }}>
+              Drag to position photo • <span onClick={() => fileInputRef.current?.click()} style={{ color: 'var(--danger-color)', textDecoration: 'underline', cursor: 'pointer' }}>Change</span>
+            </div>
+          </div>
+        )}
 
         <h2 style={{ fontSize: '24px', marginBottom: '8px', color: 'var(--text-primary)' }}>Welcome Rider!</h2>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '32px' }}>Let's set up your profile to start tracking your scooter or motorcycle.</p>
