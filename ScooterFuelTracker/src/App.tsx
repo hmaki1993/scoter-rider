@@ -187,13 +187,15 @@ function App() {
 const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && phone.trim()) {
+    if (name.trim() && phone.trim() && vehicleType.trim()) {
       onComplete({
         name,
         phone,
+        vehicleType,
         registeredAt: new Date().toISOString()
       });
     }
@@ -210,9 +212,9 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
         </div>
 
         <h2 style={{ fontSize: '24px', marginBottom: '8px', color: 'var(--text-primary)' }}>Welcome Rider!</h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '32px' }}>Let's set up your profile to start tracking your SYM 200cc.</p>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '32px' }}>Let's set up your profile to start tracking your scooter or motorcycle.</p>
 
-        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Rider Name</label>
             <input 
@@ -237,10 +239,22 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
             />
           </div>
 
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Scooter / Motorcycle Type</label>
+            <input 
+              required
+              type="text" 
+              placeholder="" 
+              value={vehicleType}
+              onChange={(e) => setVehicleType(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
+            />
+          </div>
+
           <button 
             type="submit"
             className="glass-button" 
-            style={{ width: '100%', padding: '16px', borderRadius: '14px', background: 'var(--danger-color)', borderColor: 'transparent', color: 'white', fontWeight: '700', marginTop: '12px' }}
+            style={{ width: '100%', padding: '16px', borderRadius: '14px', background: 'var(--danger-color)', borderColor: 'transparent', color: 'white', fontWeight: '700', marginTop: '8px' }}
           >
             Start My Journey
           </button>

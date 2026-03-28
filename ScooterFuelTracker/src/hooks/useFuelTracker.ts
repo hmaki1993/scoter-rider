@@ -13,6 +13,7 @@ export interface FuelSettings {
 export interface UserProfile {
   name: string;
   phone: string;
+  vehicleType: string;
   photoUrl?: string;
   registeredAt: string;
 }
