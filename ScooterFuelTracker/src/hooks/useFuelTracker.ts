@@ -209,9 +209,15 @@ export const useFuelTracker = () => {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
         const notifPerm = await LocalNotifications.checkPermissions();
         if (notifPerm.display !== 'granted') {
-          await LocalNotifications.requestPermissions();
+          // Explicit Rationale for Notifications on Android 13+
+          alert("عشان الأبلكيشن يفضل يحسب المسافة والتنبيهات وأنت قافل الشاشة، لازم توافق على إذن التنبيهات في الخطوة الجاية.");
+          const req = await LocalNotifications.requestPermissions();
+          if (req.display !== 'granted') {
+            alert("بدون إذن التنبيهات، البرنامج ممكن يتوقف فجأة وهو في الخلفية. من فضلك فعله من إعدادات الموبايل.");
+          }
         }
       }
+
 
       // 2. Request Foreground Location (FINE_LOCATION)
       let currentPerms = await Geolocation.checkPermissions();
