@@ -403,15 +403,13 @@ export const useFuelTracker = () => {
   useEffect(() => {
     if (!isTracking) {
       const wasTracking = localStorage.getItem('was_tracking') === 'true';
-      if (wasTracking) {
-        const timer = setTimeout(() => {
-          // Silent = true means skip all permission dialogs (already granted)
-          startTracking(true);
-        }, 1000);
-        return () => {
-          clearTimeout(timer);
-        };
-      }
+      const timer = setTimeout(() => {
+        // Silent = true means skip all permission dialogs (already granted)
+        startTracking(wasTracking ? true : false);
+      }, 1000);
+      return () => {
+        clearTimeout(timer);
+      };
     }
     return undefined;
   }, []);
