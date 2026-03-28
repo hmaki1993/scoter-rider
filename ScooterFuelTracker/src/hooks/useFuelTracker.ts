@@ -149,14 +149,14 @@ export const useFuelTracker = () => {
           AlarmPlugin.playAlarm().catch((e: any) => console.warn('Native alarm failed', e));
         });
 
-        // Aggressive siren (Web Audio fallback)
-        for (let i = 0; i < 8; i++) {
-          const freq = i % 2 === 0 ? 800 : 1500; // Alternating "Siren" tones
-          playBeep(freq, ctx.currentTime + i * 0.2, 0.15);
+        // High-pitch emergency siren (Web Audio fallback)
+        for (let i = 0; i < 20; i++) {
+          const freq = i % 2 === 0 ? 900 : 1800; // Alternating "Siren" tones
+          playBeep(freq, ctx.currentTime + i * 0.15, 0.12);
         }
         if (navigator.vibrate) {
-          // Continuous aggressive pulses
-          navigator.vibrate([400, 100, 400, 100, 400, 100, 400]);
+          // SOS style aggressive pulses
+          navigator.vibrate([300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800, 500, 300, 100, 300, 100, 300]);
         }
       } else {
         playBeep(600, ctx.currentTime, 0.4);

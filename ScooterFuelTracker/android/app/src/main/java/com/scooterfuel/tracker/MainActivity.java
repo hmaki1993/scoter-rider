@@ -47,10 +47,12 @@ public class MainActivity extends BridgeActivity {
                 currentRingtone.setAudioAttributes(aa);
                 currentRingtone.play();
 
-                // Aggressive vibration
+                // Super Aggressive vibration
                 Vibrator v = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
                 if (v != null) {
-                    v.vibrate(VibrationEffect.createWaveform(new long[]{0, 500, 200, 500, 200, 500}, -1));
+                    // SOS style rapid repeating intense pattern
+                    long[] pattern = {0, 300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800, 500, 300, 100, 300, 100, 300, 1000};
+                    v.vibrate(VibrationEffect.createWaveform(pattern, 0)); // 0 = repeat endlessly until stopped
                 }
 
                 call.resolve();
@@ -63,6 +65,11 @@ public class MainActivity extends BridgeActivity {
         public void stopAlarm(PluginCall call) {
             if (currentRingtone != null && currentRingtone.isPlaying()) {
                 currentRingtone.stop();
+            }
+            // Stop vibration
+            Vibrator v = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null) {
+                v.cancel();
             }
             call.resolve();
         }
