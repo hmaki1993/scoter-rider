@@ -9,7 +9,7 @@ function App() {
   const [showRefuel, setShowRefuel] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  
+
   const appRef = useRef<HTMLDivElement>(null);
 
   // Initial Entrance Animation & Update Check
@@ -27,8 +27,8 @@ function App() {
       try {
         const CURRENT_VERSION = '1.1.0';
         // ملاحظة: استبدل هذا الرابط برابط GitHub بتاعك لما ترفعه (مثلاً: https://raw.githubusercontent.com/.../version.json)
-        const UPDATE_URL = 'https://raw.githubusercontent.com/hmaki1993/scoter-rider/main/public/version.json'; 
-        
+        const UPDATE_URL = 'https://raw.githubusercontent.com/hmaki1993/scoter-rider/main/public/version.json';
+
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
         const data = await response.json();
 
@@ -50,7 +50,7 @@ function App() {
 
   return (
     <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
@@ -58,15 +58,15 @@ function App() {
           <div className="subtitle-text" style={{ fontSize: '13px', marginTop: '2px', letterSpacing: '0.5px' }}>Premium Intelligence System</div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            className="glass-button" 
-            style={{ 
-              padding: '12px', 
+          <button
+            className="glass-button"
+            style={{
+              padding: '12px',
               borderRadius: '50%',
               background: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
               borderColor: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)',
               transition: 'all 0.3s ease'
-            }} 
+            }}
             onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
           >
             {tracker.settings.enableAlerts ? (
@@ -96,7 +96,7 @@ function App() {
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', opacity: 0.7 }}>
               Estimated Range
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '3px', marginBottom: '10px' }}>
               <span style={{ fontSize: '54px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
                 {Math.max(0, tracker.rangeRemainingKm).toFixed(1)}
@@ -106,9 +106,9 @@ function App() {
 
             {/* Progress Bar */}
             <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '2.5px', overflow: 'hidden', marginBottom: '12px' }}>
-              <div style={{ 
-                height: '100%', 
-                width: `${tracker.fuelPercentage}%`, 
+              <div style={{
+                height: '100%',
+                width: `${tracker.fuelPercentage}%`,
                 background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
                 transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
                 boxShadow: '0 0 6px currentColor'
@@ -141,26 +141,26 @@ function App() {
 
       {/* Action Center - Fixed at bottom */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: 'auto', marginBottom: '8px' }}>
-        <button 
-          className="glass-button" 
-          style={{ width: '100%', gap: '12px', padding: '16px', borderRadius: '16px' }} 
+        <button
+          className="glass-button"
+          style={{ width: '100%', gap: '12px', padding: '16px', borderRadius: '16px' }}
           onClick={() => setShowSync(true)}
         >
           <MapPin size={18} />
           <span style={{ fontSize: '14px', fontWeight: '600' }}>Sync Manual Odometer</span>
         </button>
 
-        <button 
-          className="glass-button" 
-          style={{ 
-            width: '100%', 
-            gap: '12px', 
-            padding: '18px', 
+        <button
+          className="glass-button"
+          style={{
+            width: '100%',
+            gap: '12px',
+            padding: '18px',
             borderRadius: '16px',
-            background: 'rgba(0, 240, 255, 0.08)', 
+            background: 'rgba(0, 240, 255, 0.08)',
             borderColor: 'rgba(0, 240, 255, 0.4)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
-          }} 
+          }}
           onClick={() => setShowRefuel(true)}
         >
           <Fuel size={20} color="var(--accent-color)" />
@@ -170,15 +170,15 @@ function App() {
 
       {/* MODALS */}
       {!tracker.userProfile && (
-        <OnboardingModal 
-          onComplete={(profile) => tracker.updateUserProfile(profile)} 
+        <OnboardingModal
+          onComplete={(profile) => tracker.updateUserProfile(profile)}
         />
       )}
-      
+
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
-      
+
     </div>
   );
 }
@@ -189,9 +189,11 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
   const [phone, setPhone] = useState('');
   const [vehicleType, setVehicleType] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
-  const [photoPos, setPhotoPos] = useState({ x: 0, y: 0, scale: 1.2 });
+  // percentage-based focal point (50,50 = center)
+  const [objPos, setObjPos] = useState({ x: 50, y: 50 });
+  const [zoom, setZoom] = useState(100);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ startX: number; startY: number; startPx: number; startPy: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoClick = () => {
@@ -204,172 +206,142 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhoto(reader.result as string);
-        setPhotoPos({ x: 0, y: 0, scale: 1.0 });
+        setObjPos({ x: 50, y: 50 });
+        setZoom(100);
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const getClient = (e: React.MouseEvent | React.TouchEvent) => ({
+    x: 'touches' in e ? e.touches[0].clientX : e.clientX,
+    y: 'touches' in e ? e.touches[0].clientY : e.clientY,
+  });
+
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (!photo) return;
+    e.preventDefault();
+    const { x, y } = getClient(e);
+    dragRef.current = { startX: x, startY: y, startPx: objPos.x, startPy: objPos.y };
     setIsDragging(true);
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    setDragStart({ x: clientX - photoPos.x, y: clientY - photoPos.y });
   };
 
   const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDragging) return;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    setPhotoPos(prev => ({
-      ...prev,
-      x: clientX - dragStart.x,
-      y: clientY - dragStart.y
-    }));
+    if (!isDragging || !dragRef.current) return;
+    const { x, y } = getClient(e);
+    const sensitivity = 0.3;
+    const dx = (x - dragRef.current.startX) * -sensitivity;
+    const dy = (y - dragRef.current.startY) * -sensitivity;
+    setObjPos({
+      x: Math.max(0, Math.min(100, dragRef.current.startPx + dx)),
+      y: Math.max(0, Math.min(100, dragRef.current.startPy + dy)),
+    });
   };
 
-  const handleMouseUp = () => setIsDragging(false);
-
-  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newScale = parseFloat(e.target.value);
-    setPhotoPos(prev => ({ ...prev, scale: newScale }));
-  };
+  const handleMouseUp = () => { setIsDragging(false); dragRef.current = null; };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() && phone.trim() && vehicleType.trim()) {
-      onComplete({
-        name,
-        phone,
-        vehicleType,
-        photoUrl: photo,
-        photoPosition: photoPos,
-        registeredAt: new Date().toISOString()
-      });
+      onComplete({ name, phone, vehicleType, photoUrl: photo, photoPosition: { x: objPos.x, y: objPos.y, scale: zoom }, registeredAt: new Date().toISOString() });
     }
   };
 
   return (
-    <div 
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onTouchMove={handleMouseMove}
-      onTouchEnd={handleMouseUp}
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
+      onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
     >
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', border: '1px solid rgba(255, 51, 102, 0.4)', textAlign: 'center' }}>
-        <input 
-          type="file" 
-          accept="image/*" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
-          onChange={handleFileChange} 
-        />
-        
-        <div 
+        <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+
+        {/* Avatar */}
+        <div
           onClick={handlePhotoClick}
           onMouseDown={handleMouseDown}
           onTouchStart={handleMouseDown}
-          style={{ 
-            width: '100px', height: '100px', borderRadius: '50%', 
-            background: 'rgba(255, 51, 102, 0.05)', border: '2px solid var(--danger-color)', 
-            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            margin: '0 auto 12px', position: 'relative', cursor: photo ? 'move' : 'pointer',
+          style={{
+            width: '110px', height: '110px', borderRadius: '50%',
+            background: 'rgba(255, 51, 102, 0.05)', border: '2px solid var(--danger-color)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 10px', position: 'relative',
+            cursor: photo ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
             overflow: 'hidden',
-            boxShadow: '0 0 20px rgba(255, 51, 102, 0.2), inset 0 0 10px rgba(0,0,0,0.5)'
+            boxShadow: '0 0 24px rgba(255, 51, 102, 0.25)',
+            userSelect: 'none'
           }}
         >
           {photo ? (
-            <img 
-              src={photo} 
-              alt="Profile" 
-              draggable={false}
-              style={{ 
+            <img
+              src={photo} alt="Profile" draggable={false}
+              style={{
+                width: '100%',
                 height: '100%',
-                width: 'auto',
-                minWidth: '100%',
-                display: 'block',
-                transform: `translate(${photoPos.x}px, ${photoPos.y}px) scale(${photoPos.scale})`,
-                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-                cursor: 'move',
-                touchAction: 'none'
-              }} 
+                objectFit: 'cover',
+                objectPosition: `${objPos.x}% ${objPos.y}%`,
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: 'center',
+                transition: isDragging ? 'none' : 'object-position 0.05s',
+                pointerEvents: 'none',
+                display: 'block'
+              }}
             />
           ) : (
-            <div style={{ opacity: 0.6 }}><User size={48} color="var(--danger-color)" /></div>
-          )}
-          {!photo && (
-            <div style={{ position: 'absolute', bottom: '8px', right: '8px', color: 'white', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
-              <Camera size={18} />
-            </div>
+            <>
+              <div style={{ opacity: 0.5 }}><User size={48} color="var(--danger-color)" /></div>
+              <div style={{ position: 'absolute', bottom: '10px', right: '10px', color: 'rgba(255,255,255,0.6)' }}>
+                <Camera size={16} />
+              </div>
+            </>
           )}
         </div>
+
+        {/* Zoom + hint (only when photo selected) */}
         {photo && (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '0 20px' }}>
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Zoom</span>
-              <input 
-                type="range" 
-                min="1" 
-                max="3" 
-                step="0.1" 
-                value={photoPos.scale} 
-                onChange={handleZoomChange}
-                style={{ flex: 1, accentColor: 'var(--danger-color)', height: '4px' }}
-              />
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Zoom</span>
+              <input type="range" min="80" max="250" step="5" value={zoom}
+                onChange={e => setZoom(Number(e.target.value))}
+                style={{ flex: 1, accentColor: 'var(--danger-color)' }} />
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7 }}>
-              Drag to position photo • <span onClick={() => fileInputRef.current?.click()} style={{ color: 'var(--danger-color)', textDecoration: 'underline', cursor: 'pointer' }}>Change</span>
+              Drag photo to reposition •{' '}
+              <span onClick={() => fileInputRef.current?.click()} style={{ color: 'var(--danger-color)', textDecoration: 'underline', cursor: 'pointer' }}>Change</span>
             </div>
           </div>
         )}
 
-        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: 'var(--text-primary)' }}>Welcome Rider!</h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '32px' }}>Let's set up your profile to start tracking your scooter or motorcycle.</p>
+        <h2 style={{ fontSize: '22px', marginBottom: '6px', color: 'var(--text-primary)' }}>Welcome Rider!</h2>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '24px' }}>Set up your profile before you hit the road.</p>
 
-        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Rider Name</label>
-            <input 
-              required
-              type="text" 
-              placeholder="" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
-            />
+            <input required type="text" placeholder="" value={name} onChange={e => setName(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
           </div>
-
           <div>
             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Phone Number</label>
-            <input 
-              required
-              type="tel" 
-              placeholder="" 
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
-            />
+            <input required type="tel" placeholder="" value={phone} onChange={e => setPhone(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
           </div>
-
           <div>
             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Scooter / Motorcycle Type</label>
-            <input 
-              required
-              type="text" 
-              placeholder="" 
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
-            />
+            <input required type="text" placeholder="" value={vehicleType} onChange={e => setVehicleType(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
           </div>
-
-          <button 
-            type="submit"
-            className="glass-button" 
-            style={{ width: '100%', padding: '16px', borderRadius: '14px', background: 'var(--danger-color)', borderColor: 'transparent', color: 'white', fontWeight: '700', marginTop: '8px' }}
-          >
+          <button type="submit" className="glass-button"
+            disabled={!name.trim() || !phone.trim() || !vehicleType.trim()}
+            style={{
+              width: '100%', padding: '16px', borderRadius: '14px',
+              background: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'rgba(255,51,102,0.3)' : 'var(--danger-color)',
+              borderColor: 'transparent', color: 'white', fontWeight: '700', marginTop: '8px',
+              opacity: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 0.5 : 1,
+              cursor: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease'
+            }}>
             Start My Journey
           </button>
         </form>
@@ -392,12 +364,12 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', animation: 'fadeIn 0.3s ease', backdropFilter: 'blur(12px)', background: 'rgba(0,0,0,0.6)' }}>
-      <div 
-        className="modal-content glass-panel" 
-        onClick={e => e.stopPropagation()} 
-        style={{ 
-          animation: 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)', 
-          background: 'rgba(255, 255, 255, 0.05)', 
+      <div
+        className="modal-content glass-panel"
+        onClick={e => e.stopPropagation()}
+        style={{
+          animation: 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+          background: 'rgba(255, 255, 255, 0.05)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           padding: '24px',
           width: '90%',
@@ -415,18 +387,18 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
         <div style={{ marginBottom: '24px', textAlign: 'left' }}>
           <label style={{ color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '10px', display: 'block', opacity: 0.8 }}>Enter current scooter odometer reading (km)</label>
           <div style={{ position: 'relative' }}>
-            <input 
-              type="number" 
+            <input
+              type="number"
               step="0.1"
-              value={odo} 
+              value={odo}
               onChange={e => setOdo(e.target.value)}
-              style={{ 
-                width: '100%', 
-                padding: '16px', 
-                fontSize: '24px', 
-                fontWeight: '700', 
-                border: '1px solid rgba(255, 255, 255, 0.15)', 
-                background: 'transparent', 
+              style={{
+                width: '100%',
+                padding: '16px',
+                fontSize: '24px',
+                fontWeight: '700',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'transparent',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
                 textAlign: 'center',
@@ -439,21 +411,21 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
             />
           </div>
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', lineHeight: '1.4', textAlign: 'center' }}>
-            Adjust the value to match your scooter's screen <br/>
+            Adjust the value to match your scooter's screen <br />
             <span style={{ color: 'var(--danger-color)', opacity: 0.5 }}>Fuel range will be updated automatically</span>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <button 
-            className="glass-button" 
-            style={{ 
-              width: 'auto', 
+          <button
+            className="glass-button"
+            style={{
+              width: 'auto',
               minWidth: '220px',
-              padding: '14px 32px', 
-              fontWeight: '700', 
-              gap: '12px', 
-              background: 'rgba(255, 0, 0, 0.05)', 
+              padding: '14px 32px',
+              fontWeight: '700',
+              gap: '12px',
+              background: 'rgba(255, 0, 0, 0.05)',
               backdropFilter: 'blur(10px)',
               WebkitBackdropFilter: 'blur(10px)',
               color: '#fff',
@@ -463,7 +435,7 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
               borderRadius: '16px',
               textShadow: '0 1px 2px rgba(0,0,0,0.3)',
               transition: 'all 0.3s ease'
-            }} 
+            }}
             onClick={handleSync}
           >
             <RotateCcw size={18} />
@@ -484,7 +456,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!odo || !inputValue) return alert('Please fill in Odometer and Value.');
-    
+
     let liters = Number(inputValue);
     const price = tracker.settings.fuelPricePerLiter || 14.0;
     if (inputMode === 'currency') {
@@ -544,9 +516,9 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const [alerts, setAlerts] = useState(!!tracker.settings.enableAlerts);
 
   const handleSave = () => {
-    tracker.setSettings({ 
-      ...tracker.settings, 
-      avgConsumption: Number(avg), 
+    tracker.setSettings({
+      ...tracker.settings,
+      avgConsumption: Number(avg),
       tankCapacity: Number(cap),
       fuelPricePerLiter: Number(price),
       enableAlerts: alerts
@@ -574,7 +546,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             <input type="number" step="0.1" className="glass-input" value={price} onChange={e => setPrice(e.target.value)} />
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Current price for Octane 92</div>
           </div>
-          
+
           {/* Auto-start removed as it is now always on by default */}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}>
@@ -583,16 +555,16 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               <label htmlFor="enableAlerts" style={{ color: 'var(--text-primary)', fontWeight: '500', display: 'block' }}>Sound & Vibrate Alert</label>
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Warn when fuel is low</span>
             </div>
-            <button 
-              type="button" 
-              className="glass-button" 
+            <button
+              type="button"
+              className="glass-button"
               style={{ padding: '8px 12px', fontSize: '12px', background: 'rgba(255,255,255,0.05)' }}
               onClick={() => tracker.playWarningSound(true)}
             >
               Test Alarm
             </button>
           </div>
-          
+
           <div style={{ borderTop: '1px solid var(--glass-border)', margin: '12px 0', paddingTop: '24px' }}>
             <button className="glass-button" style={{ width: '100%', borderColor: 'var(--danger-color)', color: 'var(--danger-color)' }} onClick={() => { tracker.resetData(); onClose(); }}>
               <RotateCcw size={18} /> Reset All App Data
