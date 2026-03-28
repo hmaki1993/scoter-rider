@@ -22,11 +22,15 @@ function App() {
       );
     }
 
+    // --- Request Notification Permission ---
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     // --- Update Check Logic ---
     const checkForUpdate = async () => {
       try {
         const CURRENT_VERSION = '1.1.0';
-        // ملاحظة: استبدل هذا الرابط برابط GitHub بتاعك لما ترفعه (مثلاً: https://raw.githubusercontent.com/.../version.json)
         const UPDATE_URL = 'https://raw.githubusercontent.com/hmaki1993/scoter-rider/main/public/version.json';
 
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
@@ -43,7 +47,6 @@ function App() {
       }
     };
 
-    // تشغيل الفحص بعد ثانية من فتح التطبيق
     const timer = setTimeout(checkForUpdate, 1500);
     return () => clearTimeout(timer);
   }, []);
@@ -51,18 +54,17 @@ function App() {
   return (
     <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      {/* Header - App Name small top-left */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
         <div>
-          <h1 className="logo-text" style={{ margin: 0, fontSize: '30px', letterSpacing: '-1.2px' }}>Fuel Tracker</h1>
-          <div className="subtitle-text" style={{ fontSize: '13px', marginTop: '2px', letterSpacing: '0.5px' }}>Premium Intelligence System</div>
+          <h1 className="logo-text" style={{ margin: 0, fontSize: '16px', letterSpacing: '-0.5px', opacity: 0.7 }}>Fuel Tracker</h1>
+          <div className="subtitle-text" style={{ fontSize: '9px', marginTop: '1px', letterSpacing: '0.5px', opacity: 0.5 }}>Premium Intelligence System</div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             className="glass-button"
             style={{
-              padding: '12px',
-              borderRadius: '50%',
+              padding: '12px', borderRadius: '50%',
               background: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
               borderColor: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)',
               transition: 'all 0.3s ease'
@@ -81,8 +83,52 @@ function App() {
         </div>
       </div>
 
+      {/* Welcome Card */}
+      {tracker.userProfile && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '14px',
+          marginBottom: '22px', padding: '12px 20px 12px 14px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,51,102,0.15)',
+          borderRadius: '50px',
+          backdropFilter: 'blur(10px)',
+          width: 'fit-content'
+        }}>
+          <div style={{
+            width: '56px', height: '56px', borderRadius: '50%',
+            overflow: 'hidden', border: '2px solid var(--danger-color)',
+            boxShadow: '0 0 16px rgba(255,51,102,0.35)',
+            flexShrink: 0, background: 'rgba(255,51,102,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            {tracker.userProfile.photoUrl ? (
+              <img
+                src={tracker.userProfile.photoUrl}
+                alt="Rider"
+                style={{
+                  width: '100%', height: '100%', objectFit: 'cover',
+                  objectPosition: tracker.userProfile.photoPosition
+                    ? `${tracker.userProfile.photoPosition.x}% ${tracker.userProfile.photoPosition.y}%`
+                    : '50% 50%',
+                  transform: tracker.userProfile.photoPosition
+                    ? `scale(${(tracker.userProfile.photoPosition.scale || 100) / 100})`
+                    : 'scale(1)',
+                  transformOrigin: 'center'
+                }}
+              />
+            ) : (
+              <User size={26} color="var(--danger-color)" />
+            )}
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '3px', opacity: 0.8 }}>Welcome back 👋</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{tracker.userProfile.name}</div>
+          </div>
+        </div>
+      )}
+
       {/* Centered Content Block */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '20px' }}>
         {/* Main Status Dashboard */}
         <div className="glass-panel" style={{ padding: '20px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
           <div style={{
@@ -450,20 +496,33 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
 function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
   const [odo, setOdo] = useState(tracker.fuelState.lastOdo === 0 ? '' : tracker.fuelState.lastOdo.toFixed(1));
   const [inputValue, setInputValue] = useState('');
-  const [isFullTank, setIsFullTank] = useState(true);
+  const [isFullTank, setIsFullTank] = useState(false);
   const [inputMode, setInputMode] = useState<'liters' | 'currency'>('currency');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!odo || !inputValue) return alert('Please fill in Odometer and Value.');
 
-    let liters = Number(inputValue);
+    // Use last known odo if field is empty
+    const odometerVal = odo ? Number(odo) : tracker.fuelState.lastOdo;
+    if (!odometerVal && odometerVal !== 0) return alert('Please enter the odometer reading.');
+
     const price = tracker.settings.fuelPricePerLiter || 14.0;
-    if (inputMode === 'currency') {
-      liters = Number(inputValue) / price;
+    const tankCap = tracker.settings.tankCapacity || 7.5;
+
+    let liters: number;
+    if (inputValue) {
+      // User entered a value
+      liters = inputMode === 'currency'
+        ? Number(inputValue) / price
+        : Number(inputValue);
+    } else if (isFullTank) {
+      // Full tank checked but no amount → use full tank capacity
+      liters = tankCap;
+    } else {
+      return alert('Please enter the fuel amount or check Full Tank.');
     }
 
-    tracker.addRefuel(Number(odo), liters, undefined, isFullTank);
+    tracker.addRefuel(odometerVal, liters, undefined, isFullTank);
     onClose();
   };
 
