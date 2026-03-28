@@ -10,6 +10,13 @@ export interface FuelSettings {
   enableAlerts: boolean; // Sound/Vibrate on low fuel
 }
 
+export interface UserProfile {
+  name: string;
+  phone: string;
+  photoUrl?: string;
+  registeredAt: string;
+}
+
 export interface FuelState {
   estimatedFuelLiters: number;
   lastOdo: number;
@@ -36,6 +43,10 @@ const DEFAULT_SETTINGS: FuelSettings = {
 };
 
 export const useFuelTracker = () => {
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('scooter_user_profile');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [settings, setSettings] = useState<FuelSettings>(() => {
     const saved = localStorage.getItem('fuel_settings');
     return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -328,6 +339,10 @@ export const useFuelTracker = () => {
 
   // Save to local storage whenever state changes
   useEffect(() => {
+    localStorage.setItem('scooter_user_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  useEffect(() => {
     localStorage.setItem('fuel_settings', JSON.stringify(settings));
   }, [settings]);
 
@@ -397,19 +412,12 @@ export const useFuelTracker = () => {
   /**
    * Manual Odo update (without refueling) just to sync app.
    */
-  const updateCurrentOdo = (currentOdo: number) => {
-    if (currentOdo <= fuelState.lastOdo) return;
-    
-    const distanceDriven = currentOdo - fuelState.lastOdo;
-    const consumed = distanceDriven / settings.avgConsumption;
-    const remaining = Math.max(0, fuelState.estimatedFuelLiters - consumed);
+  const updateCurrentOdo = (odo: number) => {
+    setFuelState(prev => ({ ...prev, lastOdo: odo }));
+  };
 
-    setFuelState({
-      estimatedFuelLiters: remaining,
-      lastOdo: currentOdo,
-      totalGpsDistance: 0 // Reset GPS distance on manual sync
-    });
-    setIsMuted(false); // Enable alerts again after sync
+  const updateUserProfile = (profile: UserProfile) => {
+    setUserProfile(profile);
   };
 
   /**
@@ -431,23 +439,25 @@ export const useFuelTracker = () => {
   const fuelPercentage = Math.min(100, Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100));
 
   return {
-    settings,
-    setSettings,
     fuelState,
+    settings,
+    userProfile,
     logs,
-    addRefuel,
-    updateCurrentOdo,
-    resetData,
-    rangeRemainingKm,
-    runOutOdo,
     isWarning,
     isDanger,
     fuelPercentage,
+    rangeRemainingKm,
+    runOutOdo,
     isTracking,
+    isMuted,
+    setSettings,
+    addRefuel,
+    updateCurrentOdo,
+    updateUserProfile,
     startTracking,
     stopTracking,
-    isMuted,
     setIsMuted,
-    playWarningSound
+    playWarningSound,
+    resetData
   };
 };

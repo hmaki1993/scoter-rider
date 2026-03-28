@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell, BellOff } from 'lucide-react';
+import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell, BellOff, User, Camera } from 'lucide-react';
 import gsap from 'gsap';
 import './index.css';
 
@@ -169,6 +169,12 @@ function App() {
       </div>
 
       {/* MODALS */}
+      {!tracker.userProfile && (
+        <OnboardingModal 
+          onComplete={(profile) => tracker.updateUserProfile(profile)} 
+        />
+      )}
+      
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
@@ -176,6 +182,73 @@ function App() {
     </div>
   );
 }
+
+// Onboarding Modal Component
+const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void }) => {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim() && phone.trim()) {
+      onComplete({
+        name,
+        phone,
+        registeredAt: new Date().toISOString()
+      });
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', border: '1px solid rgba(255, 51, 102, 0.4)', textAlign: 'center' }}>
+        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255, 51, 102, 0.1)', border: '1px solid var(--danger-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', position: 'relative' }}>
+          <User size={40} color="var(--danger-color)" />
+          <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--danger-color)', padding: '6px', borderRadius: '50%' }}>
+            <Camera size={14} color="white" />
+          </div>
+        </div>
+
+        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: 'var(--text-primary)' }}>Welcome Rider!</h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '32px' }}>Let's set up your profile to start tracking your SYM 200cc.</p>
+
+        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Rider Name</label>
+            <input 
+              required
+              type="text" 
+              placeholder="e.g. Ahmed Maki" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Phone Number</label>
+            <input 
+              required
+              type="tel" 
+              placeholder="01xxxxxxxxx" 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }}
+            />
+          </div>
+
+          <button 
+            type="submit"
+            className="glass-button" 
+            style={{ width: '100%', padding: '16px', borderRadius: '14px', background: 'var(--danger-color)', borderColor: 'transparent', color: 'white', fontWeight: '700', marginTop: '12px' }}
+          >
+            Start My Journey
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 // Inline Modal Components for simplicity in this PWA
 const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void }) => {
