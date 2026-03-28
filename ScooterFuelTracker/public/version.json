@@ -1,5 +1,5 @@
 {
-  "version": "1.2.4",
+  "version": "1.2.5",
   "url": "https://scoter-rider.vercel.app/app-debug.apk",
-  "notes": "تم إضافة خاصية الاستمرار في العمل حتى بعد إغلاق التطبيق (Swipe-to-kill fix)."
+  "notes": "تحسين دقة التنبيهات (كل 2 كم) وحل مشكلة الـ GPS الهاردوير."
 }

@@ -231,27 +231,33 @@ export const useFuelTracker = () => {
 
       // 3. Trigger GPS Hardware Toggle (Location Accuracy)
       // This MUST happen after Foreground Location is granted.
-      if (isAndroid) {
-        try {
-          const locAcc = win.cordova?.plugins?.locationAccuracy;
-          if (locAcc) {
-            await new Promise((resolve) => {
+      const checkLocationAccuracy = async () => {
+        if (isAndroid) {
+          try {
+            const locAcc = win.cordova?.plugins?.locationAccuracy;
+            if (locAcc) {
               locAcc.canRequest((canRequest: boolean) => {
                 if (canRequest) {
                   locAcc.request(locAcc.REQUEST_PRIORITY_HIGH_ACCURACY,
-                    () => { console.log("GPS Hardware Enabled"); resolve(true); },
-                    (err: any) => { console.warn("GPS Toggle Refused", err); resolve(false); }
+                    () => console.log("GPS Hardware Enabled"),
+                    (err: any) => console.warn("GPS Toggle Refused", err)
                   );
-                } else {
-                  resolve(true);
                 }
               });
-            });
+            } else {
+              // Plugin not yet available, retry in 1s
+              console.log("LocationAccuracy plugin not found, retrying...");
+              setTimeout(checkLocationAccuracy, 2000);
+            }
+          } catch (err) {
+            console.warn('Location accuracy check failed', err);
           }
-        } catch (err) {
-          console.warn('Location accuracy check failed', err);
         }
-      }
+      };
+
+      // Call it once permission is granted
+      checkLocationAccuracy();
+
 
       // 4. Request Background Location (Sequenced / Android 10+)
       if (isAndroid) {
@@ -373,18 +379,22 @@ export const useFuelTracker = () => {
   // Global Warning & Notification logic: triggers on any fuel change (GPS or Manual Sync)
   useEffect(() => {
     const rangeRemaining = fuelState.estimatedFuelLiters * settings.avgConsumption;
-    const possibleSteps = [15, 13, 11, 9, 7, 5, 3, 1];
+    const possibleSteps = [15.1, 13.1, 11.1, 9.1, 7.1, 5.1, 3.1, 1.1]; // Add small offset to trigger "at" the mark
+    
+    // Find the current bucket. E.g. if range is 12.5, we are in the "13" bucket.
+    // We only notify if our lastNotifiedStep was higher than the current bucket.
     const activeStep = possibleSteps.find(s => rangeRemaining <= s && lastNotifiedStepRef.current > s);
 
     if (activeStep) {
-      if (!isMuted) {
+      const displayStep = Math.floor(activeStep); // 15, 13, 11...
+      if (!isMuted && displayStep > 0) {
         import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
           LocalNotifications.schedule({
             notifications: [
               {
                 title: "تحذير بنزين منخفض! ⚠️",
-                body: `باقي لك ${activeStep} كيلو بس والبنزين يخلص، خلي بالك!`,
-                id: activeStep, // Unique ID per step
+                body: `باقي لك ${displayStep} كيلو بس والبنزين يخلص، خلي بالك!`,
+                id: displayStep, // Unique ID per step
                 schedule: { at: new Date(Date.now() + 1000) },
                 sound: 'alarm.wav',
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
@@ -399,7 +409,7 @@ export const useFuelTracker = () => {
       }
       lastNotifiedStepRef.current = activeStep;
     } else if (
-      rangeRemaining > 15 && 
+      rangeRemaining > 15.1 && 
       rangeRemaining <= settings.warningThreshold && 
       lastNotifiedStepRef.current > settings.warningThreshold
     ) {
@@ -407,6 +417,7 @@ export const useFuelTracker = () => {
       lastNotifiedStepRef.current = settings.warningThreshold; // Prevent standard double warnings
     }
   }, [fuelState.estimatedFuelLiters, settings.avgConsumption, settings.warningThreshold, isMuted]);
+
 
   /**
    * Refuel action: user adds fuel at a specific odometer reading.
