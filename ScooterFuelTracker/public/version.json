@@ -1,5 +1,5 @@
 {
-  "version": "1.2.2",
+  "version": "1.2.3",
   "url": "https://scoter-rider.vercel.app/app-debug.apk",
-  "notes": "تم إضافة رسالة توضيحية لطلب إذن التنبيهات في أندرويد 13+."
+  "notes": "إصلاح نهائي لتصاريح الموقع في الخلفية (Allow all the time)."
 }

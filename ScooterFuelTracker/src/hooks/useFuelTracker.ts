@@ -255,17 +255,14 @@ export const useFuelTracker = () => {
 
       // 4. Request Background Location (Sequenced / Android 10+)
       if (isAndroid) {
-        const status = await Geolocation.checkPermissions();
-        // andoid 10+ requires separate background permission
-        // If we have foreground (coarse/fine) but NOT 'always' (location !== granted in some contexts or specifically checking background)
-        // In Capacitor, 'location' usually maps to the most state.
-        // We'll check if the user has opted for "While using" and guide them to "Always".
-        if (status.location !== 'granted') {
-          const message = "عشان التطبيق يشتغل تمام في الخلفية وأنت قافل الشاشة، لازم تختار 'Allow all the time' (السماح طوال الوقت) في الشاشة الجاية.";
-          alert(message);
-          await Geolocation.requestPermissions();
-        }
+        // To accurately check for "Allow all the time", we often need to just try requesting it
+        // or show a manual prompt because Capacitor doesn't distinguish 'Always' vs 'While using' easily.
+        const message = "عشان التطبيق يشتغل تمام في الخلفية ويحسب المسافة وأنت قافل الشاشة، لازم تتأكد إنك مختار 'Allow all the time' (السماح طوال الوقت) في إعدادات الموقع.";
+        alert(message);
+        await Geolocation.requestPermissions();
+        // This will trigger the system to show the "Allow all the time" option or take them to Settings.
       }
+
 
 
 
