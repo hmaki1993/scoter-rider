@@ -37,9 +37,9 @@ function App() {
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
         const data = await response.json();
 
-        if (data.version && data.version !== CURRENT_VERSION) {
+        if (data.version && data.version.trim() !== CURRENT_VERSION.trim()) {
           setUpdateInfo({
-            version: data.version,
+            version: data.version.trim(),
             url: data.url,
             notes: data.notes || ''
           });
