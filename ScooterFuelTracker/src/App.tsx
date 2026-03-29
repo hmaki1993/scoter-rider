@@ -879,13 +879,13 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
                 <input 
                   type="range" min="0" max="100" 
                   value={objPos.x} 
-                  onChange={e => setObjPos(p => ({ ...p, x: Number(e.target.value) }))}
+                  onChange={e => setObjPos((p: any) => ({ ...p, x: Number(e.target.value) }))}
                   style={{ width: '40px', accentColor: 'var(--accent-color)' }}
                 />
                 <input 
                   type="range" min="0" max="100" 
                   value={objPos.y} 
-                  onChange={e => setObjPos(p => ({ ...p, y: Number(e.target.value) }))}
+                  onChange={e => setObjPos((p: any) => ({ ...p, y: Number(e.target.value) }))}
                   style={{ width: '40px', accentColor: 'var(--accent-color)' }}
                 />
               </div>
