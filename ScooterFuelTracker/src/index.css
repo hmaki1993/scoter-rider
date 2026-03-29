@@ -108,10 +108,10 @@ body {
   width: 100%;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 10px 14px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: 15px;
   outline: none;
   transition: all 0.3s ease-out;
 }
