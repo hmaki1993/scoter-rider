@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
 import { App } from '@capacitor/app';
+import { translations } from '../translations';
 
 export interface FuelSettings {
   tankCapacity: number; // Liters
@@ -9,6 +10,7 @@ export interface FuelSettings {
   fuelPricePerLiter: number; // EGP per Liter
   autoTrack: boolean; // Automatically start GPS on app load
   enableAlerts: boolean; // Sound/Vibrate on low fuel
+  language: 'en' | 'ar';
 }
 
 export interface UserProfile {
@@ -43,6 +45,7 @@ const DEFAULT_SETTINGS: FuelSettings = {
   fuelPricePerLiter: 22.25,
   autoTrack: false,
   enableAlerts: true,
+  language: 'ar',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,9 +82,17 @@ export const useFuelTracker = () => {
   });
 
   const [isTracking, setIsTracking] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [trackingError, setTrackingError] = useState<{ message: string; action?: 'openGPS' | 'openSettings' } | null>(null);
   const [currentSpeed, setCurrentSpeed] = useState(0); // KM/H
   const [isMuted, setIsMuted] = useState(false);
-  const lastPositionRef = useRef<any>(null);
+  const [gpsUpdateCount, setGpsUpdateCount] = useState(0);
+  const [lastGpsTime, setLastGpsTime] = useState<string | null>(null);
+  const lastPositionRef = useRef<any>(() => {
+    // ── Restore last GPS position from localStorage (survives app kill) ──
+    const saved = localStorage.getItem('last_gps_position');
+    return saved ? JSON.parse(saved) : null;
+  });
   const watchId = useRef<string | null>(null);
   const wakeLock = useRef<any>(null);
   const lastNotifiedStepRef = useRef<number>(999);
@@ -92,12 +103,13 @@ export const useFuelTracker = () => {
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
 
+        const lang = (settings.language in translations) ? settings.language : 'ar';
         await LocalNotifications.registerActionTypes({
           types: [{
             id: 'FUEL_ALARM_ACTIONS',
             actions: [{
               id: 'silence',
-              title: 'إيقاف 🔇',
+              title: (translations[lang] as any)?.stopNotif || 'Stop',
               foreground: false,
             }]
           }]
@@ -193,123 +205,120 @@ export const useFuelTracker = () => {
       return;
     }
 
-    if (!silent) {
+    if (!silent) setIsStarting(true);
+
+    try {
       const isWeb = (window as any).Capacitor?.getPlatform() === 'web';
 
       // ────────────────────────────────────────────────────────────────────
-      // STEP 1: Notifications permission (Android only)
+      // STEP 1: Interactive Permission Checks (Only if NOT silent)
       // ────────────────────────────────────────────────────────────────────
-      if (isAndroid && !isWeb) {
-        try {
-          const { LocalNotifications } = await import('@capacitor/local-notifications');
-          const perm = await LocalNotifications.checkPermissions();
-          if (perm.display !== 'granted') {
-            const result = await LocalNotifications.requestPermissions();
-            if (result.display !== 'granted') {
-              alert('بدون إذن التنبيهات التطبيق قد يتوقف في الخلفية. فعّله من الإعدادات.');
-            }
-          }
-        } catch (e) {
-          console.warn('[FuelTracker] Notification permission error:', e);
+      if (!silent && !isWeb) {
+        // Notifications (Android only)
+        if (isAndroid) {
+          try {
+            const { LocalNotifications } = await import('@capacitor/local-notifications');
+            const perm = await LocalNotifications.checkPermissions();
+            if (perm.display !== 'granted') await LocalNotifications.requestPermissions();
+          } catch (e) { console.warn('[FuelTracker] Notification permission error:', e); }
         }
-      }
 
-      // ────────────────────────────────────────────────────────────────────
-      // STEP 2: Location permission (Skip on Web)
-      // ────────────────────────────────────────────────────────────────────
-      if (!isWeb) {
+        // ── 1. Check GPS Hardware First ──
+        // Capacitor Geolocation throws an error if we check tracking permissions while GPS is physically off.
+        // ── 1. Check GPS Hardware First ──
+        // Capacitor Geolocation throws an error if we check tracking permissions while GPS is physically off.
+        if (isAndroid) {
+          try {
+            const { registerPlugin } = await import('@capacitor/core');
+            const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
+            const gpsStatus = await AlarmPlugin.checkGPS();
+            if (!gpsStatus || !gpsStatus.enabled) {
+              setTrackingError({ message: translations[settings.language].gpsDisabledErrorInner, action: 'openGPS' });
+              localStorage.setItem('resume_tracking_on_gps', 'true');
+              try { await AlarmPlugin.openLocationSettings(); } catch { /* ignore */ }
+              setIsStarting(false);
+              return;
+            }
+          } catch (gpsErr) { console.warn('[FuelTracker] Instant GPS check failed:', gpsErr); }
+        }
+
+        // ── 2. Location Permissions ──
         try {
           const locPerm = await Geolocation.checkPermissions();
           if (locPerm.location !== 'granted') {
             const result = await Geolocation.requestPermissions();
             if (result.location !== 'granted') {
-              alert('لازم تسمح بإذن الموقع عشان التطبيق يشتغل!');
+              setTrackingError({ message: translations[settings.language].locPermissionReqInner, action: 'openSettings' });
+              setIsStarting(false);
               return;
             }
           }
-        } catch (e) {
-          console.warn('[FuelTracker] Location permission error:', e);
-          return;
-        }
-
-        // ────────────────────────────────────────────────────────────────────
-        // STEP 3: Test if GPS hardware switch is actually ON
-        // ────────────────────────────────────────────────────────────────────
-        try {
-          await Geolocation.getCurrentPosition({
-            enableHighAccuracy: true,
-            timeout: 6000,
-            maximumAge: 0,
-          });
-          // If we reach here, GPS is ON ✅
-        } catch (gpsErr: any) {
-          // GPS hardware is OFF → open Android Location Settings
-          const msg =
-            '📍 الـ GPS مقفول!\n\n' +
-            'لازم تفتح الموقع (Location) من إعدادات الموبايل واختار "دقة عالية" أو "عالية الدقة فقط".\n\n' +
-            'هيفتحلك شاشة الإعدادات دلوقتي، افتح الموقع وارجع للتطبيق.';
-          alert(msg);
-
-          // Open Android Location Settings natively
-          try {
-            const { registerPlugin } = await import('@capacitor/core');
-            const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
-            await AlarmPlugin.openLocationSettings();
-          } catch (settingsErr) {
-            console.warn('[FuelTracker] Could not open location settings:', settingsErr);
+        } catch (permErr: any) {
+          const msg = permErr?.message || String(permErr);
+          // If the plugin still complains about GPS OFF
+          if (msg.includes('Location services are not enabled')) {
+             setTrackingError({ message: translations[settings.language].gpsDisabledErrorInner, action: 'openGPS' });
+          } else {
+             setTrackingError({ message: translations[settings.language].locPermissionReqInner + msg });
           }
-
-          // Set flag so when user comes back from settings, auto-resume tracking
-          localStorage.setItem('resume_tracking_on_gps', 'true');
+          setIsStarting(false);
           return;
         }
       }
 
-    } else {
-      // ═══ SILENT MODE: only run if permissions & GPS already confirmed ═══
-      if (isAndroid) {
-        try {
-          const { LocalNotifications } = await import('@capacitor/local-notifications');
-          const notifPerm = await LocalNotifications.checkPermissions();
-          const locPerm = await Geolocation.checkPermissions();
-          if (notifPerm.display !== 'granted' || locPerm.location !== 'granted') {
-            console.warn('[FuelTracker] Silent start aborted — permissions not ready');
-            localStorage.setItem('was_tracking', 'false');
-            return;
-          }
-          // Also test GPS hardware quickly (3s timeout for silent mode)
-          await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 });
-        } catch (e) {
-          console.warn('[FuelTracker] Silent start aborted — GPS unavailable');
+      // ────────────────────────────────────────────────────────────────────
+      // STEP 2: Silent Mode Guard (Only if silent=true)
+      // ────────────────────────────────────────────────────────────────────
+      if (silent && isAndroid) {
+        const locPerm = await Geolocation.checkPermissions();
+        if (locPerm.location !== 'granted') {
           localStorage.setItem('was_tracking', 'false');
           return;
         }
       }
+    } catch (err: any) {
+      console.error('[FuelTracker] Start logic failed:', err);
+      setTrackingError({ 
+        message: translations[settings.language].setupError + (err?.message || String(err)),
+        action: undefined
+      });
+      setIsStarting(false);
+      return;
     }
 
-    // ── Mark as tracking ─────────────────────────────────────────────────
+    // ── STEP 3: Initiate Tracking ────────────────────────────────────────
     localStorage.setItem('was_tracking', 'true');
     localStorage.removeItem('resume_tracking_on_gps');
+
+    // Restore last position if available
+    const savedPos = localStorage.getItem('last_gps_position');
+    if (savedPos && !lastPositionRef.current) {
+      try { lastPositionRef.current = JSON.parse(savedPos); } catch { /* ignore */ }
+    }
+
     setIsTracking(true);
+    setIsStarting(false);
+    setGpsUpdateCount(0);
+    setLastGpsTime(null);
 
     // ── Start BackgroundGeolocation Watcher ──────────────────────────────
     try {
       const BgGeo = await getBGGeo();
       const id = await BgGeo.addWatcher(
         {
-          backgroundMessage: 'متتبع البنزين شغال في الخلفية...',
-          backgroundTitle: 'جاري تتبع المشوار 🛵،',
-          // IMPORTANT: false here — we handled permissions manually above.
-          // Setting true causes the native plugin to re-request "Always allow"
-          // which redirects the user to Settings and Android kills our service
-          // (GPS icons disappear) because bg location isn't granted yet.
-          requestPermissions: false,
+          backgroundMessage: translations[settings.language].bgMsg,
+          backgroundTitle: translations[settings.language].bgTitle,
+          requestPermissions: true, // Prompts for "Always Allow" if needed
           stale: false,
-          distanceFilter: 10,
+          distanceFilter: 10, // Must move 10m to trigger an update (saves battery)
         },
         (pos: any, err: any) => {
           if (err) { console.error('[FuelTracker] GPS error:', err); return; }
           if (!pos) return;
+
+          // ── Update diagnostics ──
+          setGpsUpdateCount(prev => prev + 1);
+          setLastGpsTime(new Date().toLocaleTimeString());
 
           // ── Update Current Speed (m/s to KM/H) ───────────────────────────
           if (pos.speed !== undefined && pos.speed !== null) {
@@ -319,6 +328,10 @@ export const useFuelTracker = () => {
             setCurrentSpeed(0);
           }
 
+          // ── Persist latest position so it survives app kill ───────────────
+          const posToSave = { latitude: pos.latitude, longitude: pos.longitude, timestamp: pos.time ?? Date.now() };
+          localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
+
           setFuelState(prev => {
             if (lastPositionRef.current) {
               const dist = calculateDistance(
@@ -327,7 +340,7 @@ export const useFuelTracker = () => {
               );
               if (dist > 0.01) {
                 const consumed = dist / settings.avgConsumption;
-                lastPositionRef.current = pos;
+                lastPositionRef.current = posToSave;
                 return {
                   ...prev,
                   estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
@@ -337,7 +350,7 @@ export const useFuelTracker = () => {
               }
               return prev;
             }
-            lastPositionRef.current = pos;
+            lastPositionRef.current = posToSave;
             return prev;
           });
         }
@@ -352,11 +365,8 @@ export const useFuelTracker = () => {
         localStorage.setItem('bg_location_prompted', 'true');
         setTimeout(() => {
           const shouldOpen = confirm(
-            '📍 خطوة مهمة واحدة لاستمرار التتبع!\n\n' +
-            'لازم تسمح للتطبيق يستخدم الموقع "طوال الوقت" (Allow all the time)\n' +
-            'عشان يفضل يحسب المسافة حتى لو أغلقت التطبيق خالص.\n\n' +
-            'دوس OK وهيفتحلك إعدادات التطبيق، اختار:\n' +
-            'Location → Allow all the time'
+            translations[settings.language].bgLocationPromptTitle + '\n\n' +
+            translations[settings.language].bgLocationPromptBody
           );
           if (shouldOpen) {
             import('@capacitor/core').then(({ registerPlugin }) => {
@@ -372,12 +382,12 @@ export const useFuelTracker = () => {
       }
     } catch (geoErr: any) {
       console.error('[FuelTracker] BackgroundGeolocation failed:', geoErr);
-      // Surface the exact error to help debug:
-      alert(
-        'خطأ في تشغيل الـ GPS:\n' + (geoErr.message || String(geoErr)) +
-        '\n\nتأكد إن إذن الموقع مفعّل من الإعدادات واختار "السماح طوال الوقت".'
-      );
+      const lang = (settings.language in translations) ? settings.language : 'ar';
+      setTrackingError({ 
+        message: ((translations[lang] as any)?.bgTrackingError || 'Error: ') + (geoErr?.message || String(geoErr))
+      });
       setIsTracking(false);
+      setIsStarting(false);
       localStorage.setItem('was_tracking', 'false');
       return;
     }
@@ -390,9 +400,10 @@ export const useFuelTracker = () => {
       const cordova = (window as any).cordova;
       if (cordova?.plugins?.backgroundMode) {
         const bm = cordova.plugins.backgroundMode;
+        const lang = (settings.language in translations) ? settings.language : 'ar';
         bm.setDefaults({
-          title: 'متتبع مشاوير سيم',
-          text: 'التتبع شغال ومحمي من الإغلاق...',
+          title: (translations[lang] as any)?.bgStatusTitle,
+          text: (translations[lang] as any)?.bgStatusText,
           color: 'F14F4D',
           resume: true,
           hidden: false,
@@ -414,10 +425,11 @@ export const useFuelTracker = () => {
         // GPS unavailable — notify user
         try {
           const { LocalNotifications } = await import('@capacitor/local-notifications');
+          const lang = (settings.language in translations) ? settings.language : 'ar';
           await LocalNotifications.schedule({
             notifications: [{
-              title: '⚠️ الـ GPS مقفول!',
-              body: 'افتح الـ GPS عشان يكمل التتبع.',
+              title: (translations[lang] as any)?.gpsOffTitle,
+              body: (translations[lang] as any)?.gpsOffBody,
               id: 9999,
               schedule: { at: new Date(Date.now() + 500) },
               channelId: 'fuel_alerts',
@@ -436,6 +448,8 @@ export const useFuelTracker = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   const stopTracking = async () => {
     localStorage.setItem('was_tracking', 'false');
+    // Clear saved position when user explicitly stops tracking
+    localStorage.removeItem('last_gps_position');
 
     if (watchId.current !== null) {
       try {
@@ -512,16 +526,22 @@ export const useFuelTracker = () => {
     if (range <= 0) return;
 
     const steps = [15.1, 13.1, 11.1, 9.1, 7.1, 5.1, 3.1, 1.1];
-    const hit = steps.find(s => range <= s && lastNotifiedStepRef.current > s);
+    // Find ALL crossed steps and take the most recent (last one in list that is >= range)
+    const crossedSteps = steps.filter(s => range <= s && lastNotifiedStepRef.current > s);
+    const hit = crossedSteps[crossedSteps.length - 1]; // Get the 'deepest' step crossed
+
     if (hit) {
-      const display = Math.floor(hit);
-      if (!isMuted && display > 0) {
+      const display = range.toFixed(1); // Use ACTUAL range for dynamic number in notification
+      if (!isMuted && range <= 15.1) {
+        const lang = (settings.language in translations) ? settings.language : 'ar';
         import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
           LocalNotifications.schedule({
             notifications: [{
-              title: 'تحذير بنزين منخفض! ⚠️',
-              body: `باقي لك ${display} كيلو بس والبنزين يخلص، خلي بالك!`,
-              id: display,
+              title: (translations[lang] as any)?.lowFuelAlertTitle,
+              body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
+                ? (translations[lang] as any).lowFuelAlertBody(display) 
+                : display,
+              id: Math.floor(hit * 10), // Unique ID based on step
               schedule: { at: new Date(Date.now() + 1000) },
               sound: 'alarm.wav',
               actionTypeId: 'FUEL_ALARM_ACTIONS',
@@ -584,12 +604,27 @@ export const useFuelTracker = () => {
   const requestAllPermissions = async () => {
     if (!isAndroidPlatform()) return;
     try {
+      // ── Step 1: Notifications ──────────────────────────────────────────────
       const { LocalNotifications } = await import('@capacitor/local-notifications');
       const notifPerm = await LocalNotifications.checkPermissions();
-      if (notifPerm.display !== 'granted') await LocalNotifications.requestPermissions();
+      console.log('[FuelTracker] Notification permission status:', notifPerm.display);
+      if (notifPerm.display !== 'granted') {
+        const result = await LocalNotifications.requestPermissions();
+        console.log('[FuelTracker] Notification permission result:', result.display);
+      }
 
+      // ── Step 2: Fine Location (GPS) ────────────────────────────────────────
+      // Must specify permissions array to trigger the actual system dialog
       const locPerm = await Geolocation.checkPermissions();
-      if (locPerm.location !== 'granted') await Geolocation.requestPermissions();
+      console.log('[FuelTracker] Location permission status:', locPerm.location);
+      if (locPerm.location !== 'granted') {
+        // Explicitly request fine + coarse location
+        const locResult = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
+        console.log('[FuelTracker] Location permission result:', locResult.location);
+        if (locResult.location !== 'granted') {
+          console.warn('[FuelTracker] GPS permission was not granted by user');
+        }
+      }
       // Background location is handled by BackgroundGeolocation native plugin when tracking starts
     } catch (e) {
       console.warn('[FuelTracker] requestAllPermissions error:', e);
@@ -617,7 +652,9 @@ export const useFuelTracker = () => {
   return {
     fuelState, settings, userProfile, logs,
     isWarning, isDanger, fuelPercentage, rangeRemainingKm, runOutOdo,
-    isTracking, isMuted, currentSpeed,
+    isTracking, isStarting, isMuted, currentSpeed,
+    trackingError, clearTrackingError: () => setTrackingError(null),
+    gpsUpdateCount, lastGpsTime,
     setSettings, addRefuel, updateCurrentOdo, updateUserProfile,
     startTracking, stopTracking, setIsMuted, playWarningSound,
     resetData, requestAllPermissions, setCurrentSpeed

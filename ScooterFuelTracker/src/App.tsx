@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell, BellOff, User, Camera, Check } from 'lucide-react';
+import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell, BellOff, User, Camera, Smartphone } from 'lucide-react';
+import { translations } from './translations';
 import gsap from 'gsap';
 import './index.css';
 
 function App() {
   const tracker = useFuelTracker();
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language : 'ar';
+  const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
+  const tFunc = (key: string, val: string): string => {
+    const fn = (translations[lang] as any)?.[key];
+    return typeof fn === 'function' ? fn(val) : "";
+  };
   const [showRefuel, setShowRefuel] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -51,30 +58,85 @@ function App() {
   return (
     <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
+      {/* Top Left Language Toggle */}
+      <div style={{ alignSelf: 'flex-start', marginBottom: '16px', zIndex: 10 }}>
+        <div style={{ 
+          display: 'flex', 
+          background: 'rgba(255,255,255,0.03)', 
+          border: '1px solid rgba(255,255,255,0.08)', 
+          borderRadius: '12px', 
+          padding: '2px',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)'
+        }}>
+          <button 
+            type="button"
+            onClick={() => tracker.setSettings({ ...tracker.settings, language: 'ar' })}
+            style={{ 
+              padding: '4px 12px', 
+              borderRadius: '8px', 
+              border: 'none',
+              background: tracker.settings.language === 'ar' ? 'rgba(0, 240, 255, 0.15)' : 'transparent', 
+              color: tracker.settings.language === 'ar' ? 'var(--accent-color)' : 'var(--text-secondary)', 
+              fontSize: '10px', 
+              fontWeight: '900', 
+              transition: 'all 0.3s ease', 
+              cursor: 'pointer'
+            }}
+          >
+            AR
+          </button>
+          <button 
+            type="button"
+            onClick={() => tracker.setSettings({ ...tracker.settings, language: 'en' })}
+            style={{ 
+              padding: '4px 12px', 
+              borderRadius: '8px', 
+              border: 'none',
+              background: tracker.settings.language === 'en' ? 'rgba(0, 240, 255, 0.15)' : 'transparent', 
+              color: tracker.settings.language === 'en' ? 'var(--accent-color)' : 'var(--text-secondary)', 
+              fontSize: '10px', 
+              fontWeight: '900', 
+              transition: 'all 0.3s ease', 
+              cursor: 'pointer'
+            }}
+          >
+            EN
+          </button>
+        </div>
+      </div>
+
       {/* Header - App Name small top-left */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
         <div>
-          <h1 className="logo-text" style={{ margin: 0, fontSize: '24px', letterSpacing: '-1px', opacity: 0.9 }}>Fuel Tracker</h1>
-          <div className="subtitle-text" style={{ fontSize: '11px', marginTop: '2px', letterSpacing: '0.5px', opacity: 0.7 }}>Premium Intelligence System</div>
+          <h1 className="logo-text" style={{ margin: 0, fontSize: '24px', letterSpacing: '-1px', opacity: 0.9 }}>{t('appName')}</h1>
+          <div className="subtitle-text" style={{ fontSize: '11px', marginTop: '2px', letterSpacing: '0.5px', opacity: 0.9 }}>{t('premiumSystem')}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {/* Tracking Status Badge */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '5px',
-            padding: '5px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700',
-            background: tracker.isTracking ? 'rgba(0, 240, 100, 0.1)' : 'rgba(255,255,255,0.04)',
-            border: tracker.isTracking ? '1px solid rgba(0, 240, 100, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-            color: tracker.isTracking ? '#00f064' : 'rgba(255,255,255,0.3)',
-            letterSpacing: '0.5px'
-          }}>
+          {/* Tracking Status Badge (Now Clickable) */}
+          <button 
+            onClick={() => {
+              if (tracker.isTracking) tracker.stopTracking();
+              else tracker.startTracking(false);
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700',
+              background: tracker.isTracking ? 'rgba(0, 240, 100, 0.1)' : 'rgba(255,255,255,0.04)',
+              border: tracker.isTracking ? '1px solid rgba(0, 240, 100, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+              color: tracker.isTracking ? '#00f064' : 'rgba(255,255,255,0.3)',
+              letterSpacing: '0.5px',
+              cursor: 'pointer'
+            }}
+          >
             <div style={{
               width: '6px', height: '6px', borderRadius: '50%',
               background: tracker.isTracking ? '#00f064' : 'rgba(255,255,255,0.2)',
               boxShadow: tracker.isTracking ? '0 0 6px #00f064' : 'none',
               animation: tracker.isTracking ? 'pulse 1.5s infinite' : 'none'
             }} />
-            {tracker.isTracking ? 'LIVE' : 'PAUSED'}
-          </div>
+            {tracker.isTracking ? t('live') : t('paused')}
+          </button>
           <button
             className="glass-button"
             style={{
@@ -107,7 +169,7 @@ function App() {
           width: 'fit-content'
         }}>
           <div style={{
-            width: '48px', height: '48px', borderRadius: '11px',
+            width: '48px', height: '48px', borderRadius: '12px',
             overflow: 'hidden', border: '1.5px solid var(--accent-color)',
             boxShadow: '0 0 8px rgba(0, 240, 255, 0.2)',
             flexShrink: 0, background: 'rgba(0, 240, 255, 0.05)',
@@ -118,12 +180,9 @@ function App() {
                 src={tracker.userProfile.photoUrl}
                 alt="Rider"
                 style={{
-                  width: '100%', height: '100%', objectFit: 'cover',
-                  objectPosition: tracker.userProfile.photoPosition
-                    ? `${tracker.userProfile.photoPosition.x}% ${tracker.userProfile.photoPosition.y}%`
-                    : '50% 50%',
+                  width: '100%', height: '100%', objectFit: 'contain', background: '#000',
                   transform: tracker.userProfile.photoPosition
-                    ? `scale(${(tracker.userProfile.photoPosition.scale || 100) / 100})`
+                    ? `translate(${(tracker.userProfile.photoPosition.x || 0) * 0.48}px, ${(tracker.userProfile.photoPosition.y || 0) * 0.48}px) scale(${(tracker.userProfile.photoPosition.scale || 100) / 100})`
                     : 'scale(1)',
                   transformOrigin: 'center'
                 }}
@@ -133,7 +192,7 @@ function App() {
             )}
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '3px', opacity: 0.8 }}>Welcome back 👋</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '3px', opacity: 0.8 }}>{t('welcomeBack')}</div>
             <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{tracker.userProfile.name}</div>
           </div>
         </div>
@@ -207,7 +266,19 @@ function App() {
                   <div style={{ fontSize: '28px', fontWeight: '900', color: '#fff', textShadow: '0 0 10px rgba(0, 240, 255, 0.3)', lineHeight: '1' }}>
                     {tracker.currentSpeed || 0}
                   </div>
-                  <div style={{ fontSize: '8px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>KM/H</div>
+                  <div style={{ fontSize: '8px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{t('kmh')}</div>
+                </div>
+              </div>
+
+              {/* Diagnostic Panel for GPS Fixes */}
+              <div style={{ 
+                marginTop: '12px', background: 'rgba(255,255,255,0.02)', 
+                border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '8px 16px',
+                display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', width: '100%' }}>
+                  <span>{t('satelliteFixes')}: <strong style={{color:'var(--accent-color)'}}>{tracker.gpsUpdateCount}</strong></span>
+                  <span>{t('lastFix')}: <strong style={{color:'var(--accent-color)'}}>{tracker.lastGpsTime || '--:--'}</strong></span>
                 </div>
               </div>
             </div>
@@ -223,18 +294,18 @@ function App() {
                 animation: 'pulse 1.5s infinite'
               }}>
                 <AlertTriangle size={12} color="var(--danger-color)" />
-                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--danger-color)' }}>LOW FUEL</span>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--danger-color)' }}>{t('lowFuel')}</span>
               </div>
             )}
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', opacity: 0.5 }}>
-              Estimated Range
+              {t('estimatedRange')}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '3px', marginBottom: '16px' }}>
               <span style={{ fontSize: '46px', fontWeight: '800', lineHeight: '1', color: tracker.isDanger ? 'var(--danger-color)' : 'var(--text-primary)', textShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
                 {Math.max(0, tracker.rangeRemainingKm).toFixed(1)}
               </span>
-              <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '8px' }}>km</span>
+              <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '8px' }}>{t('kmRemaining')}</span>
             </div>
 
             {/* Progress Bar - Compact */}
@@ -251,10 +322,12 @@ function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '500' }}>
                 <Droplets size={14} />
-                <span>{tracker.fuelState.estimatedFuelLiters.toFixed(1)} L left</span>
+                <span>
+                  {tFunc('litersLeft', tracker.fuelState.estimatedFuelLiters.toFixed(1))}
+                </span>
               </div>
               <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '500' }}>
-                Empty at: <span style={{ color: 'var(--text-primary)', fontWeight: '800' }}>{(tracker.fuelState.lastOdo + tracker.rangeRemainingKm).toFixed(1)}</span> km
+                {t('emptyAt')} <span style={{ color: 'var(--text-primary)', fontWeight: '800' }}>{(tracker.fuelState.lastOdo + tracker.rangeRemainingKm).toFixed(1)}</span> {t('kmRemaining')}
               </div>
             </div>
           </div>
@@ -263,41 +336,105 @@ function App() {
 
         {/* Start Tracking Prompt (Centered small) */}
         {!tracker.isTracking && (
-          <div 
-            className="glass-panel" 
-            style={{ 
-              padding: '12px 20px', 
-              width: 'fit-content',
-              margin: '0 auto',
-              background: 'rgba(255, 255, 255, 0.01)', 
-              border: '1px solid rgba(0, 240, 255, 0.15)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-              alignItems: 'center',
-              textAlign: 'center',
-              borderRadius: '16px'
-            }}
-          >
-            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7, marginBottom: '2px' }}>
-              GPS tracking required for speedometer.
-            </div>
-            <button 
-              className="glass-button" 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+            <div 
+              className="glass-panel" 
               style={{ 
-                background: 'rgba(0, 240, 255, 0.05)', 
-                border: '1px solid var(--accent-color)',
-                color: 'var(--accent-color)',
-                fontWeight: '700',
-                padding: '6px 16px',
-                fontSize: '11px',
-                borderRadius: '20px',
-                textTransform: 'uppercase'
+                padding: '12px 20px', 
+                width: 'fit-content',
+                margin: '0 auto',
+                background: 'rgba(255, 255, 255, 0.01)', 
+                border: '1px solid rgba(0, 240, 255, 0.15)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                alignItems: 'center',
+                textAlign: 'center',
+                borderRadius: '16px'
               }}
-              onClick={() => tracker.startTracking(false)}
             >
-              Start Tracking Now
-            </button>
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7, marginBottom: '2px' }}>
+                {tracker.isStarting ? t('activatingGps') : t('gpsRequired')}
+              </div>
+              <button 
+                className="glass-button" 
+                disabled={tracker.isStarting}
+                style={{ 
+                  background: tracker.isStarting ? 'rgba(0, 240, 255, 0.02)' : 'rgba(0, 240, 255, 0.05)', 
+                  border: '1px solid var(--accent-color)',
+                  color: 'var(--accent-color)',
+                  fontWeight: '700',
+                  padding: '6px 16px',
+                  fontSize: '11px',
+                  borderRadius: '20px',
+                  textTransform: 'uppercase',
+                  opacity: tracker.isStarting ? 0.6 : 1,
+                  cursor: tracker.isStarting ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onClick={() => { tracker.clearTrackingError(); tracker.startTracking(false); }}
+              >
+                {tracker.isStarting ? (
+                  <>
+                    <span style={{ 
+                      display: 'inline-block', 
+                      width: '10px', height: '10px', 
+                      border: '2px solid var(--accent-color)',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite'
+                    }} />
+                    {t('starting')}
+                  </>
+                ) : t('startRide')}
+              </button>
+            </div>
+
+            {/* GPS Error Banner — shows instead of alert() */}
+            {tracker.trackingError && (
+              <div style={{
+                width: '100%',
+                maxWidth: '400px',
+                padding: '12px 16px',
+                borderRadius: '14px',
+                background: 'rgba(255, 51, 51, 0.08)',
+                border: '1px solid rgba(255, 51, 51, 0.35)',
+                animation: 'fadeIn 0.3s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'center',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '13px', color: '#ff6666', fontWeight: '700', lineHeight: '1.5' }}>
+                  {tracker.trackingError.message}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {tracker.trackingError.action === 'openGPS' && (
+                    <button
+                      className="glass-button"
+                      style={{ fontSize: '11px', padding: '5px 14px', borderRadius: '12px', color: '#ff6666', borderColor: 'rgba(255,51,51,0.4)', background: 'rgba(255,51,51,0.05)' }}
+                      onClick={() => {
+                        import('@capacitor/core').then(({ registerPlugin }) => {
+                          registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
+                        });
+                      }}
+                    >
+                      {t('openSettings')}
+                    </button>
+                  )}
+                  <button
+                    className="glass-button"
+                    style={{ fontSize: '11px', padding: '5px 14px', borderRadius: '12px', color: 'var(--text-secondary)', borderColor: 'rgba(255,255,255,0.1)' }}
+                    onClick={() => tracker.clearTrackingError()}
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -310,7 +447,7 @@ function App() {
           onClick={() => setShowSync(true)}
         >
           <MapPin size={14} />
-          <span style={{ fontSize: '12px', fontWeight: '600' }}>Sync Manual Odometer</span>
+          <span style={{ fontSize: '12px', fontWeight: '600' }}>{t('sync')}</span>
         </button>
 
         <button
@@ -326,13 +463,14 @@ function App() {
           onClick={() => setShowRefuel(true)}
         >
           <Fuel size={16} color="var(--accent-color)" />
-          <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-color)' }}>Log Refuel Now</span>
+          <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-color)' }}>{t('refuel')}</span>
         </button>
       </div>
 
       {/* MODALS */}
       {!tracker.userProfile && (
         <OnboardingModal
+          tracker={tracker}
           onComplete={(profile) => {
             tracker.updateUserProfile(profile);
             setTimeout(() => tracker.requestAllPermissions(), 800);
@@ -343,14 +481,16 @@ function App() {
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
-      {updateInfo && <UpdateModal info={updateInfo} onClose={() => setUpdateInfo(null)} />}
+      {updateInfo && <UpdateModal info={updateInfo} tracker={tracker} onClose={() => setUpdateInfo(null)} />}
 
     </div>
   );
 }
 
 // Onboarding Modal Component
-const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void }) => {
+const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (profile: any) => void }) => {
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
+  const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [vehicleType, setVehicleType] = useState('');
@@ -467,14 +607,14 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
         {photo && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Zoom</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t('zoom')}</span>
               <input type="range" min="80" max="250" step="5" value={zoom}
                 onChange={e => setZoom(Number(e.target.value))}
                 style={{ flex: 1, accentColor: 'var(--accent-color)' }} />
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7 }}>
-              Drag photo to reposition •{' '}
-              <span onClick={() => fileInputRef.current?.click()} style={{ color: 'var(--accent-color)', textDecoration: 'underline', cursor: 'pointer' }}>Change</span>
+              {t('dragPhoto')}{' '}
+              <span onClick={() => fileInputRef.current?.click()} style={{ color: 'var(--accent-color)', textDecoration: 'underline', cursor: 'pointer' }}>{t('change')}</span>
             </div>
           </div>
         )}
@@ -490,23 +630,23 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
             background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-          }}>Welcome Rider!</h2>
+          }}> {t('welcomeRider')} </h2>
         </div>
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '24px' }}>Set up your profile before you hit the road.</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '24px' }}>{t('setupProfile')}</p>
 
         <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Rider Name</label>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>{t('riderName')}</label>
             <input required type="text" placeholder="" value={name} onChange={e => setName(e.target.value)}
               style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
           </div>
           <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Phone Number</label>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>{t('phoneNumber')}</label>
             <input required type="tel" placeholder="" value={phone} onChange={e => setPhone(e.target.value)}
               style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
           </div>
           <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Scooter / Motorcycle Type</label>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>{t('scooterMotorcycleType')}</label>
             <input required type="text" placeholder="" value={vehicleType} onChange={e => setVehicleType(e.target.value)}
               style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
           </div>
@@ -520,7 +660,7 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
               cursor: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease'
             }}>
-            Start Ride
+            {t('startRide')}
           </button>
         </form>
       </div>
@@ -530,6 +670,8 @@ const OnboardingModal = ({ onComplete }: { onComplete: (profile: any) => void })
 
 // Inline Modal Components for simplicity in this PWA
 const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void }) => {
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
+  const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const [odo, setOdo] = useState('0.0');
 
   const handleSync = () => {
@@ -557,13 +699,13 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MapPin size={20} color="var(--danger-color)" />
-            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Sync Odometer 🛵</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>{t('sync')} 🛵</h2>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255, 0, 0, 0.15)', border: '1px solid rgba(255, 0, 0, 0.3)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
         </div>
 
         <div style={{ marginBottom: '24px', textAlign: 'left' }}>
-          <label style={{ color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '10px', display: 'block', opacity: 0.8 }}>Enter current scooter odometer reading (km)</label>
+          <label style={{ color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '10px', display: 'block', opacity: 0.8 }}>{t('odoReading')}</label>
           <div style={{ position: 'relative' }}>
             <input
               type="number"
@@ -589,8 +731,8 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
             />
           </div>
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', lineHeight: '1.4', textAlign: 'center' }}>
-            Adjust the value to match your scooter's screen <br />
-            <span style={{ color: 'var(--danger-color)', opacity: 0.5 }}>Fuel range will be updated automatically</span>
+            {tracker.settings.language === 'ar' ? 'ظبط الرقم عشان يبقى زي شاشة السكوتر بالظبط' : 'Adjust the value to match your scooter\'s screen'} <br />
+            <span style={{ color: 'var(--danger-color)', opacity: 0.5 }}>{tracker.settings.language === 'ar' ? 'حسابات البنزين هتتحدث تلقائياً' : 'Fuel range will be updated automatically'}</span>
           </div>
         </div>
 
@@ -617,7 +759,7 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
             onClick={handleSync}
           >
             <RotateCcw size={18} />
-            Save Sync ✨
+            {t('save')} ✨
           </button>
         </div>
       </div>
@@ -626,6 +768,7 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
 };
 
 function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
+  const t = (key: string): string => (translations[tracker.settings.language as keyof typeof translations] as any)[key] || key;
   const [odo, setOdo] = useState(tracker.fuelState.lastOdo === 0 ? '' : tracker.fuelState.lastOdo.toFixed(1));
   const [inputValue, setInputValue] = useState('');
   const [isFullTank, setIsFullTank] = useState(false);
@@ -683,20 +826,20 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
         </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px' }}>
-            <span style={{ width: '140px', flexShrink: 0, fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>Odometer (km)</span>
-            <input type="number" step="0.1" value={odo} onChange={e => setOdo(e.target.value)} style={{ flex: 1, maxWidth: '180px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontWeight: '800', textAlign: 'left', outline: 'none', transition: 'all 0.3s' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 4px' }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>{t('odoReading')}</label>
+            <input type="number" step="0.1" value={odo} onChange={e => setOdo(e.target.value)} style={{ width: '130px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: '10px', padding: '8px 12px', color: '#fff', fontSize: '15px', fontWeight: '800', textAlign: 'center', outline: 'none', transition: 'all 0.3s' }} />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px' }}>
-            <span style={{ width: '140px', flexShrink: 0, fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
-              {inputMode === 'currency' ? 'Amount (EGP)' : 'Amount (L)'}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, position: 'relative' }}>
-              <input type="number" step="0.1" value={inputValue} onChange={e => setInputValue(e.target.value)} style={{ width: '100%', maxWidth: '180px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#fff', fontSize: '15px', fontWeight: '800', textAlign: 'left', outline: 'none', transition: 'all 0.3s' }} autoFocus />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 4px' }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
+              {inputMode === 'currency' ? (tracker.settings.language === 'ar' ? 'المبلغ (جنيه)' : 'Amount (EGP)') : (tracker.settings.language === 'ar' ? 'الكمية (لتر)' : 'Amount (L)')}
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input type="number" step="0.1" value={inputValue} onChange={e => setInputValue(e.target.value)} style={{ width: '130px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: '10px', padding: '8px 12px', color: '#fff', fontSize: '15px', fontWeight: '800', textAlign: 'center', outline: 'none', transition: 'all 0.3s' }} autoFocus />
               {inputMode === 'currency' && tracker.settings.fuelPricePerLiter > 0 && inputValue && (
-                <span style={{ position: 'absolute', left: '190px', whiteSpace: 'nowrap', fontSize: '11px', color: 'var(--accent-color)', fontWeight: '800', opacity: 0.9 }}>
-                  ≈ {(Number(inputValue) / tracker.settings.fuelPricePerLiter).toFixed(2)} L
+                <span style={{ position: 'absolute', right: '-70px', top: '50%', transform: 'translateY(-50%)', whiteSpace: 'nowrap', fontSize: '10px', color: 'var(--accent-color)', fontWeight: '800', opacity: 0.9 }}>
+                  ≈ {(Number(inputValue) / tracker.settings.fuelPricePerLiter).toFixed(1)}L
                 </span>
               )}
             </div>
@@ -705,20 +848,38 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
           <div 
             onClick={() => setIsFullTank(!isFullTank)}
             style={{ 
-              display: 'flex', alignItems: 'center', padding: '8px 4px', cursor: 'pointer'
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+              padding: '12px 14px', cursor: 'pointer',
+              background: isFullTank ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255,255,255,0.02)',
+              border: isFullTank ? '1px solid rgba(0, 240, 255, 0.2)' : '1px solid rgba(255,255,255,0.05)',
+              borderRadius: '14px',
+              marginTop: '4px',
+              transition: 'all 0.3s ease'
             }}
           >
-            <span style={{ width: '140px', flexShrink: 0, fontSize: '11px', color: isFullTank ? 'var(--accent-color)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700', transition: 'color 0.2s' }}>
-              Full Tank Fill-up
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontSize: '11px', color: isFullTank ? 'var(--accent-color)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800', transition: 'color 0.2s' }}>
+                {t('isFullTank')}
+              </span>
+              <span style={{ fontSize: '9px', color: 'var(--text-secondary)', opacity: 0.6 }}>
+                {tracker.settings.language === 'ar' ? 'مليت التانك للأخر؟' : 'Did you fill to max?'}
+              </span>
+            </div>
             <div style={{
-              width: '24px', height: '24px', borderRadius: '8px',
-              border: isFullTank ? 'none' : '1px solid rgba(255,255,255,0.2)',
-              background: isFullTank ? 'var(--accent-color)' : 'rgba(0,0,0,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s ease'
+              width: '42px', height: '22px', borderRadius: '12px',
+              background: isFullTank ? 'rgba(0, 240, 255, 0.2)' : 'rgba(255,255,255,0.05)',
+              border: isFullTank ? '1px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.1)',
+              position: 'relative', transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              boxShadow: isFullTank ? '0 0 10px rgba(0, 240, 255, 0.2)' : 'none'
             }}>
-              {isFullTank && <Check size={16} color="#000" strokeWidth={4} />}
+              <div style={{
+                width: '14px', height: '14px', borderRadius: '50%',
+                background: isFullTank ? 'var(--accent-color)' : 'rgba(255,255,255,0.3)',
+                position: 'absolute', top: '3px',
+                left: isFullTank ? '24px' : '4px',
+                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                boxShadow: isFullTank ? '0 0 8px var(--accent-color)' : 'none'
+              }} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'center' }}>
@@ -738,7 +899,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
               }} 
               onClick={onClose}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button 
               type="submit" 
@@ -757,7 +918,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
                 minWidth: 'fit-content'
               }}
             >
-              Save
+              {t('save')}
             </button>
           </div>
         </form>
@@ -767,12 +928,17 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
 }
 
 function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
+  const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   // Profile State
   const [name, setName] = useState(tracker.userProfile?.name || '');
   const [phone, setPhone] = useState(tracker.userProfile?.phone || '');
   const [vehicle, setVehicle] = useState(tracker.userProfile?.vehicleType || '');
   const [photo, setPhoto] = useState(tracker.userProfile?.photoUrl || null);
-  const [objPos, setObjPos] = useState(tracker.userProfile?.photoPosition || { x: 50, y: 50, scale: 100 });
+  const [objPos, setObjPos] = useState(tracker.userProfile?.photoPosition || { x: 0, y: 0, scale: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const hasMovedRef = useRef(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, startX: 0, startY: 0 });
   const [isSimulation, setIsSimulation] = useState((window as any).__isSimulating || false);
 
   // Technical State
@@ -783,6 +949,21 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
 
   const [confirmReset, setConfirmReset] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const startSimulator = () => {
+    (window as any).__isSimulating = true;
+    let speed = 0;
+    (window as any).__simInterval = setInterval(() => {
+      speed = speed >= 120 ? 0 : speed + 5;
+      tracker.setCurrentSpeed(speed);
+    }, 500);
+  };
+
+  const stopSimulator = () => {
+    (window as any).__isSimulating = false;
+    clearInterval((window as any).__simInterval);
+    tracker.setCurrentSpeed(0);
+  };
 
   const handleSave = () => {
     // Save Profile
@@ -814,21 +995,6 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
     onClose();
   };
 
-  const startSimulator = () => {
-    (window as any).__isSimulating = true;
-    let speed = 0;
-    (window as any).__simInterval = setInterval(() => {
-      speed = speed >= 120 ? 0 : speed + 5;
-      tracker.setCurrentSpeed(speed);
-    }, 500);
-  };
-
-  const stopSimulator = () => {
-    (window as any).__isSimulating = false;
-    clearInterval((window as any).__simInterval);
-    tracker.setCurrentSpeed(0);
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -838,6 +1004,40 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
     }
   };
 
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!photo) return;
+    setIsDragging(true);
+    hasMovedRef.current = false;
+    setDragStart({ 
+      x: e.clientX, 
+      y: e.clientY,
+      startX: objPos.x,
+      startY: objPos.y
+    });
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      hasMovedRef.current = true;
+    }
+
+    // Direct pixel translation for natural movement
+    const newX = dragStart.startX + dx;
+    const newY = dragStart.startY + dy;
+    
+    setObjPos((p: any) => ({ ...p, x: newX, y: newY }));
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto', padding: '28px 24px', animation: 'scaleUp 0.3s ease-out' }}>
@@ -845,90 +1045,140 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
         {/* Profile Header Block */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div 
-            onClick={() => fileInputRef.current?.click()}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onClick={() => {
+               // Only trigger file input if we didn't actually move (it was a click)
+               if (!hasMovedRef.current) fileInputRef.current?.click();
+            }}
             style={{ 
-              width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 12px',
-              border: '2px solid var(--accent-color)', overflow: 'hidden', cursor: 'pointer',
-              position: 'relative', boxShadow: '0 0 20px rgba(0, 240, 255, 0.2)'
+              width: '100px', height: '100px', borderRadius: '16px', margin: '0 auto 12px',
+              border: '2px solid var(--accent-color)', overflow: 'hidden', cursor: isDragging ? 'grabbing' : (photo ? 'move' : 'pointer'),
+              position: 'relative', boxShadow: '0 0 20px rgba(0, 240, 255, 0.2)',
+              touchAction: 'none', // Prevents scrolling while dragging
+              userSelect: 'none'
             }}
           >
             {photo ? (
-              <img src={photo} aria-hidden="true" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${objPos.x}% ${objPos.y}%`, transform: `scale(${objPos.scale / 100})` }} />
+              <img 
+                src={photo} 
+                draggable="false"
+                onDragStart={(e) => e.preventDefault()}
+                aria-hidden="true" 
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'contain', 
+                  transform: `translate(${objPos.x}px, ${objPos.y}px) scale(${objPos.scale / 100})`, 
+                  pointerEvents: 'none',
+                  transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                  background: '#000'
+                }} 
+              />
             ) : (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
                 <Camera size={24} color="var(--accent-color)" />
               </div>
             )}
-            <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.5)', fontSize: '8px', padding: '2px 0', color: '#fff' }}>EDIT</div>
+            <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.5)', fontSize: '8px', padding: '2px 0', color: '#fff' }}>{t('edit')}</div>
           </div>
           <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileChange} />
           
           {photo && (
-            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Zoom:</span>
+            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%' }}>
+              
+              {/* Simplified & Transparent Zoom Slider */}
+              <div style={{ width: '100%', maxWidth: '200px', padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px' }}>{t('zoom')}</span>
+                  <span style={{ fontSize: '11px', fontWeight: '900', color: 'var(--accent-color)', opacity: 0.8 }}>{objPos.scale}%</span>
+                </div>
                 <input 
-                  type="range" min="100" max="300" 
+                  type="range" 
+                  min="10" max="300" 
                   value={objPos.scale} 
                   onChange={e => setObjPos((p: any) => ({ ...p, scale: Number(e.target.value) }))}
-                  style={{ width: '80px', accentColor: 'var(--accent-color)' }}
+                  style={{ 
+                    width: '100%', 
+                    height: '4px', 
+                    borderRadius: '2px', 
+                    appearance: 'none', 
+                    background: 'rgba(255,255,255,0.1)', 
+                    accentColor: 'var(--accent-color)',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }} 
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Pos:</span>
-                <input 
-                  type="range" min="0" max="100" 
-                  value={objPos.x} 
-                  onChange={e => setObjPos((p: any) => ({ ...p, x: Number(e.target.value) }))}
-                  style={{ width: '40px', accentColor: 'var(--accent-color)' }}
-                />
-                <input 
-                  type="range" min="0" max="100" 
-                  value={objPos.y} 
-                  onChange={e => setObjPos((p: any) => ({ ...p, y: Number(e.target.value) }))}
-                  style={{ width: '40px', accentColor: 'var(--accent-color)' }}
-                />
+
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.6, letterSpacing: '0.5px' }}>
+                {tracker.settings.language === 'ar' ? 'اسحب الصورة للتحريك • السلايدر للزووم' : 'Drag image to pan • Slider to zoom'}
               </div>
             </div>
           )}
 
+          {/* Name Field */}
           <input 
             value={name} onChange={e => setName(e.target.value)}
-            style={{ width: '100%', textAlign: 'center', background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', fontWeight: '800', outline: 'none' }}
-            placeholder="Your Name"
+            style={{ 
+              width: '100%', textAlign: 'center', background: 'transparent', 
+              border: 'none', color: '#fff', fontSize: '20px', fontWeight: '900', 
+              outline: 'none', letterSpacing: '-0.5px' 
+            }}
+            placeholder={t('yourNamePlaceholder')}
           />
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '4px' }}>
-             <input 
-              value={phone} onChange={e => setPhone(e.target.value)}
-              style={{ width: '100px', textAlign: 'right', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '12px', outline: 'none' }}
-              placeholder="01xxxxxxxxx"
-            />
-            <span style={{ color: 'var(--text-secondary)', opacity: 0.3 }}>|</span>
-            <input 
-              value={vehicle} onChange={e => setVehicle(e.target.value)}
-              style={{ width: '100px', textAlign: 'left', background: 'transparent', border: 'none', color: 'var(--accent-color)', fontSize: '12px', fontWeight: '600', outline: 'none' }}
-              placeholder="Vehicle Type"
-            />
+
+          {/* Glass Pods Info Row */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '12px' }}>
+             {/* Phone Pod */}
+             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Smartphone size={12} color="var(--accent-color)" opacity={0.7} />
+                <input 
+                  value={phone} onChange={e => setPhone(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '11px', outline: 'none', width: '85px', fontWeight: '600' }}
+                  placeholder="01xxxxxxxxx"
+                />
+             </div>
+
+             {/* Vehicle Pod */}
+             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                   <circle cx="5" cy="18" r="3" />
+                   <circle cx="19" cy="18" r="3" />
+                   <path d="M5 15h14" />
+                   <path d="M7 15V7a2 2 0 0 1 2-2h4" />
+                   <path d="M17 15V10c0-1.1-.9-2-2-2h-3" />
+                   <path d="M6 8h4" />
+                 </svg>
+                <input 
+                  value={vehicle} onChange={e => setVehicle(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '11px', outline: 'none', width: '60px', fontWeight: '600' }}
+                  placeholder="SYM"
+                />
+             </div>
           </div>
         </div>
 
         <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)', marginBottom: '24px' }} />
+        
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Tech Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
              <div style={{ padding: '4px' }}>
-              <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Consumpt. (km/L)</label>
+              <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('avgConsumption')}</label>
               <input type="number" className="glass-input" value={avg} onChange={e => setAvg(e.target.value)} style={{ fontSize: '15px' }} />
             </div>
             <div style={{ padding: '4px' }}>
-              <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Tank (Liters)</label>
+              <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('tankCapacity')}</label>
               <input type="number" className="glass-input" value={cap} onChange={e => setCap(e.target.value)} style={{ fontSize: '15px' }} />
             </div>
           </div>
 
           <div style={{ padding: '4px' }}>
-            <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Fuel Price (EGP / L)</label>
+            <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('fuelPrice')}</label>
             <input type="number" className="glass-input" value={price} onChange={e => setPrice(e.target.value)} style={{ fontSize: '15px' }} />
           </div>
 
@@ -944,8 +1194,8 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               }}
             >
               <div>
-                <span style={{ color: '#fff', fontSize: '13px', fontWeight: '600', display: 'block' }}>Alerts & Sound</span>
-                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Vibrate on low fuel</span>
+                <span style={{ color: '#fff', fontSize: '13px', fontWeight: '600', display: 'block' }}>{t('notifications')}</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{t('notifDesc')}</span>
               </div>
               <div style={{
                 width: '42px', height: '22px', borderRadius: '12px',
@@ -975,8 +1225,8 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               }}
             >
               <div>
-                <span style={{ color: 'var(--accent-color)', fontSize: '13px', fontWeight: '800', display: 'block' }}>Simulate Drive</span>
-                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Test speedometer on PC</span>
+                <span style={{ color: 'var(--accent-color)', fontSize: '13px', fontWeight: '800', display: 'block' }}>{t('simulateRide')}</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{t('simulateRideDesc')}</span>
               </div>
               <div style={{
                 width: '42px', height: '22px', borderRadius: '12px',
@@ -997,23 +1247,26 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             </div>
           </div>
 
+
           {/* Reset Action */}
           <div style={{ marginTop: '12px', textAlign: 'center' }}>
             {!confirmReset ? (
               <button 
                 className="glass-button" 
+                type="button"
                 style={{ background: 'transparent', borderColor: 'rgba(255, 51, 102, 0.2)', color: 'var(--danger-color)', fontSize: '11px', padding: '8px 16px' }} 
                 onClick={() => setConfirmReset(true)}
               >
-                Reset App Data
+                {t('resetApp')}
               </button>
             ) : (
               <button 
                 className="glass-button" 
+                type="button"
                 style={{ background: 'var(--danger-color)', color: '#fff', fontSize: '11px', padding: '8px 16px' }} 
                 onClick={() => { tracker.resetData(); onClose(); }}
               >
-                ARE YOU SURE?
+                {t('areYouSure')}
               </button>
             )}
           </div>
@@ -1022,6 +1275,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           <div style={{ display: 'flex', gap: '16px', marginTop: '28px', justifyContent: 'center' }}>
             <button 
               className="glass-button" 
+              type="button"
               style={{ 
                 width: 'fit-content', padding: '8px 20px', background: 'transparent', 
                 borderColor: 'rgba(255,255,255,0.15)', color: 'var(--text-secondary)', 
@@ -1029,10 +1283,11 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               }} 
               onClick={onClose}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button 
               className="glass-button primary-glow" 
+              type="button"
               style={{ 
                 width: 'fit-content', padding: '8px 24px', background: 'transparent', 
                 borderColor: 'var(--accent-color)', color: '#fff', 
@@ -1040,7 +1295,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               }} 
               onClick={handleSave}
             >
-              Save Profile
+              {t('save')}
             </button>
           </div>
         </div>
@@ -1049,26 +1304,33 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   );
 }
 
-function UpdateModal({ info, onClose }: { info: any, onClose: () => void }) {
+function UpdateModal({ info, tracker, onClose }: { info: any, tracker: any, onClose: () => void }) {
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
+  const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
+  const tFunc = (key: string, val: string): string => {
+    const fn = (translations[lang] as any)?.[key];
+    return typeof fn === 'function' ? fn(val) : val;
+  };
+  
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', textAlign: 'center', border: '1px solid rgba(255, 51, 102, 0.4)', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
         <div style={{ background: 'rgba(255, 51, 102, 0.1)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '2px solid var(--danger-color)', boxShadow: '0 0 20px rgba(255, 51, 102, 0.3)' }}>
           <Settings size={34} color="var(--danger-color)" style={{ animation: 'spin 4s linear infinite' }} />
         </div>
-        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: '#fff', fontWeight: '800' }}>تحديث جديد متاح! 🚀</h2>
+        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: '#fff', fontWeight: '800' }}>{t('updateAvailable')}</h2>
         <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', fontWeight: '600' }}>
-          الإصدار {info.version} متوفر الآن
+          {tFunc('versionAvailable', info.version)}
         </div>
         {info.notes && (
-          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '16px', borderRadius: '12px', fontSize: '13px', color: '#ddd', marginBottom: '24px', lineHeight: '1.7', textAlign: 'right', direction: 'rtl' }}>
+          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '16px', borderRadius: '12px', fontSize: '13px', color: '#ddd', marginBottom: '24px', lineHeight: '1.7', textAlign: tracker.settings.language === 'ar' ? 'right' : 'left', direction: tracker.settings.language === 'ar' ? 'rtl' : 'ltr' }}>
             {info.notes}
           </div>
         )}
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="glass-button" style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }} onClick={onClose}>تأجيل</button>
+          <button type="button" className="glass-button" style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }} onClick={onClose}>{t('later')}</button>
           <a href={info.url} target="_blank" rel="noopener noreferrer" className="glass-button" style={{ flex: 2, background: 'var(--danger-color)', color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', border: 'none', boxShadow: '0 4px 15px rgba(255, 51, 102, 0.4)' }}>
-            تحديث الآن
+            {t('updateNow')}
           </a>
         </div>
       </div>
@@ -1076,4 +1338,6 @@ function UpdateModal({ info, onClose }: { info: any, onClose: () => void }) {
   );
 }
 
+
 export default App;
+
