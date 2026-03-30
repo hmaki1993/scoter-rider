@@ -46,8 +46,8 @@ const DEFAULT_SETTINGS: FuelSettings = {
   fuelPricePerLiter: 22.25,
   autoTrack: false,
   enableAlerts: true,
-  language: 'ar',
-  accentColor: '#00f0ff',
+  language: 'en',
+  accentColor: '#326144',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,8 +104,11 @@ export const useFuelTracker = () => {
     (async () => {
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const isWeb = (window as any).Capacitor?.getPlatform() === 'web' || !(window as any).Capacitor;
+        
+        if (isWeb) return; // Skip native-only notification setup on web
 
-        const lang = (settings.language in translations) ? settings.language : 'ar';
+        const lang = (settings.language in translations) ? settings.language : 'en';
         await LocalNotifications.registerActionTypes({
           types: [{
             id: 'FUEL_ALARM_ACTIONS',
@@ -324,14 +327,34 @@ export const useFuelTracker = () => {
             setGpsUpdateCount(prev => prev + 1);
             setLastGpsTime(new Date().toLocaleTimeString());
 
-            // ── Update Current Speed (m/s to KM/H) ───────────────────────────
-            const speed = pos.coords?.speed;
-            if (speed !== null && speed !== undefined) {
-              const kmh = Math.round(speed * 3.6);
-              setCurrentSpeed(kmh > 0.5 ? kmh : 0);
-            } else {
-              setCurrentSpeed(0);
+            // ── Update Current Speed (Live & Accurate) ─────────────────────────
+            const nativeSpeed = pos.coords?.speed;
+            let currentKmh = 0;
+            
+            // 1. Calculate fallback speed from distance/time for better "live" response
+            let calculatedKmh = 0;
+            if (lastPositionRef.current && pos.coords) {
+              const dist = calculateDistance(
+                lastPositionRef.current.latitude, lastPositionRef.current.longitude,
+                pos.coords.latitude, pos.coords.longitude
+              );
+              const timeDiffMs = Math.max(1, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
+              const hours = timeDiffMs / (1000 * 60 * 60);
+              calculatedKmh = dist / hours;
             }
+
+            // 2. Use the most responsive speed value (Max of native and calculated)
+            if (nativeSpeed !== null && nativeSpeed !== undefined) {
+              const nativeKmh = nativeSpeed * 3.6;
+              // Take the higher one to ensure responsiveness, but cap outliers
+              currentKmh = Math.max(nativeKmh, calculatedKmh);
+            } else {
+              currentKmh = calculatedKmh;
+            }
+
+            // 3. Smooth and update UI (No artificial logic filter here, just show it)
+            const finalDisplaySpeed = Math.round(currentKmh);
+            setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
 
             // ── Persist latest position so it survives app kill ───────────────
             const posToSave = {
@@ -341,22 +364,28 @@ export const useFuelTracker = () => {
             };
             localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
 
+            const MIN_TRACKING_SPEED = 10; // km/h
+
             setFuelState(prev => {
               if (lastPositionRef.current && pos.coords) {
                 const dist = calculateDistance(
                   lastPositionRef.current.latitude, lastPositionRef.current.longitude,
                   pos.coords.latitude, pos.coords.longitude
                 );
+                
                 // Threshold 0.005km (5 meters) to filter GPS jitter
                 if (dist > 0.005) {
-                  const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
-                  lastPositionRef.current = posToSave;
-                  return {
-                    ...prev,
-                    estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-                    lastOdo: prev.lastOdo + dist,
-                    totalGpsDistance: prev.totalGpsDistance + dist,
-                  };
+                  // ONLY track mileage if effective speed is above threshold (Filter Walking)
+                  if (currentKmh >= MIN_TRACKING_SPEED) {
+                    const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
+                    lastPositionRef.current = posToSave;
+                    return {
+                      ...prev,
+                      estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
+                      lastOdo: prev.lastOdo + dist,
+                      totalGpsDistance: prev.totalGpsDistance + dist,
+                    };
+                  }
                 }
                 return prev;
               }

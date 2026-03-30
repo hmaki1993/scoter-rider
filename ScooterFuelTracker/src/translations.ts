@@ -2,8 +2,8 @@ export const translations = {
   ar: {
     appName: 'Fuel Tracker',
     premiumSystem: 'Premium Intelligence System',
-    live: 'شغال',
-    paused: 'واقف',
+    live: 'نشط',
+    paused: 'متوقف',
     welcomeBack: 'نورت يا وحش 👋',
     
     // Dashboard
@@ -26,6 +26,11 @@ export const translations = {
     language: 'لغة التطبيق',
     arabic: 'مصري عامية',
     english: 'English',
+    userProfile: 'بيانات الحساب',
+    vehicleSpecs: 'مواصفات المركبة',
+    appSettings: 'إعدادات التطبيق',
+    appLanguage: 'لغة التطبيق',
+    appTheme: 'سمة التطبيق (الثيم)',
     avgConsumption: 'معدل الاستهلاك (كم/لتر)',
     tankCapacity: 'سعة التانك (لتر)',
     fuelPrice: 'سعر لتر البنزين (جنيه)',
@@ -103,8 +108,8 @@ export const translations = {
     // Header
     appName: 'Fuel Tracker',
     premiumSystem: 'Premium Intelligence System',
-    live: 'LIVE',
-    paused: 'PAUSED',
+    live: 'ON',
+    paused: 'OFF',
     welcomeBack: 'Welcome back 👋',
     
     // Dashboard
@@ -127,6 +132,11 @@ export const translations = {
     language: 'App Language',
     arabic: 'Egyptian Ammiya',
     english: 'English',
+    userProfile: 'USER PROFILE',
+    vehicleSpecs: 'VEHICLE SPECS',
+    appSettings: 'APP SETTINGS',
+    appLanguage: 'APP LANGUAGE',
+    appTheme: 'APP THEME',
     avgConsumption: 'Avg Consumption (km/L)',
     tankCapacity: 'Tank Capacity (Liters)',
     fuelPrice: 'Fuel Price (EGP/L)',
@@ -173,7 +183,7 @@ export const translations = {
     zoom: 'Zoom',
     
     // System / Background
-    bgStatusTitle: 'SYM Ride Tracker 🛵',
+    bgStatusTitle: 'FUSION Ride Tracker 🛵',
     bgStatusText: 'Tracking is active and protected...',
     stopNotif: 'Stop 🔇',
     bgLocationPromptTitle: '📍 Important step for continuous tracking!',

@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { Fuel, MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone } from 'lucide-react';
+import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone } from 'lucide-react';
 import { translations } from './translations';
 import gsap from 'gsap';
 import './index.css';
 
 const THEME_COLORS = [
-  { name: 'Cyan', hex: '#00f0ff' },
-  { name: 'Gold', hex: '#F0E491' },
-  { name: 'Moss', hex: '#326143' },
-  { name: 'Purple', hex: '#bf5af2' },
-  { name: 'Red', hex: '#ff3366' },
-  { name: 'Orange', hex: '#ff9f0a' },
+  { name: 'Fusion', hex: '#326144', secondary: '#ff5e00' },
+  { name: 'Cyan', hex: '#00f0ff', secondary: '#00f0ff' },
+  { name: 'Gold', hex: '#F0E491', secondary: '#F0E491' },
+  { name: 'Moss', hex: '#326143', secondary: '#326143' },
+  { name: 'Purple', hex: '#bf5af2', secondary: '#bf5af2' },
+  { name: 'Red', hex: '#ff3366', secondary: '#ff3366' },
+  { name: 'Orange', hex: '#ff9f0a', secondary: '#ff9f0a' },
 ];
 
 function App() {
@@ -21,8 +22,11 @@ function App() {
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--accent-color', tracker.settings.accentColor);
+    const theme = THEME_COLORS.find(c => c.hex === tracker.settings.accentColor);
+    root.style.setProperty('--accent-secondary', theme?.secondary || tracker.settings.accentColor);
   }, [tracker.settings.accentColor]);
-  const lang = (tracker.settings.language in translations) ? tracker.settings.language : 'ar';
+
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'en';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const tFunc = (key: string, val: string): string => {
     const fn = (translations[lang] as any)?.[key];
@@ -73,53 +77,8 @@ function App() {
   return (
     <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Top Left Language Toggle */}
-      <div style={{ alignSelf: 'flex-start', marginBottom: '16px', zIndex: 10 }}>
-        <div style={{ 
-          display: 'flex', 
-          background: 'rgba(255,255,255,0.03)', 
-          border: '1px solid rgba(255,255,255,0.08)', 
-          borderRadius: '12px', 
-          padding: '2px',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)'
-        }}>
-          <button 
-            type="button"
-            onClick={() => tracker.setSettings({ ...tracker.settings, language: 'ar' })}
-            style={{ 
-              padding: '4px 12px', 
-              borderRadius: '8px', 
-              border: 'none',
-              background: tracker.settings.language === 'ar' ? 'rgba(0, 240, 255, 0.15)' : 'transparent', 
-              color: tracker.settings.language === 'ar' ? 'var(--accent-color)' : 'var(--text-secondary)', 
-              fontSize: '10px', 
-              fontWeight: '900', 
-              transition: 'all 0.3s ease', 
-              cursor: 'pointer'
-            }}
-          >
-            AR
-          </button>
-          <button 
-            type="button"
-            onClick={() => tracker.setSettings({ ...tracker.settings, language: 'en' })}
-            style={{ 
-              padding: '4px 12px', 
-              borderRadius: '8px', 
-              border: 'none',
-              background: tracker.settings.language === 'en' ? 'rgba(0, 240, 255, 0.15)' : 'transparent', 
-              color: tracker.settings.language === 'en' ? 'var(--accent-color)' : 'var(--text-secondary)', 
-              fontSize: '10px', 
-              fontWeight: '900', 
-              transition: 'all 0.3s ease', 
-              cursor: 'pointer'
-            }}
-          >
-            EN
-          </button>
-        </div>
-      </div>
+
+      {/* Immersive Header Section */}
 
       {/* Header - App Name small top-left */}
       <div style={{ 
@@ -154,7 +113,13 @@ function App() {
             textAlign: lang === 'ar' ? 'right' : 'left'
           }}>{t('premiumSystem')}</div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Compact Language Switcher */}
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', padding: '2px', marginRight: '4px' }}>
+             <button onClick={() => tracker.setSettings({...tracker.settings, language: 'ar'})} style={{ padding: '4px 8px', borderRadius: '8px', border: 'none', background: tracker.settings.language === 'ar' ? 'rgba(255,94,0,0.15)' : 'transparent', color: tracker.settings.language === 'ar' ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.25)', fontWeight: '900', cursor: 'pointer', fontSize: '9px', transition: 'all 0.3s' }}>AR</button>
+             <button onClick={() => tracker.setSettings({...tracker.settings, language: 'en'})} style={{ padding: '4px 8px', borderRadius: '8px', border: 'none', background: tracker.settings.language === 'en' ? 'rgba(255,94,0,0.15)' : 'transparent', color: tracker.settings.language === 'en' ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.25)', fontWeight: '900', cursor: 'pointer', fontSize: '9px', transition: 'all 0.3s' }}>EN</button>
+          </div>
+
           {/* Tracking Status Badge (Now Clickable) */}
           <button 
             onClick={() => {
@@ -162,41 +127,47 @@ function App() {
               else tracker.startTracking(false);
             }}
             style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '5px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700',
-              background: tracker.isTracking ? 'rgba(0, 240, 100, 0.1)' : 'rgba(255,255,255,0.04)',
-              border: tracker.isTracking ? '1px solid rgba(0, 240, 100, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-              color: tracker.isTracking ? '#00f064' : 'rgba(255,255,255,0.3)',
-              letterSpacing: '0.5px',
-              cursor: 'pointer'
+              width: '40px', height: '40px', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', border: 'none',
+              background: 'none'
             }}
           >
             <div style={{
-              width: '6px', height: '6px', borderRadius: '50%',
-              background: tracker.isTracking ? '#00f064' : 'rgba(255,255,255,0.2)',
-              boxShadow: tracker.isTracking ? '0 0 6px #00f064' : 'none',
+              width: '8px', height: '8px', borderRadius: '50%',
+              background: tracker.isTracking ? '#00f064' : '#ff3366',
+              boxShadow: tracker.isTracking ? '0 0 10px #00f064' : '0 0 10px #ff3366',
               animation: tracker.isTracking ? 'pulse 1.5s infinite' : 'none'
             }} />
-            {tracker.isTracking ? t('live') : t('paused')}
           </button>
           <button
-            className="glass-button"
             style={{
-              padding: '12px', borderRadius: '50%',
-              background: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-              borderColor: tracker.settings.enableAlerts ? 'rgba(0, 240, 255, 0.3)' : 'var(--glass-border)',
-              transition: 'all 0.3s ease'
+              width: '40px', height: '40px', borderRadius: '50%',
+              background: 'none',
+              border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.3s ease',
+              padding: 0
             }}
             onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
           >
             {tracker.settings.enableAlerts ? (
-              <Bell size={20} color="var(--accent-color)" />
+              <Bell size={20} color="#ff5e00" strokeWidth={2.5} />
             ) : (
-              <BellOff size={20} color="var(--text-secondary)" />
+              <BellOff size={20} color="rgba(255,255,255,0.4)" strokeWidth={2} />
             )}
           </button>
-          <button className="glass-button" style={{ padding: '12px', borderRadius: '50%' }} onClick={() => setShowSettings(true)}>
-            <Settings size={20} />
+          <button 
+            style={{ 
+              width: '44px', height: '44px', borderRadius: '50%', 
+              background: 'none', 
+              border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', padding: 0
+            }} 
+            onClick={() => setShowSettings(true)}
+          >
+            <Settings size={20} color="#ffffff" strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -378,9 +349,13 @@ function App() {
               <div style={{
                 height: '100%',
                 width: `${tracker.fuelPercentage}%`,
-                background: tracker.isDanger ? 'var(--danger-color)' : tracker.isWarning ? 'var(--warning-color)' : 'var(--accent-color)',
+                background: tracker.isDanger 
+                  ? 'var(--danger-color)' 
+                  : tracker.isWarning 
+                    ? 'var(--warning-color)' 
+                    : `linear-gradient(90deg, var(--accent-color), var(--accent-secondary))`,
                 transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 0 6px currentColor'
+                boxShadow: tracker.isTracking ? `0 0 10px var(--accent-secondary)` : 'none'
               }} />
             </div>
 
@@ -504,15 +479,24 @@ function App() {
         )}
       </div>
 
-      {/* Action Center - Centered & Compact */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', marginTop: 'auto', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', marginTop: 'auto', marginBottom: '32px' }}>
         <button
           className="glass-button"
-          style={{ width: 'fit-content', gap: '8px', padding: '8px 16px', borderRadius: '20px' }}
+          style={{ 
+            width: 'fit-content', 
+            gap: '8px', 
+            padding: '6px 14px', 
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.01)',
+            backdropFilter: 'blur(10px)',
+            border: '0.4px solid rgba(255, 94, 0, 0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.3s'
+          }}
           onClick={() => setShowSync(true)}
         >
-          <MapPin size={14} />
-          <span style={{ fontSize: '12px', fontWeight: '600' }}>{t('sync')}</span>
+          <MapPin size={12} color="var(--accent-secondary)" />
+          <span style={{ fontSize: '11px', fontWeight: '900', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>{t('sync')}</span>
         </button>
 
         <button
@@ -520,16 +504,41 @@ function App() {
           style={{
             width: 'fit-content',
             gap: '8px',
-            padding: '10px 20px',
-            borderRadius: '20px',
-            background: 'rgba(0, 240, 255, 0.08)',
-            borderColor: 'rgba(0, 240, 255, 0.4)'
+            padding: '6px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.01)',
+            backdropFilter: 'blur(10px)',
+            border: '0.4px solid rgba(255, 94, 0, 0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
           }}
           onClick={() => setShowRefuel(true)}
         >
-          <Fuel size={16} color="var(--accent-color)" />
-          <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-color)' }}>{t('refuel')}</span>
+          <span style={{ fontSize: '13px', marginRight: '2px' }}>⛽</span>
+          <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>{t('refuel')}</span>
         </button>
+      </div>
+
+      {/* Fusion HUD Footer */}
+      <div style={{ 
+        width: '100%', 
+        padding: '8px 0 40px 0', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        gap: '6px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8 }}>
+          <div className="pulse-dot" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--accent-color)', boxShadow: '0 0 8px var(--accent-color)' }} />
+          <span style={{ fontSize: '9px', fontWeight: '950', color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>FUSION SYSTEM ACTIVE</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+          <span style={{ fontSize: '7.5px', color: '#fff', fontWeight: '800', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.2 }}>RIDE HUD DASHBOARD • V1.2.0 • ELITE EDITION</span>
+          <div style={{ fontSize: '7.5px', color: '#fff', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
+            <span style={{ opacity: 0.3 }}>SYSTEM ARCHITECT: </span>
+            <span style={{ opacity: 1, textShadow: '0 0 10px rgba(255,255,255,0.4)' }}>AHMED HAMAKI</span>
+          </div>
+        </div>
       </div>
 
       {/* MODALS */}
@@ -699,37 +708,43 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         </div>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '24px' }}>{t('setupProfile')}</p>
 
-        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-            <label style={{ fontSize: '10px', color: 'var(--accent-color)', textTransform: 'uppercase', marginBottom: '4px', display: 'block', fontWeight: '900', opacity: 0.6 }}>{t('riderName')}</label>
-            <input required type="text" placeholder="" value={name} 
+        <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+          <label className="fusion-label" style={{ marginBottom: '6px', fontSize: '9px' }}>{t('riderName')}</label>
+          <div className="fusion-input-group">
+            <User size={18} color="var(--accent-color)" opacity={0.5} />
+            <input required type="text" className="fusion-input" value={name} 
               onChange={e => {
                 const val = e.target.value;
                 setName(val.charAt(0).toUpperCase() + val.slice(1));
               }}
-              autoCapitalize="words" spellCheck="false"
-              style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+              autoCapitalize="words" spellCheck="false" />
           </div>
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-            <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '4px', display: 'block', fontWeight: '900' }}>{t('phoneNumber')}</label>
-            <input required type="tel" placeholder="" value={phone} onChange={e => setPhone(e.target.value)}
-              style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '700', outline: 'none' }} />
+
+          <label className="fusion-label" style={{ marginBottom: '6px', fontSize: '9px' }}>{t('phoneNumber')}</label>
+          <div className="fusion-input-group">
+            <Smartphone size={18} color="var(--accent-color)" opacity={0.5} />
+            <input required type="tel" className="fusion-input" value={phone} onChange={e => setPhone(e.target.value)} />
           </div>
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-            <input required type="text" placeholder="" value={vehicleType} 
+
+          <label className="fusion-label" style={{ marginBottom: '6px', fontSize: '9px' }}>{t('vehicleType') || 'Vehicle'}</label>
+          <div className="fusion-input-group">
+            <Settings size={18} color="var(--accent-color)" opacity={0.5} />
+            <input required type="text" className="fusion-input" value={vehicleType} 
               onChange={e => setVehicleType(e.target.value.toUpperCase())}
-              autoCapitalize="characters" spellCheck="false"
-              style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '700', outline: 'none' }} />
+              autoCapitalize="characters" spellCheck="false" />
           </div>
-            <button type="submit" className="glass-button"
+
+          <button type="submit" className="glass-button"
             disabled={!name.trim() || !phone.trim() || !vehicleType.trim()}
             style={{
-              alignSelf: 'center', padding: '14px 48px', borderRadius: '14px',
-              background: 'transparent',
-              border: '1px solid var(--accent-color)', color: 'white', fontWeight: '700', marginTop: '12px',
-              opacity: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 0.5 : 1,
+              alignSelf: 'center', padding: '10px 28px', borderRadius: '20px',
+              background: 'none',
+              border: '1.5px solid var(--accent-color)', color: 'white', fontWeight: '900', marginTop: '20px',
+              textTransform: 'uppercase', letterSpacing: '1px', fontSize: '12px',
+              opacity: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 0.3 : 1,
               cursor: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.3s ease',
+              boxShadow: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'none' : '0 0 15px rgba(0, 240, 255, 0.08)'
             }}>
             {t('startRide')}
           </button>
@@ -1004,388 +1019,151 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
 }
 
 function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
-  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'en';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
-  // Profile State
+  
   const [name, setName] = useState(tracker.userProfile?.name || '');
   const [phone, setPhone] = useState(tracker.userProfile?.phone || '');
   const [vehicle, setVehicle] = useState(tracker.userProfile?.vehicleType || '');
   const [photo, setPhoto] = useState(tracker.userProfile?.photoUrl || null);
   const [objPos, setObjPos] = useState(tracker.userProfile?.photoPosition || { x: 0, y: 0, scale: 100 });
   const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, sx: 0, sy: 0 });
   const hasMovedRef = useRef(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0, startX: 0, startY: 0 });
 
-  // Technical State
   const [avg, setAvg] = useState((tracker.settings.avgConsumption || 30).toString());
   const [cap, setCap] = useState((tracker.settings.tankCapacity || 7.5).toString());
-  const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.0).toString());
+  const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.5).toString());
   const [alerts, setAlerts] = useState(!!tracker.settings.enableAlerts);
-
   const [confirmReset, setConfirmReset] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
-    // Save Profile
-    tracker.updateUserProfile({
-      ...tracker.userProfile,
-      name,
-      phone,
-      vehicleType: vehicle,
-      photoUrl: photo,
-      photoPosition: objPos
-    });
-
-    // Save Technical Settings
-    tracker.setSettings({
-      ...tracker.settings,
-      avgConsumption: Number(avg),
-      tankCapacity: Number(cap),
-      fuelPricePerLiter: Number(price),
-      enableAlerts: alerts
-    });
-
+    tracker.updateUserProfile({ ...tracker.userProfile, name, phone, vehicleType: vehicle, photoUrl: photo, photoPosition: objPos });
+    tracker.setSettings({ ...tracker.settings, avgConsumption: Number(avg), tankCapacity: Number(cap), fuelPricePerLiter: Number(price), enableAlerts: alerts });
     onClose();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhoto(reader.result as string);
-      reader.readAsDataURL(file);
-    }
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!photo) return;
     setIsDragging(true);
     hasMovedRef.current = false;
-    setDragStart({ 
-      x: e.clientX, 
-      y: e.clientY,
-      startX: objPos.x,
-      startY: objPos.y
-    });
+    setDragStart({ x: e.clientX, y: e.clientY, sx: objPos.x, sy: objPos.y });
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
-
   const onPointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
-    
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      hasMovedRef.current = true;
-    }
-
-    // Direct pixel translation for natural movement
-    const newX = dragStart.startX + dx;
-    const newY = dragStart.startY + dy;
-    
-    setObjPos((p: any) => ({ ...p, x: newX, y: newY }));
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    setIsDragging(false);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMovedRef.current = true;
+    setObjPos((p: any) => ({ ...p, x: dragStart.sx + dx, y: dragStart.sy + dy }));
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }}>
-      <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto', padding: '28px 24px', animation: 'scaleUp 0.3s ease-out' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--primary-bg)', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s ease' }}>
+      
+      {/* Immersive Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(10, 10, 12, 0.6)', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '4px', height: '18px', background: 'var(--accent-secondary)', borderRadius: '4px', boxShadow: '0 0 10px var(--accent-secondary)' }} />
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px' }}>{t('settings')}</h2>
+        </div>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 40px 24px' }}>
         
-        {/* Settings Header Block */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '4px', boxShadow: '0 0 12px color-mix(in srgb, var(--accent-color), transparent 60%)' }} />
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: '18px', 
-              fontFamily: "'Inter', sans-serif",
-              fontWeight: '700', 
-              letterSpacing: '1px', 
-              background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textTransform: 'uppercase'
-            }}>{t('settings')}</h2>
+        {/* Dynamic Avatar Setup */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div 
+             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => setIsDragging(false)}
+             onClick={() => { if (!hasMovedRef.current) fileInputRef.current?.click(); }}
+             style={{ width: '100px', height: '100px', borderRadius: '24px', border: '2px solid var(--accent-secondary)', margin: '0 auto 12px', overflow: 'hidden', cursor: isDragging ? 'grabbing' : (photo ? 'move' : 'pointer'), position: 'relative', touchAction: 'none' }}>
+             {photo ? <img src={photo} draggable="false" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: `translate(${objPos.x}px, ${objPos.y}px) scale(${objPos.scale / 100})`, background: '#000' }} /> : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={26} color="var(--accent-secondary)" /></div>}
+             <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.6)', padding: '4px 0', fontSize: '9px', fontWeight: '900' }}>{t('edit')}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'color-mix(in srgb, var(--accent-color), transparent 85%)', border: '1px solid color-mix(in srgb, var(--accent-color), transparent 70%)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
+          <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = x => setPhoto(x.target?.result as string); r.readAsDataURL(f); } }} />
+          {photo && <input type="range" min="10" max="400" value={objPos.scale} onChange={e => setObjPos((p: any) => ({ ...p, scale: Number(e.target.value) }))} style={{ width: '150px', accentColor: 'var(--accent-secondary)' }} />}
         </div>
 
-        {/* Profile Avatar Block */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div 
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onClick={() => {
-               // Only trigger file input if we didn't actually move (it was a click)
-               if (!hasMovedRef.current) fileInputRef.current?.click();
-            }}
-            style={{ 
-              width: '100px', height: '100px', borderRadius: '16px', margin: '0 auto 12px',
-              border: '2px solid var(--accent-color)', overflow: 'hidden', cursor: isDragging ? 'grabbing' : (photo ? 'move' : 'pointer'),
-              position: 'relative', boxShadow: '0 0 20px color-mix(in srgb, var(--accent-color), transparent 80%)',
-              touchAction: 'none', // Prevents scrolling while dragging
-              userSelect: 'none'
-            }}
-          >
-            {photo ? (
-              <img 
-                src={photo} 
-                draggable="false"
-                onDragStart={(e) => e.preventDefault()}
-                aria-hidden="true" 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'contain', 
-                  transform: `translate(${objPos.x}px, ${objPos.y}px) scale(${objPos.scale / 100})`, 
-                  pointerEvents: 'none',
-                  transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-                  background: '#000'
-                }} 
-              />
-            ) : (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
-                <Camera size={24} color="var(--accent-color)" />
-              </div>
-            )}
-            <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.5)', fontSize: '8px', padding: '2px 0', color: '#fff' }}>{t('edit')}</div>
-          </div>
-          <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileChange} />
-          
-          {photo && (
-            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%' }}>
-              
-              {/* Simplified & Transparent Zoom Slider */}
-              <div style={{ width: '100%', maxWidth: '200px', padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px' }}>{t('zoom')}</span>
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: 'var(--accent-color)', opacity: 0.8 }}>{objPos.scale}%</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="10" max="300" 
-                  value={objPos.scale} 
-                  onChange={e => setObjPos((p: any) => ({ ...p, scale: Number(e.target.value) }))}
-                  style={{ 
-                    width: '100%', 
-                    height: '4px', 
-                    borderRadius: '2px', 
-                    appearance: 'none', 
-                    background: 'rgba(255,255,255,0.1)', 
-                    accentColor: 'var(--accent-color)',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }} 
-                />
-              </div>
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '32px' }} />
 
-              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.6, letterSpacing: '0.5px' }}>
-                {tracker.settings.language === 'ar' ? 'اسحب الصورة للتحريك • السلايدر للزووم' : 'Drag image to pan • Slider to zoom'}
-              </div>
-            </div>
-          )}
-
-          {/* Theme Selection - Premium Circle UI */}
-          <div style={{ marginBottom: '24px' }}>
-             <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px', textAlign: 'center' }}>
-                {tracker.settings.language === 'ar' ? 'نمط التطبيق' : 'APP THEME'}
-             </label>
-             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {THEME_COLORS.map(c => (
-                  <div 
-                    key={c.hex}
-                    onClick={() => tracker.setSettings({ ...tracker.settings, accentColor: c.hex })}
-                    style={{ 
-                      width: '32px', height: '32px', borderRadius: '50%', background: c.hex,
-                      border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.2)',
-                      cursor: 'pointer', transition: 'all 0.2s',
-                      transform: tracker.settings.accentColor === c.hex ? 'scale(1.15)' : 'scale(1)',
-                      boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}88` : 'none'
-                    }}
-                  />
-                ))}
+        {/* Section 1: PROFILE */}
+        <div style={{ marginBottom: '32px' }}>
+          <label className="fusion-label" style={{ marginBottom: '16px' }}>{t('userProfile') || 'USER PROFILE'}</label>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
+                <User size={18} color="var(--accent-color)" opacity={0.3} />
+                <input className="fusion-input" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" style={{ background: 'transparent' }} />
+             </div>
+             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
+                <Smartphone size={18} color="var(--accent-color)" opacity={0.3} />
+                <input className="fusion-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone Number" style={{ background: 'transparent' }} />
+             </div>
+             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
+                <Settings size={18} color="var(--accent-color)" opacity={0.3} />
+                <input className="fusion-input" value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle Type" style={{ background: 'transparent' }} />
              </div>
           </div>
+        </div>
 
-          {/* Profile Details Section - Minimalist & Borderless */}
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '12px' }}>
-            
-            {/* Name Row - Icon Based */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-              <div style={{ minWidth: '45px', display: 'flex', justifyContent: 'flex-end' }}>
-                <User size={18} color="var(--accent-color)" style={{ filter: 'drop-shadow(0 0 8px var(--accent-color))', opacity: 0.7 }} />
-              </div>
-              <input 
-                value={name} 
-                onChange={e => {
-                  const val = e.target.value;
-                  setName(val.charAt(0).toUpperCase() + val.slice(1));
-                }}
-                placeholder={t('yourNamePlaceholder')}
-                autoCapitalize="words"
-                spellCheck="false"
-                style={{ 
-                  flex: 1, background: 'transparent', border: 'none', 
-                  color: '#fff', fontSize: '15px', fontWeight: '800', outline: 'none',
-                  padding: '4px 0'
-                }}
-              />
+        {/* Section 2: SPECS */}
+        <div style={{ marginBottom: '32px' }}>
+          <label className="fusion-label" style={{ marginBottom: '16px' }}>{t('vehicleSpecs') || 'VEHICLE SPECS'}</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('avgConsumption')}</span>
+              <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0 }} value={avg} onChange={e => setAvg(e.target.value)} />
             </div>
-
-            {/* Phone Row - Borderless */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-               <div style={{ minWidth: '45px', display: 'flex', justifyContent: 'flex-end' }}>
-                 <Smartphone size={18} color="var(--accent-color)" style={{ opacity: 0.8 }} />
-               </div>
-               <input 
-                 value={phone} onChange={e => setPhone(e.target.value)}
-                 placeholder="01xxxxxxxxx"
-                 style={{ 
-                   flex: 1, background: 'transparent', border: 'none', 
-                   color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '700', outline: 'none',
-                   padding: '4px 0'
-                 }}
-               />
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('tankCapacity')}</span>
+              <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0 }} value={cap} onChange={e => setCap(e.target.value)} />
             </div>
-
-            {/* Vehicle Row - Borderless */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-               <div style={{ minWidth: '45px', display: 'flex', justifyContent: 'flex-end' }}>
-                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
-                   <circle cx="5.5" cy="17.5" r="3.5"/>
-                   <circle cx="18.5" cy="17.5" r="3.5"/>
-                   <path d="M15 17.5l-2-4.5h-5.5l-2 4.5"/>
-                   <path d="M11 8h-4.5l2 5"/>
-                   <path d="M18.5 14l-3.5-6"/>
-                   <path d="M12 8h5"/>
-                 </svg>
-               </div>
-               <input 
-                 value={vehicle} onChange={e => setVehicle(e.target.value)}
-                 placeholder="Vehicle Type"
-                 style={{ 
-                   flex: 1, background: 'transparent', border: 'none', 
-                   color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '700', outline: 'none',
-                   padding: '4px 0'
-                 }}
-               />
-            </div>
+          </div>
+          <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <span style={{ fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('fuelPrice')}</span>
+            <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0 }} value={price} onChange={e => setPrice(e.target.value)} />
           </div>
         </div>
 
-        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)', marginBottom: '24px' }} />
-        
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Tech Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-             <div style={{ padding: '4px' }}>
-              <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('avgConsumption')}</label>
-              <input type="number" className="glass-input" value={avg} onChange={e => setAvg(e.target.value)} style={{ fontSize: '15px' }} />
-            </div>
-            <div style={{ padding: '4px' }}>
-              <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('tankCapacity')}</label>
-              <input type="number" className="glass-input" value={cap} onChange={e => setCap(e.target.value)} style={{ fontSize: '15px' }} />
-            </div>
-          </div>
-
-          <div style={{ padding: '4px' }}>
-            <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('fuelPrice')}</label>
-            <input type="number" className="glass-input" value={price} onChange={e => setPrice(e.target.value)} style={{ fontSize: '15px' }} />
-          </div>
-
-          {/* Controls */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div 
-              onClick={() => setAlerts(!alerts)}
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                padding: '14px 16px', borderRadius: '16px', 
-                background: 'rgba(0, 240, 255, 0.03)', border: '1px solid rgba(0, 240, 255, 0.1)',
-                cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
+        {/* Section 3: APP SETTINGS */}
+        <div style={{ marginBottom: '32px' }}>
+           <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>{t('appSettings') || 'APP SETTINGS'}</label>
+           <div onClick={() => setAlerts(!alerts)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1.5px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.3s' }}>
               <div>
-                <span style={{ color: 'var(--accent-color)', fontSize: '13px', fontWeight: '800', display: 'block' }}>{t('notifications')}</span>
-                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{t('notifDesc')}</span>
+                <div style={{ color: 'var(--accent-secondary)', fontSize: '14px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('notifications')}</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '4px' }}>{t('notifDesc')}</div>
               </div>
-              <div style={{
-                width: '42px', height: '22px', borderRadius: '12px',
-                background: alerts ? 'rgba(0, 240, 255, 0.2)' : 'rgba(255,255,255,0.05)',
-                border: alerts ? '1px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.1)',
-                position: 'relative', transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                boxShadow: alerts ? '0 0 10px rgba(0, 240, 255, 0.2)' : 'none'
-              }}>
-                <div style={{
-                  width: '14px', height: '14px', borderRadius: '50%',
-                  background: alerts ? 'var(--accent-color)' : 'rgba(255,255,255,0.3)',
-                  position: 'absolute', top: '3px',
-                  left: alerts ? '24px' : '4px',
-                  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  boxShadow: alerts ? '0 0 8px var(--accent-color)' : 'none'
-                }} />
+              <div style={{ width: '40px', height: '22px', borderRadius: '12px', background: 'transparent', position: 'relative', border: `1.5px solid ${alerts ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.1)'}`, transition: 'all 0.3s' }}>
+                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: alerts ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.4)', position: 'absolute', top: '3.5px', left: alerts ? '23px' : '3.5px', transition: 'all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)', boxShadow: alerts ? '0 0 12px var(--accent-secondary)' : 'none' }} />
               </div>
-            </div>
-
-
-          </div>
-
-
-          {/* Footer Save */}
-          <div style={{ display: 'flex', gap: '16px', marginTop: '28px', justifyContent: 'center' }}>
-            <button 
-              className="glass-button" 
-              type="button"
-              style={{ 
-                width: 'fit-content', padding: '8px 20px', background: 'transparent', 
-                borderColor: 'rgba(255,255,255,0.15)', color: 'var(--text-secondary)', 
-                fontSize: '12px', fontWeight: '600' 
-              }} 
-              onClick={onClose}
-            >
-              {t('cancel')}
-            </button>
-            <button 
-              className="glass-button primary-glow" 
-              type="button"
-              style={{ 
-                width: 'fit-content', padding: '8px 24px', background: 'transparent', 
-                borderColor: 'var(--accent-color)', color: '#fff', 
-                fontSize: '12px', fontWeight: '800' 
-              }} 
-              onClick={handleSave}
-            >
-              {t('save')}
-            </button>
-          </div>
-
-          {/* Reset Action - Discreet bottom right */}
-          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', opacity: 0.4, transition: 'opacity 0.3s' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}>
-            {!confirmReset ? (
-              <button 
-                type="button"
-                style={{ background: 'transparent', border: 'none', color: 'var(--danger-color)', fontSize: '9px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px' }} 
-                onClick={() => setConfirmReset(true)}
-              >
-                {t('resetApp')}
-              </button>
-            ) : (
-              <button 
-                type="button"
-                style={{ background: 'var(--danger-color)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '9px', fontWeight: '700', padding: '4px 8px', cursor: 'pointer' }} 
-                onClick={() => { tracker.resetData(); onClose(); }}
-              >
-                {t('areYouSure')}
-              </button>
-            )}
-          </div>
+           </div>
         </div>
+
+        {/* Section 4: THEME */}
+        <div style={{ marginBottom: '40px' }}>
+           <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '24px' }}>{t('appTheme')}</label>
+           <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+             {THEME_COLORS.map(c => (
+               <div key={c.name} onClick={() => tracker.setSettings({...tracker.settings, accentColor: c.hex})} style={{ width: '38px', height: '38px', borderRadius: '50%', background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`, border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s', transform: tracker.settings.accentColor === c.hex ? 'scale(1.15)' : 'scale(1)', boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}66` : 'none' }} />
+             ))}
+           </div>
+        </div>
+
+        {/* Minimalist Save Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
+           <button className="glass-button" style={{ padding: '10px 42px', background: 'transparent', borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)', fontWeight: '900', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }} onClick={handleSave}>{t('save')}</button>
+        </div>
+
+        {/* Discreet Reset Button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', opacity: 0.3, transition: 'opacity 0.3s' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.3'}>
+          {!confirmReset ? (
+            <button onClick={() => setConfirmReset(true)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', fontSize: '9px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('resetApp')}</button>
+          ) : (
+            <button onClick={() => { tracker.resetData(); onClose(); }} style={{ background: 'var(--danger-color)', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '10px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>{t('areYouSure')}</button>
+          )}
+        </div>
+
       </div>
     </div>
   );
