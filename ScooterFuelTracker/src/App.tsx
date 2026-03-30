@@ -273,13 +273,22 @@ function App() {
               {/* Diagnostic Panel for GPS Fixes */}
               <div style={{ 
                 marginTop: '12px', background: 'rgba(255,255,255,0.02)', 
-                border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '8px 16px',
+                border: '1px solid ' + (tracker.trackingError ? 'rgba(255, 51, 51, 0.3)' : 'rgba(255,255,255,0.05)'), 
+                borderRadius: '12px', padding: '8px 16px',
                 display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', width: '100%' }}>
-                  <span>{t('satelliteFixes')}: <strong style={{color:'var(--accent-color)'}}>{tracker.gpsUpdateCount}</strong></span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {tracker.trackingError ? <AlertTriangle size={10} color="#ff6666" /> : null}
+                    {t('satelliteFixes')}: <strong style={{color: tracker.trackingError ? '#ff6666' : 'var(--accent-color)'}}>{tracker.gpsUpdateCount}</strong>
+                  </span>
                   <span>{t('lastFix')}: <strong style={{color:'var(--accent-color)'}}>{tracker.lastGpsTime || '--:--'}</strong></span>
                 </div>
+                {tracker.trackingError && (
+                  <div style={{ color: '#ff6666', fontSize: '9px', fontWeight: 'bold', marginTop: '2px' }}>
+                    ⚠️ {tracker.trackingError.message}
+                  </div>
+                )}
               </div>
             </div>
           )}

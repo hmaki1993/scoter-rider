@@ -55,6 +55,7 @@ let _bgGeoInstance: any = null;
 async function getBGGeo() {
   if (!_bgGeoInstance) {
     const { registerPlugin } = await import('@capacitor/core');
+    // We use the string 'BackgroundGeolocation' which is the default for the community plugin
     _bgGeoInstance = registerPlugin<any>('BackgroundGeolocation');
   }
   return _bgGeoInstance;
@@ -318,24 +319,29 @@ export const useFuelTracker = () => {
       const BgGeo = await getBGGeo();
       const id = await BgGeo.addWatcher(
         {
-          backgroundMessage: translations[settingsRef.current.language]?.bgMsg ?? '',
-          backgroundTitle: translations[settingsRef.current.language]?.bgTitle ?? '',
-          requestPermissions: true, // Prompts for "Always Allow" if needed
+          backgroundMessage: translations[settingsRef.current.language === 'ar' ? 'ar' : 'en']?.bgMsg ?? 'Tracking location...',
+          backgroundTitle: translations[settingsRef.current.language === 'ar' ? 'ar' : 'en']?.bgTitle ?? 'Scooter Tracker',
+          requestPermissions: true,
           stale: false,
-          distanceFilter: 10, // Must move 10m to trigger an update (saves battery)
+          distanceFilter: 2, // Lowered from 10 to 2 for higher sensitivity
         },
         (pos: any, err: any) => {
-          if (err) { console.error('[FuelTracker] GPS error:', err); return; }
+          if (err) { 
+            console.error('[FuelTracker] GPS error:', err);
+            setTrackingError({ message: 'GPS Connection Lost' }); // Simplified error reporting
+            return; 
+          }
           if (!pos) return;
 
           // ── Update diagnostics ──
           setGpsUpdateCount(prev => prev + 1);
           setLastGpsTime(new Date().toLocaleTimeString());
+          if (trackingError) setTrackingError(null);
 
           // ── Update Current Speed (m/s to KM/H) ───────────────────────────
           if (pos.speed !== undefined && pos.speed !== null) {
             const kmh = Math.round(pos.speed * 3.6);
-            setCurrentSpeed(kmh > 0.5 ? kmh : 0); // ignore micro movements
+            setCurrentSpeed(kmh > 0.5 ? kmh : 0);
           } else {
             setCurrentSpeed(0);
           }
@@ -350,7 +356,8 @@ export const useFuelTracker = () => {
                 lastPositionRef.current.latitude, lastPositionRef.current.longitude,
                 pos.latitude, pos.longitude
               );
-              if (dist > 0.01) {
+              // Threshold 0.002km (2 meters) to match distanceFilter
+              if (dist > 0.002) {
                 const consumed = dist / settingsRef.current.avgConsumption;
                 lastPositionRef.current = posToSave;
                 return {
