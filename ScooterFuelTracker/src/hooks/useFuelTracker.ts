@@ -388,6 +388,14 @@ export const useFuelTracker = () => {
     // ── Wake Lock ─────────────────────────────────────────────────────────
     await requestWakeLock();
 
+    // ── Start Native Background Tracking Service ──
+    try {
+      const { registerPlugin } = await import('@capacitor/core');
+      const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+      await alarmPlugin.startBackgroundTracking();
+    } catch(e) {
+      console.warn('[FuelTracker] Native bg tracking failed to start', e);
+    }
 
     // ── GPS Health Monitor ────────────────────────────────────────────────
     const monitorId = setInterval(async () => {
@@ -431,6 +439,16 @@ export const useFuelTracker = () => {
       }
       watchId.current = null;
     }
+
+    // ── Stop Native Background Tracking Service ──
+    try {
+      const { registerPlugin } = await import('@capacitor/core');
+      const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+      await alarmPlugin.stopBackgroundTracking();
+    } catch(e) {
+      console.warn('[FuelTracker] Native bg tracking failed to stop', e);
+    }
+
     setCurrentSpeed(0);
     setIsTracking(false);
     lastPositionRef.current = null;
@@ -451,6 +469,28 @@ export const useFuelTracker = () => {
 
     const init = async () => {
       const wasTracking = localStorage.getItem('was_tracking') === 'true';
+
+      // 1. Recover accumulated distance if app was killed while tracking
+      if (wasTracking) {
+        try {
+          const { registerPlugin } = await import('@capacitor/core');
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const res = await alarmPlugin.getNativeDistance();
+          if (res && res.distanceKm && res.distanceKm > 0) {
+            const dist = res.distanceKm;
+            setFuelState(prev => {
+              const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
+              return {
+                ...prev,
+                estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
+                lastOdo: prev.lastOdo + dist,
+                totalGpsDistance: prev.totalGpsDistance + dist,
+              };
+            });
+          }
+        } catch(e) { /* ignore */ }
+      }
+
       if (wasTracking && !isTracking) {
         await new Promise(r => setTimeout(r, 1500)); // let plugins initialize
         startTracking(true);
@@ -460,6 +500,27 @@ export const useFuelTracker = () => {
         if (state.isActive) {
           const stillTracking = localStorage.getItem('was_tracking') === 'true';
           const resumeAfterGps = localStorage.getItem('resume_tracking_on_gps') === 'true';
+
+          // 2. Recover distance if app was merely suspended/swiped away
+          if (stillTracking) {
+            try {
+              const { registerPlugin } = await import('@capacitor/core');
+              const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+              const res = await alarmPlugin.getNativeDistance();
+              if (res && res.distanceKm && res.distanceKm > 0) {
+                const dist = res.distanceKm;
+                setFuelState(prev => {
+                  const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
+                  return {
+                    ...prev,
+                    estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
+                    lastOdo: prev.lastOdo + dist,
+                    totalGpsDistance: prev.totalGpsDistance + dist,
+                  };
+                });
+              }
+            } catch(e) { /* ignore */ }
+          }
 
           // ── Explicit check when user returns ──
           if (trackingError) {

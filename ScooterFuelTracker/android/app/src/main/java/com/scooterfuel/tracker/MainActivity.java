@@ -137,5 +137,56 @@ public class MainActivity extends BridgeActivity {
                 call.reject(e.getMessage());
             }
         }
+
+        @PluginMethod
+        public void startBackgroundTracking(PluginCall call) {
+            try {
+                Context context = getContext();
+                Intent serviceIntent = new Intent(context, BackgroundTrackingService.class);
+                
+                // Clear old distance
+                android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                prefs.edit().putFloat("native_gps_distance", 0.0f).apply();
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent);
+                } else {
+                    context.startService(serviceIntent);
+                }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void stopBackgroundTracking(PluginCall call) {
+            try {
+                Context context = getContext();
+                Intent serviceIntent = new Intent(context, BackgroundTrackingService.class);
+                context.stopService(serviceIntent);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void getNativeDistance(PluginCall call) {
+            try {
+                Context context = getContext();
+                android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                float dist = prefs.getFloat("native_gps_distance", 0.0f);
+                
+                // Reset it immediately after reading it
+                prefs.edit().putFloat("native_gps_distance", 0.0f).apply();
+
+                com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+                ret.put("distanceKm", (double) dist);
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
     }
 }
