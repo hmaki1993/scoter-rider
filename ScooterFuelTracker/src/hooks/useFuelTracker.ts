@@ -510,10 +510,23 @@ export const useFuelTracker = () => {
         startTracking(true);
       }
 
-      appStateListener = await App.addListener('appStateChange', (state) => {
+      appStateListener = await App.addListener('appStateChange', async (state) => {
         if (state.isActive) {
           const stillTracking = localStorage.getItem('was_tracking') === 'true';
           const resumeAfterGps = localStorage.getItem('resume_tracking_on_gps') === 'true';
+
+          // ── Explicit check when user returns ──
+          if (trackingError) {
+             try {
+                const { registerPlugin } = await import('@capacitor/core');
+                const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+                const status = await alarmPlugin.checkGPS();
+                if (status && status.enabled) {
+                   setTrackingError(null);
+                   if (stillTracking) startTracking(true);
+                }
+             } catch (e) { /* ignore */ }
+          }
 
           if (resumeAfterGps) {
             // User returned from GPS settings — try starting tracking again

@@ -59,8 +59,8 @@ export const translations = {
     lowFuelAlertBody: (km: string) => `باقي لك ${km} كيلو بس والبنزين يخلص، خلي بالك!`,
     gpsOffTitle: '⚠️ الـ GPS مقفول!',
     gpsOffBody: 'افتح الـ GPS عشان يكمل التتبع.',
-    gpsDisabledError: '📍 الـ GPS مقفول! افتح الـ Location من الإعدادات وارجع للتطبيق.',
-    locPermissionReq: 'لازم تسمح بإذن الموقع عشان التطبيق يشتغل!',
+    gpsDisabledError: '📍 الـ GPS مقفول يا بطل! افتحه من الإعدادات وارجع كمل.',
+    locPermissionReq: 'لازم توافق على إذن الموقع عشان أقدر أحسبلك السكة!',
     
     // Onboarding
     welcomeRider: 'نورت يا وحش! 🛵',
@@ -78,8 +78,8 @@ export const translations = {
     stopNotif: 'إيقاف 🔇',
     bgLocationPromptTitle: '📍 خطوة مهمة واحدة لاستمرار التتبع!',
     bgLocationPromptBody: 'لازم تسمح للتطبيق يستخدم الموقع "طوال الوقت" (Allow all the time) عشان يفضل يحسب المسافة حتى لو أغلقت التطبيق خالص.\n\nدوس OK وهيفتحلك إعدادات التطبيق، اختار:\nLocation → Allow all the time',
-    gpsDisabledErrorInner: '📍 الـ GPS مقفول كلياً من الموبايل. افتحه الأول عشان أقدر أطلب الإذن.',
-    locPermissionReqInner: 'مشكلة في إذن الموقع: ',
+    gpsDisabledErrorInner: '📍 الـ GPS مقفول خالص يا ريس. افتحه الأول من السيتنج عشان أقدر أحسبلك المشوار.',
+    locPermissionReqInner: 'في مشكلة في إذن الموقع: ',
     setupError: 'خطأ أثناء الإعداد: ',
     bgTrackingError: 'خطأ في تشغيل متتبع الخلفية: ',
     updateAvailable: 'تحديث جديد متاح! 🚀',

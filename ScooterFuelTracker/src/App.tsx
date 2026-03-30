@@ -285,8 +285,22 @@ function App() {
                   <span>{t('lastFix')}: <strong style={{color:'var(--accent-color)'}}>{tracker.lastGpsTime || '--:--'}</strong></span>
                 </div>
                 {tracker.trackingError && (
-                  <div style={{ color: '#ff6666', fontSize: '9px', fontWeight: 'bold', marginTop: '2px' }}>
-                    ⚠️ {tracker.trackingError.message}
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ color: '#ff6666', fontSize: '9px', fontWeight: 'bold' }}>
+                      ⚠️ {tracker.trackingError.message}
+                    </div>
+                    {tracker.trackingError.action === 'openGPS' && (
+                      <button 
+                        onClick={() => tracker.startTracking()}
+                        className="glass-button"
+                        style={{ 
+                          padding: '4px 12px', fontSize: '9px', borderColor: 'rgba(255, 51, 102, 0.4)',
+                          background: 'rgba(255, 51, 102, 0.1)', color: '#ffcccc', minHeight: 'unset'
+                        }}
+                      >
+                        {t('openSettings')}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

@@ -46,8 +46,18 @@ public class MainActivity extends BridgeActivity {
             try {
                 android.location.LocationManager lm = (android.location.LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
                 boolean gps_enabled = false;
-                gps_enabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER);
-                ret.put("enabled", gps_enabled);
+                boolean network_enabled = false;
+
+                try {
+                    gps_enabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER);
+                } catch(Exception ex) {}
+
+                try {
+                    network_enabled = lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
+                } catch(Exception ex) {}
+
+                // If either is enabled, location is technically "ON"
+                ret.put("enabled", gps_enabled || network_enabled);
                 call.resolve(ret);
             } catch (Exception e) {
                 call.reject(e.getMessage());
