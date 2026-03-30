@@ -24,12 +24,7 @@
 
         </activity>
 
-        <service
-            android:name="com.equimaps.capacitor_background_geolocation.BackgroundGeolocationService"
-            android:enabled="true"
-            android:exported="true"
-            android:stopWithTask="false"
-            android:foregroundServiceType="location" />
+
 
         <service
             android:name="de.appplant.cordova.plugin.background.ForegroundService"
