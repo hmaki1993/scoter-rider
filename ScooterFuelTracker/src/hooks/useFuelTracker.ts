@@ -49,19 +49,6 @@ const DEFAULT_SETTINGS: FuelSettings = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Utility: safely get BackgroundGeolocation plugin (cached)
-// ─────────────────────────────────────────────────────────────────────────────
-let _bgGeoInstance: any = null;
-async function getBGGeo() {
-  if (!_bgGeoInstance) {
-    const { registerPlugin } = await import('@capacitor/core');
-    // We use the string 'BackgroundGeolocation' which is the default for the community plugin
-    _bgGeoInstance = registerPlugin<any>('BackgroundGeolocation');
-  }
-  return _bgGeoInstance;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Utility: check if we're on Android
 // ─────────────────────────────────────────────────────────────────────────────
 function isAndroidPlatform() {
@@ -310,22 +297,20 @@ export const useFuelTracker = () => {
     setGpsUpdateCount(0);
     setLastGpsTime(null);
 
-    // ── Start BackgroundGeolocation Watcher ──────────────────────────────
+    // ── Start GPS Watcher using official @capacitor/geolocation ────────────
+    // This replaces the community plugin which was incompatible with Capacitor 8
     try {
-      const BgGeo = await getBGGeo();
-      const id = await BgGeo.addWatcher(
+      const wId = await Geolocation.watchPosition(
         {
-          backgroundMessage: translations[settingsRef.current.language === 'ar' ? 'ar' : 'en']?.bgMsg ?? 'Tracking location...',
-          backgroundTitle: translations[settingsRef.current.language === 'ar' ? 'ar' : 'en']?.bgTitle ?? 'Scooter Tracker',
-          requestPermissions: true,
-          stale: false,
-          distanceFilter: 0, // Set to 0 for continuous background updates as requested
+          enableHighAccuracy: true,
+          timeout: 30000,
+          maximumAge: 0,
         },
-        (pos: any, err: any) => {
-          if (err) { 
-            console.error('[FuelTracker] GPS error:', err);
+        (pos, err) => {
+          if (err) {
+            console.error('[FuelTracker] GPS watchPosition error:', err);
             setTrackingError({ message: 'GPS Connection Lost' });
-            return; 
+            return;
           }
           if (!pos) return;
 
@@ -335,29 +320,33 @@ export const useFuelTracker = () => {
           // ── Update diagnostics ──
           setGpsUpdateCount(prev => prev + 1);
           setLastGpsTime(new Date().toLocaleTimeString());
-          if (trackingError) setTrackingError(null);
 
           // ── Update Current Speed (m/s to KM/H) ───────────────────────────
-          if (pos.speed !== undefined && pos.speed !== null) {
-            const kmh = Math.round(pos.speed * 3.6);
+          const speed = pos.coords.speed;
+          if (speed !== null && speed !== undefined) {
+            const kmh = Math.round(speed * 3.6);
             setCurrentSpeed(kmh > 0.5 ? kmh : 0);
           } else {
             setCurrentSpeed(0);
           }
 
           // ── Persist latest position so it survives app kill ───────────────
-          const posToSave = { latitude: pos.latitude, longitude: pos.longitude, timestamp: pos.time ?? Date.now() };
+          const posToSave = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            timestamp: pos.timestamp ?? Date.now()
+          };
           localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
 
           setFuelState(prev => {
             if (lastPositionRef.current) {
               const dist = calculateDistance(
                 lastPositionRef.current.latitude, lastPositionRef.current.longitude,
-                pos.latitude, pos.longitude
+                pos.coords.latitude, pos.coords.longitude
               );
-              // Threshold 0.0005km (0.5 meter) to be ultra sensitive but filter tiny noise/jitter
-              if (dist > 0.0005) {
-                const consumed = dist / settingsRef.current.avgConsumption; // Use settingsRef.current
+              // Threshold 0.005km (5 meters) to filter GPS jitter
+              if (dist > 0.005) {
+                const consumed = dist / settingsRef.current.avgConsumption;
                 lastPositionRef.current = posToSave;
                 return {
                   ...prev,
@@ -373,12 +362,9 @@ export const useFuelTracker = () => {
           });
         }
       );
-      watchId.current = id;
+      watchId.current = String(wId);
 
       // ── One-time prompt for "Allow all the time" (Background Location) ────
-      // This is needed for the GPS to keep running when the app is FULLY closed.
-      // On Android 11+, the user MUST do this manually in Settings > Apps > Location.
-      // We show this prompt once per install (not every time the user starts tracking).
       if (!silent && isAndroid && !localStorage.getItem('bg_location_prompted')) {
         localStorage.setItem('bg_location_prompted', 'true');
         setTimeout(() => {
@@ -389,9 +375,7 @@ export const useFuelTracker = () => {
           if (shouldOpen) {
             import('@capacitor/core').then(({ registerPlugin }) => {
               const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
-              // Open App Details Settings (not general location settings)
               AlarmPlugin.openAppSettings().catch(() => {
-                // Fallback to location settings
                 AlarmPlugin.openLocationSettings().catch(() => {});
               });
             });
@@ -399,9 +383,9 @@ export const useFuelTracker = () => {
         }, 1500);
       }
     } catch (geoErr: any) {
-      console.error('[FuelTracker] BackgroundGeolocation failed:', geoErr);
+      console.error('[FuelTracker] watchPosition failed:', geoErr);
       const lang = (settings.language in translations) ? settings.language : 'ar';
-      setTrackingError({ 
+      setTrackingError({
         message: ((translations[lang] as any)?.bgTrackingError || 'Error: ') + (geoErr?.message || String(geoErr))
       });
       setIsTracking(false);
@@ -471,10 +455,9 @@ export const useFuelTracker = () => {
 
     if (watchId.current !== null) {
       try {
-        const BgGeo = await getBGGeo();
-        await BgGeo.removeWatcher({ id: watchId.current });
+        await Geolocation.clearWatch({ id: watchId.current });
       } catch (e) {
-        console.warn('[FuelTracker] removeWatcher error:', e);
+        console.warn('[FuelTracker] clearWatch error:', e);
       }
       watchId.current = null;
     }
