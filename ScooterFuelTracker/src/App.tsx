@@ -87,33 +87,39 @@ function App() {
         alignItems: 'center', 
         marginBottom: '18px',
         flexWrap: 'nowrap',
+        width: '100%',
         gap: '4px'
       }}>
         <div style={{ 
-          flex: '1 1 150px', 
+          flex: 1,
+          minWidth: 0,
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: lang === 'ar' ? 'flex-end' : 'flex-start' 
         }}>
           <h1 className="logo-text" style={{ 
             margin: 0, 
-            fontSize: '24px', 
-            letterSpacing: '-1.5px',
+            fontSize: '21px', 
+            letterSpacing: '-1px',
             opacity: 1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             display: 'inline-block',
             background: 'linear-gradient(90deg, #ffffff 20%, #999 50%, #444 80%, rgba(255,255,255,0) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}>{t('appName')}</h1>
           <div className="subtitle-text" style={{ 
-            fontSize: '11px', 
-            marginTop: '2px', 
+            fontSize: '10px', 
+            marginTop: '1px', 
             letterSpacing: '0.5px', 
-            opacity: 0.8,
+            opacity: 0.7,
+            whiteSpace: 'nowrap',
             textAlign: lang === 'ar' ? 'right' : 'left'
           }}>{t('premiumSystem')}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {/* Compact Language Switcher */}
           <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', padding: '2px', marginRight: '4px' }}>
              <button onClick={() => tracker.setSettings({...tracker.settings, language: 'ar'})} style={{ padding: '4px 8px', borderRadius: '8px', border: 'none', background: tracker.settings.language === 'ar' ? 'rgba(255,94,0,0.15)' : 'transparent', color: tracker.settings.language === 'ar' ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.25)', fontWeight: '900', cursor: 'pointer', fontSize: '9px', transition: 'all 0.3s' }}>AR</button>
