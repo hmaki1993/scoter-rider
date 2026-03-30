@@ -49,11 +49,15 @@ const DEFAULT_SETTINGS: FuelSettings = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Utility: safely get BackgroundGeolocation plugin
+// Utility: safely get BackgroundGeolocation plugin (cached)
 // ─────────────────────────────────────────────────────────────────────────────
+let _bgGeoInstance: any = null;
 async function getBGGeo() {
-  const { registerPlugin } = await import('@capacitor/core');
-  return registerPlugin<any>('BackgroundGeolocation');
+  if (!_bgGeoInstance) {
+    const { registerPlugin } = await import('@capacitor/core');
+    _bgGeoInstance = registerPlugin<any>('BackgroundGeolocation');
+  }
+  return _bgGeoInstance;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,14 +92,22 @@ export const useFuelTracker = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [gpsUpdateCount, setGpsUpdateCount] = useState(0);
   const [lastGpsTime, setLastGpsTime] = useState<string | null>(null);
-  const lastPositionRef = useRef<any>(() => {
-    // ── Restore last GPS position from localStorage (survives app kill) ──
-    const saved = localStorage.getItem('last_gps_position');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const lastPositionRef = useRef<any>(null);
   const watchId = useRef<string | null>(null);
   const wakeLock = useRef<any>(null);
   const lastNotifiedStepRef = useRef<number>(999);
+
+  // ── settingsRef: always up-to-date inside GPS callbacks (fixes stale closure) ──
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+
+  // ── Restore last GPS position from localStorage on mount ──────────────────
+  useEffect(() => {
+    const saved = localStorage.getItem('last_gps_position');
+    if (saved) {
+      try { lastPositionRef.current = JSON.parse(saved); } catch { /* ignore */ }
+    }
+  }, []);
 
   // ── Register Notification Channel & Actions ──────────────────────────────
   useEffect(() => {
@@ -306,8 +318,8 @@ export const useFuelTracker = () => {
       const BgGeo = await getBGGeo();
       const id = await BgGeo.addWatcher(
         {
-          backgroundMessage: translations[settings.language].bgMsg,
-          backgroundTitle: translations[settings.language].bgTitle,
+          backgroundMessage: translations[settingsRef.current.language]?.bgMsg ?? '',
+          backgroundTitle: translations[settingsRef.current.language]?.bgTitle ?? '',
           requestPermissions: true, // Prompts for "Always Allow" if needed
           stale: false,
           distanceFilter: 10, // Must move 10m to trigger an update (saves battery)
@@ -339,7 +351,7 @@ export const useFuelTracker = () => {
                 pos.latitude, pos.longitude
               );
               if (dist > 0.01) {
-                const consumed = dist / settings.avgConsumption;
+                const consumed = dist / settingsRef.current.avgConsumption;
                 lastPositionRef.current = posToSave;
                 return {
                   ...prev,
