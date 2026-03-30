@@ -45,19 +45,23 @@ public class MainActivity extends BridgeActivity {
             com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
             try {
                 android.location.LocationManager lm = (android.location.LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
-                boolean gps_enabled = false;
-                boolean network_enabled = false;
+                boolean isEnabled = false;
 
-                try {
-                    gps_enabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER);
-                } catch(Exception ex) {}
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    isEnabled = lm.isLocationEnabled();
+                } else {
+                    boolean gps_enabled = false;
+                    boolean network_enabled = false;
+                    try {
+                        gps_enabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER);
+                    } catch(Exception ex) {}
+                    try {
+                        network_enabled = lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
+                    } catch(Exception ex) {}
+                    isEnabled = gps_enabled || network_enabled;
+                }
 
-                try {
-                    network_enabled = lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
-                } catch(Exception ex) {}
-
-                // If either is enabled, location is technically "ON"
-                ret.put("enabled", gps_enabled || network_enabled);
+                ret.put("enabled", isEnabled);
                 call.resolve(ret);
             } catch (Exception e) {
                 call.reject(e.getMessage());

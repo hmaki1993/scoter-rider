@@ -247,10 +247,6 @@ export const useFuelTracker = () => {
             const gpsStatus = await AlarmPlugin.checkGPS();
             if (!gpsStatus || !gpsStatus.enabled) {
               setTrackingError({ message: translations[settings.language].gpsDisabledErrorInner, action: 'openGPS' });
-              localStorage.setItem('resume_tracking_on_gps', 'true');
-              try { await AlarmPlugin.openLocationSettings(); } catch { /* ignore */ }
-              setIsStarting(false);
-              return;
             }
           } catch (gpsErr) { console.warn('[FuelTracker] Instant GPS check failed:', gpsErr); }
         }
@@ -332,6 +328,9 @@ export const useFuelTracker = () => {
             return; 
           }
           if (!pos) return;
+
+          // ── SUCCESS: Clear any previous tracking error automatically ──
+          setTrackingError(null);
 
           // ── Update diagnostics ──
           setGpsUpdateCount(prev => prev + 1);
