@@ -86,8 +86,8 @@ function App() {
         justifyContent: 'space-between', 
         alignItems: 'center', 
         marginBottom: '18px',
-        flexWrap: 'wrap',
-        gap: '12px'
+        flexWrap: 'nowrap',
+        gap: '4px'
       }}>
         <div style={{ 
           flex: '1 1 150px', 
