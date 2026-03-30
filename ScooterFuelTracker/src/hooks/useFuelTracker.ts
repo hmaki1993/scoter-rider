@@ -307,59 +307,64 @@ export const useFuelTracker = () => {
           maximumAge: 0,
         },
         (pos, err) => {
-          if (err) {
-            console.error('[FuelTracker] GPS watchPosition error:', err);
-            setTrackingError({ message: 'GPS Connection Lost' });
-            return;
-          }
-          if (!pos) return;
-
-          // ── SUCCESS: Clear any previous tracking error automatically ──
-          setTrackingError(null);
-
-          // ── Update diagnostics ──
-          setGpsUpdateCount(prev => prev + 1);
-          setLastGpsTime(new Date().toLocaleTimeString());
-
-          // ── Update Current Speed (m/s to KM/H) ───────────────────────────
-          const speed = pos.coords.speed;
-          if (speed !== null && speed !== undefined) {
-            const kmh = Math.round(speed * 3.6);
-            setCurrentSpeed(kmh > 0.5 ? kmh : 0);
-          } else {
-            setCurrentSpeed(0);
-          }
-
-          // ── Persist latest position so it survives app kill ───────────────
-          const posToSave = {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            timestamp: pos.timestamp ?? Date.now()
-          };
-          localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
-
-          setFuelState(prev => {
-            if (lastPositionRef.current) {
-              const dist = calculateDistance(
-                lastPositionRef.current.latitude, lastPositionRef.current.longitude,
-                pos.coords.latitude, pos.coords.longitude
-              );
-              // Threshold 0.005km (5 meters) to filter GPS jitter
-              if (dist > 0.005) {
-                const consumed = dist / settingsRef.current.avgConsumption;
-                lastPositionRef.current = posToSave;
-                return {
-                  ...prev,
-                  estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-                  lastOdo: prev.lastOdo + dist,
-                  totalGpsDistance: prev.totalGpsDistance + dist,
-                };
-              }
-              return prev;
+          try {
+            if (err) {
+              console.error('[FuelTracker] GPS watchPosition error:', err);
+              setTrackingError({ message: 'GPS Connection Lost' });
+              return;
             }
-            lastPositionRef.current = posToSave;
-            return prev;
-          });
+            if (!pos) return;
+
+            // ── SUCCESS: Clear any previous tracking error automatically ──
+            setTrackingError(null);
+
+            // ── Update diagnostics ──
+            setGpsUpdateCount(prev => prev + 1);
+            setLastGpsTime(new Date().toLocaleTimeString());
+
+            // ── Update Current Speed (m/s to KM/H) ───────────────────────────
+            const speed = pos.coords?.speed;
+            if (speed !== null && speed !== undefined) {
+              const kmh = Math.round(speed * 3.6);
+              setCurrentSpeed(kmh > 0.5 ? kmh : 0);
+            } else {
+              setCurrentSpeed(0);
+            }
+
+            // ── Persist latest position so it survives app kill ───────────────
+            const posToSave = {
+              latitude: pos.coords?.latitude,
+              longitude: pos.coords?.longitude,
+              timestamp: pos.timestamp ?? Date.now()
+            };
+            localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
+
+            setFuelState(prev => {
+              if (lastPositionRef.current && pos.coords) {
+                const dist = calculateDistance(
+                  lastPositionRef.current.latitude, lastPositionRef.current.longitude,
+                  pos.coords.latitude, pos.coords.longitude
+                );
+                // Threshold 0.005km (5 meters) to filter GPS jitter
+                if (dist > 0.005) {
+                  const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
+                  lastPositionRef.current = posToSave;
+                  return {
+                    ...prev,
+                    estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
+                    lastOdo: prev.lastOdo + dist,
+                    totalGpsDistance: prev.totalGpsDistance + dist,
+                  };
+                }
+                return prev;
+              }
+              lastPositionRef.current = posToSave;
+              return prev;
+            });
+          } catch (callbackErr: any) {
+            console.error('[FuelTracker] CRASH AVERTED in watchPosition callback:', callbackErr);
+            setTrackingError({ message: 'App Logic Error: ' + String(callbackErr) });
+          }
         }
       );
       watchId.current = String(wId);
@@ -383,27 +388,6 @@ export const useFuelTracker = () => {
     // ── Wake Lock ─────────────────────────────────────────────────────────
     await requestWakeLock();
 
-    // ── Background Mode (prevent WebView death on swipe-kill) ─────────────
-    try {
-      const cordova = (window as any).cordova;
-      if (cordova?.plugins?.backgroundMode) {
-        const bm = cordova.plugins.backgroundMode;
-        const lang = (settings.language in translations) ? settings.language : 'ar';
-        bm.setDefaults({
-          title: (translations[lang] as any)?.bgStatusTitle,
-          text: (translations[lang] as any)?.bgStatusText,
-          color: 'F14F4D',
-          resume: true,
-          hidden: false,
-          silent: false,
-        });
-        bm.enable();
-        bm.disableWebViewOptimizations();
-        bm.disableBatteryOptimizations();
-      }
-    } catch (e) {
-      console.warn('[FuelTracker] Background mode error:', e);
-    }
 
     // ── GPS Health Monitor ────────────────────────────────────────────────
     const monitorId = setInterval(async () => {
@@ -456,14 +440,8 @@ export const useFuelTracker = () => {
       clearInterval((window as any).__gpsMonitorId);
       (window as any).__gpsMonitorId = null;
     }
-
-    try {
-      const cordova = (window as any).cordova;
-      if (cordova?.plugins?.backgroundMode) {
-        cordova.plugins.backgroundMode.disable();
-      }
-    } catch { /* noop */ }
   };
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Auto-start on app open / resume from background

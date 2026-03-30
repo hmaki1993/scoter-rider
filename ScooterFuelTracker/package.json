@@ -19,7 +19,6 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^6.0.1",
     "clsx": "^2.1.1",
-    "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
     "gsap": "^3.14.2",
     "lucide-react": "^1.6.0",
