@@ -35,7 +35,7 @@
             android:name="de.appplant.cordova.plugin.background.ForegroundService"
             android:enabled="true"
             android:exported="true"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="location" />
 
 
         <provider

@@ -365,23 +365,9 @@ export const useFuelTracker = () => {
       watchId.current = String(wId);
 
       // ── One-time prompt for "Allow all the time" (Background Location) ────
-      if (!silent && isAndroid && !localStorage.getItem('bg_location_prompted')) {
-        localStorage.setItem('bg_location_prompted', 'true');
-        setTimeout(() => {
-          const shouldOpen = confirm(
-            translations[settings.language].bgLocationPromptTitle + '\n\n' +
-            translations[settings.language].bgLocationPromptBody
-          );
-          if (shouldOpen) {
-            import('@capacitor/core').then(({ registerPlugin }) => {
-              const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
-              AlarmPlugin.openAppSettings().catch(() => {
-                AlarmPlugin.openLocationSettings().catch(() => {});
-              });
-            });
-          }
-        }, 1500);
-      }
+      // Removed: This was using a synchronous window.confirm that was blocking the WebView
+      // and redirecting to Android settings immediately when location was found, causing a perceived crash.
+      // With the foreground service set to type "location", "While using the app" permission is enough.
     } catch (geoErr: any) {
       console.error('[FuelTracker] watchPosition failed:', geoErr);
       const lang = (settings.language in translations) ? settings.language : 'ar';
