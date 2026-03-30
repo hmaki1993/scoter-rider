@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { Fuel, MapPin, AlertTriangle, Settings, Droplets, RotateCcw, Bell, BellOff, User, Camera, Smartphone } from 'lucide-react';
+import { Fuel, MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone } from 'lucide-react';
 import { translations } from './translations';
 import gsap from 'gsap';
 import './index.css';
 
+const THEME_COLORS = [
+  { name: 'Cyan', hex: '#00f0ff' },
+  { name: 'Gold', hex: '#F0E491' },
+  { name: 'Moss', hex: '#326143' },
+  { name: 'Purple', hex: '#bf5af2' },
+  { name: 'Red', hex: '#ff3366' },
+  { name: 'Orange', hex: '#ff9f0a' },
+];
+
 function App() {
   const tracker = useFuelTracker();
+
+  // Sync Global Theme Color
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--accent-color', tracker.settings.accentColor);
+  }, [tracker.settings.accentColor]);
   const lang = (tracker.settings.language in translations) ? tracker.settings.language : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const tFunc = (key: string, val: string): string => {
@@ -56,7 +71,7 @@ function App() {
   }, []);
 
   return (
-    <div className="app-container" ref={appRef} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
       {/* Top Left Language Toggle */}
       <div style={{ alignSelf: 'flex-start', marginBottom: '16px', zIndex: 10 }}>
@@ -107,10 +122,37 @@ function App() {
       </div>
 
       {/* Header - App Name small top-left */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-        <div>
-          <h1 className="logo-text" style={{ margin: 0, fontSize: '24px', letterSpacing: '-1px', opacity: 0.9 }}>{t('appName')}</h1>
-          <div className="subtitle-text" style={{ fontSize: '11px', marginTop: '2px', letterSpacing: '0.5px', opacity: 0.9 }}>{t('premiumSystem')}</div>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '18px',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ 
+          flex: '1 1 150px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: lang === 'ar' ? 'flex-end' : 'flex-start' 
+        }}>
+          <h1 className="logo-text" style={{ 
+            margin: 0, 
+            fontSize: '24px', 
+            letterSpacing: '-1.5px',
+            opacity: 1,
+            display: 'inline-block',
+            background: 'linear-gradient(90deg, #ffffff 20%, #999 50%, #444 80%, rgba(255,255,255,0) 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>{t('appName')}</h1>
+          <div className="subtitle-text" style={{ 
+            fontSize: '11px', 
+            marginTop: '2px', 
+            letterSpacing: '0.5px', 
+            opacity: 0.8,
+            textAlign: lang === 'ar' ? 'right' : 'left'
+          }}>{t('premiumSystem')}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           {/* Tracking Status Badge (Now Clickable) */}
@@ -188,7 +230,7 @@ function App() {
                 }}
               />
             ) : (
-              <User size={26} color="var(--danger-color)" />
+              <User size={26} color="var(--accent-color)" style={{ opacity: 0.6 }} />
             )}
           </div>
           <div>
@@ -517,7 +559,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [vehicleType, setVehicleType] = useState('');
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(tracker.userProfile?.photoUrl || null);
   // percentage-based focal point (50,50 = center)
   const [objPos, setObjPos] = useState({ x: 50, y: 50 });
   const [zoom, setZoom] = useState(100);
@@ -658,20 +700,26 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '24px' }}>{t('setupProfile')}</p>
 
         <form onSubmit={handleSubmit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>{t('riderName')}</label>
-            <input required type="text" placeholder="" value={name} onChange={e => setName(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+            <label style={{ fontSize: '10px', color: 'var(--accent-color)', textTransform: 'uppercase', marginBottom: '4px', display: 'block', fontWeight: '900', opacity: 0.6 }}>{t('riderName')}</label>
+            <input required type="text" placeholder="" value={name} 
+              onChange={e => {
+                const val = e.target.value;
+                setName(val.charAt(0).toUpperCase() + val.slice(1));
+              }}
+              autoCapitalize="words" spellCheck="false"
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
           </div>
-          <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>{t('phoneNumber')}</label>
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+            <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '4px', display: 'block', fontWeight: '900' }}>{t('phoneNumber')}</label>
             <input required type="tel" placeholder="" value={phone} onChange={e => setPhone(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '700', outline: 'none' }} />
           </div>
-          <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>{t('scooterMotorcycleType')}</label>
-            <input required type="text" placeholder="" value={vehicleType} onChange={e => setVehicleType(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '14px', borderRadius: '12px', color: 'white', fontSize: '15px' }} />
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+            <input required type="text" placeholder="" value={vehicleType} 
+              onChange={e => setVehicleType(e.target.value.toUpperCase())}
+              autoCapitalize="characters" spellCheck="false"
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '700', outline: 'none' }} />
           </div>
             <button type="submit" className="glass-button"
             disabled={!name.trim() || !phone.trim() || !vehicleType.trim()}
@@ -719,12 +767,22 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
           maxWidth: '400px'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MapPin size={20} color="var(--danger-color)" />
-            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>{t('sync')} 🛵</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '4px', boxShadow: '0 0 12px color-mix(in srgb, var(--accent-color), transparent 60%)' }} />
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '18px', 
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: '700', 
+              letterSpacing: '1px', 
+              background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textTransform: 'uppercase'
+            }}>{t('sync')}</h2>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255, 0, 0, 0.15)', border: '1px solid rgba(255, 0, 0, 0.3)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'color-mix(in srgb, var(--accent-color), transparent 85%)', border: '1px solid color-mix(in srgb, var(--accent-color), transparent 70%)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
         </div>
 
         <div style={{ marginBottom: '24px', textAlign: 'left' }}>
@@ -736,17 +794,19 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
               value={odo}
               onChange={e => setOdo(e.target.value)}
               style={{
-                width: '100%',
-                padding: '16px',
-                fontSize: '24px',
-                fontWeight: '700',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: 'transparent',
+                width: '140px',
+                margin: '0 auto',
+                display: 'block',
+                padding: '6px 12px',
+                fontSize: '22px',
+                fontWeight: '800',
+                border: '1px solid color-mix(in srgb, var(--accent-color), transparent 85%)',
+                background: 'rgba(255,255,255,0.03)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
                 textAlign: 'center',
                 color: '#ffffff',
-                borderRadius: '16px',
+                borderRadius: '12px',
                 boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
                 outline: 'none',
               }}
@@ -755,7 +815,7 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
           </div>
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '12px', lineHeight: '1.4', textAlign: 'center' }}>
             {tracker.settings.language === 'ar' ? 'ظبط الرقم عشان يبقى زي شاشة السكوتر بالظبط' : 'Adjust the value to match your scooter\'s screen'} <br />
-            <span style={{ color: 'var(--danger-color)', opacity: 0.5 }}>{tracker.settings.language === 'ar' ? 'حسابات البنزين هتتحدث تلقائياً' : 'Fuel range will be updated automatically'}</span>
+            <span style={{ color: 'var(--accent-color)', opacity: 0.6 }}>{tracker.settings.language === 'ar' ? 'حسابات البنزين هتتحدث تلقائياً' : 'Fuel range will be updated automatically'}</span>
           </div>
         </div>
 
@@ -763,26 +823,20 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
           <button
             className="glass-button"
             style={{
-              width: 'auto',
-              minWidth: '220px',
-              padding: '14px 32px',
-              fontWeight: '700',
-              gap: '12px',
-              background: 'rgba(255, 0, 0, 0.05)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              color: '#fff',
-              fontSize: '15px',
-              border: '1px solid rgba(255, 0, 0, 0.4)',
-              boxShadow: '0 8px 32px rgba(255, 0, 0, 0.1)',
-              borderRadius: '16px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-              transition: 'all 0.3s ease'
+              width: 'fit-content',
+              padding: '10px 24px',
+              fontWeight: '800',
+              background: 'transparent',
+              color: 'var(--accent-color)',
+              fontSize: '13px',
+              border: '1px solid var(--accent-color)',
+              borderRadius: '12px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 0 15px color-mix(in srgb, var(--accent-color), transparent 80%)'
             }}
             onClick={handleSync}
           >
-            <RotateCcw size={18} />
-            {t('save')} ✨
+            {t('save')}
           </button>
         </div>
       </div>
@@ -843,8 +897,8 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
             }}>Refuel</h2>
           </div>
           <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '4px' }}>
-            <button type="button" onClick={() => setInputMode('currency')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'currency' ? 'rgba(0, 240, 255, 0.05)' : 'transparent', color: inputMode === 'currency' ? 'var(--accent-color)' : 'var(--text-secondary)', boxShadow: inputMode === 'currency' ? 'inset 0 0 0 1px var(--accent-color)' : 'none', transition: 'all 0.2s ease', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}>EGP</button>
-            <button type="button" onClick={() => setInputMode('liters')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'liters' ? 'rgba(0, 240, 255, 0.05)' : 'transparent', color: inputMode === 'liters' ? 'var(--accent-color)' : 'var(--text-secondary)', boxShadow: inputMode === 'liters' ? 'inset 0 0 0 1px var(--accent-color)' : 'none', transition: 'all 0.2s ease', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}>Liters</button>
+            <button type="button" onClick={() => setInputMode('currency')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'currency' ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'transparent', color: inputMode === 'currency' ? 'var(--accent-color)' : 'var(--text-secondary)', boxShadow: inputMode === 'currency' ? 'inset 0 0 0 1px var(--accent-color)' : 'none', transition: 'all 0.2s ease', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}>EGP</button>
+            <button type="button" onClick={() => setInputMode('liters')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'liters' ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'transparent', color: inputMode === 'liters' ? 'var(--accent-color)' : 'var(--text-secondary)', boxShadow: inputMode === 'liters' ? 'inset 0 0 0 1px var(--accent-color)' : 'none', transition: 'all 0.2s ease', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}>Liters</button>
           </div>
         </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -873,8 +927,8 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
             style={{ 
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
               padding: '12px 14px', cursor: 'pointer',
-              background: isFullTank ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255,255,255,0.02)',
-              border: isFullTank ? '1px solid rgba(0, 240, 255, 0.2)' : '1px solid rgba(255,255,255,0.05)',
+              background: isFullTank ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'rgba(255,255,255,0.02)',
+              border: isFullTank ? '1px solid color-mix(in srgb, var(--accent-color), transparent 70%)' : '1px solid rgba(255,255,255,0.05)',
               borderRadius: '14px',
               marginTop: '4px',
               transition: 'all 0.3s ease'
@@ -890,10 +944,10 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
             </div>
             <div style={{
               width: '42px', height: '22px', borderRadius: '12px',
-              background: isFullTank ? 'rgba(0, 240, 255, 0.2)' : 'rgba(255,255,255,0.05)',
+              background: isFullTank ? 'color-mix(in srgb, var(--accent-color), transparent 80%)' : 'rgba(255,255,255,0.05)',
               border: isFullTank ? '1px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.1)',
               position: 'relative', transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              boxShadow: isFullTank ? '0 0 10px rgba(0, 240, 255, 0.2)' : 'none'
+              boxShadow: isFullTank ? '0 0 10px color-mix(in srgb, var(--accent-color), transparent 70%)' : 'none'
             }}>
               <div style={{
                 width: '14px', height: '14px', borderRadius: '50%',
@@ -929,16 +983,15 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
               className="glass-button" 
               style={{ 
                 background: 'transparent', 
-                color: 'var(--accent-color)', 
+                color: '#fff', 
                 border: '1px solid var(--accent-color)',
-                fontWeight: '700',
+                fontWeight: '800',
                 padding: '10px 24px',
                 fontSize: '13px',
-                borderRadius: '10px',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
+                borderRadius: '12px',
                 transition: 'all 0.2s ease',
-                minWidth: 'fit-content'
+                width: 'fit-content',
+                boxShadow: '0 0 15px color-mix(in srgb, var(--accent-color), transparent 80%)'
               }}
             >
               {t('save')}
@@ -962,7 +1015,6 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const [isDragging, setIsDragging] = useState(false);
   const hasMovedRef = useRef(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, startX: 0, startY: 0 });
-  const [isSimulation, setIsSimulation] = useState((window as any).__isSimulating || false);
 
   // Technical State
   const [avg, setAvg] = useState((tracker.settings.avgConsumption || 30).toString());
@@ -972,21 +1024,6 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
 
   const [confirmReset, setConfirmReset] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const startSimulator = () => {
-    (window as any).__isSimulating = true;
-    let speed = 0;
-    (window as any).__simInterval = setInterval(() => {
-      speed = speed >= 120 ? 0 : speed + 5;
-      tracker.setCurrentSpeed(speed);
-    }, 500);
-  };
-
-  const stopSimulator = () => {
-    (window as any).__isSimulating = false;
-    clearInterval((window as any).__simInterval);
-    tracker.setCurrentSpeed(0);
-  };
 
   const handleSave = () => {
     // Save Profile
@@ -1007,13 +1044,6 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
       fuelPricePerLiter: Number(price),
       enableAlerts: alerts
     });
-
-    // Handle Simulation Toggle
-    if (isSimulation && !(window as any).__isSimulating) {
-      startSimulator();
-    } else if (!isSimulation && (window as any).__isSimulating) {
-      stopSimulator();
-    }
 
     onClose();
   };
@@ -1065,7 +1095,26 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto', padding: '28px 24px', animation: 'scaleUp 0.3s ease-out' }}>
         
-        {/* Profile Header Block */}
+        {/* Settings Header Block */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '4px', boxShadow: '0 0 12px color-mix(in srgb, var(--accent-color), transparent 60%)' }} />
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '18px', 
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: '700', 
+              letterSpacing: '1px', 
+              background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textTransform: 'uppercase'
+            }}>{t('settings')}</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'color-mix(in srgb, var(--accent-color), transparent 85%)', border: '1px solid color-mix(in srgb, var(--accent-color), transparent 70%)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
+        </div>
+
+        {/* Profile Avatar Block */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div 
             onPointerDown={onPointerDown}
@@ -1079,7 +1128,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             style={{ 
               width: '100px', height: '100px', borderRadius: '16px', margin: '0 auto 12px',
               border: '2px solid var(--accent-color)', overflow: 'hidden', cursor: isDragging ? 'grabbing' : (photo ? 'move' : 'pointer'),
-              position: 'relative', boxShadow: '0 0 20px rgba(0, 240, 255, 0.2)',
+              position: 'relative', boxShadow: '0 0 20px color-mix(in srgb, var(--accent-color), transparent 80%)',
               touchAction: 'none', // Prevents scrolling while dragging
               userSelect: 'none'
             }}
@@ -1142,45 +1191,91 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             </div>
           )}
 
-          {/* Name Field */}
-          <input 
-            value={name} onChange={e => setName(e.target.value)}
-            style={{ 
-              width: '100%', textAlign: 'center', background: 'transparent', 
-              border: 'none', color: '#fff', fontSize: '20px', fontWeight: '900', 
-              outline: 'none', letterSpacing: '-0.5px' 
-            }}
-            placeholder={t('yourNamePlaceholder')}
-          />
-
-          {/* Glass Pods Info Row */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '12px' }}>
-             {/* Phone Pod */}
-             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <Smartphone size={12} color="var(--accent-color)" opacity={0.7} />
-                <input 
-                  value={phone} onChange={e => setPhone(e.target.value)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '11px', outline: 'none', width: '85px', fontWeight: '600' }}
-                  placeholder="01xxxxxxxxx"
-                />
+          {/* Theme Selection - Premium Circle UI */}
+          <div style={{ marginBottom: '24px' }}>
+             <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px', textAlign: 'center' }}>
+                {tracker.settings.language === 'ar' ? 'نمط التطبيق' : 'APP THEME'}
+             </label>
+             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {THEME_COLORS.map(c => (
+                  <div 
+                    key={c.hex}
+                    onClick={() => tracker.setSettings({ ...tracker.settings, accentColor: c.hex })}
+                    style={{ 
+                      width: '32px', height: '32px', borderRadius: '50%', background: c.hex,
+                      border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.2)',
+                      cursor: 'pointer', transition: 'all 0.2s',
+                      transform: tracker.settings.accentColor === c.hex ? 'scale(1.15)' : 'scale(1)',
+                      boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}88` : 'none'
+                    }}
+                  />
+                ))}
              </div>
+          </div>
 
-             {/* Vehicle Pod */}
-             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
-                   <circle cx="5" cy="18" r="3" />
-                   <circle cx="19" cy="18" r="3" />
-                   <path d="M5 15h14" />
-                   <path d="M7 15V7a2 2 0 0 1 2-2h4" />
-                   <path d="M17 15V10c0-1.1-.9-2-2-2h-3" />
-                   <path d="M6 8h4" />
+          {/* Profile Details Section - Minimalist & Borderless */}
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '12px' }}>
+            
+            {/* Name Row - Icon Based */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+              <div style={{ minWidth: '45px', display: 'flex', justifyContent: 'flex-end' }}>
+                <User size={18} color="var(--accent-color)" style={{ filter: 'drop-shadow(0 0 8px var(--accent-color))', opacity: 0.7 }} />
+              </div>
+              <input 
+                value={name} 
+                onChange={e => {
+                  const val = e.target.value;
+                  setName(val.charAt(0).toUpperCase() + val.slice(1));
+                }}
+                placeholder={t('yourNamePlaceholder')}
+                autoCapitalize="words"
+                spellCheck="false"
+                style={{ 
+                  flex: 1, background: 'transparent', border: 'none', 
+                  color: '#fff', fontSize: '15px', fontWeight: '800', outline: 'none',
+                  padding: '4px 0'
+                }}
+              />
+            </div>
+
+            {/* Phone Row - Borderless */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+               <div style={{ minWidth: '45px', display: 'flex', justifyContent: 'flex-end' }}>
+                 <Smartphone size={18} color="var(--accent-color)" style={{ opacity: 0.8 }} />
+               </div>
+               <input 
+                 value={phone} onChange={e => setPhone(e.target.value)}
+                 placeholder="01xxxxxxxxx"
+                 style={{ 
+                   flex: 1, background: 'transparent', border: 'none', 
+                   color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '700', outline: 'none',
+                   padding: '4px 0'
+                 }}
+               />
+            </div>
+
+            {/* Vehicle Row - Borderless */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+               <div style={{ minWidth: '45px', display: 'flex', justifyContent: 'flex-end' }}>
+                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                   <circle cx="5.5" cy="17.5" r="3.5"/>
+                   <circle cx="18.5" cy="17.5" r="3.5"/>
+                   <path d="M15 17.5l-2-4.5h-5.5l-2 4.5"/>
+                   <path d="M11 8h-4.5l2 5"/>
+                   <path d="M18.5 14l-3.5-6"/>
+                   <path d="M12 8h5"/>
                  </svg>
-                <input 
-                  value={vehicle} onChange={e => setVehicle(e.target.value)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '11px', outline: 'none', width: '60px', fontWeight: '600' }}
-                  placeholder="SYM"
-                />
-             </div>
+               </div>
+               <input 
+                 value={vehicle} onChange={e => setVehicle(e.target.value)}
+                 placeholder="Vehicle Type"
+                 style={{ 
+                   flex: 1, background: 'transparent', border: 'none', 
+                   color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '700', outline: 'none',
+                   padding: '4px 0'
+                 }}
+               />
+            </div>
           </div>
         </div>
 
@@ -1212,12 +1307,12 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               style={{ 
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                 padding: '14px 16px', borderRadius: '16px', 
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                background: 'rgba(0, 240, 255, 0.03)', border: '1px solid rgba(0, 240, 255, 0.1)',
                 cursor: 'pointer', transition: 'all 0.2s'
               }}
             >
               <div>
-                <span style={{ color: '#fff', fontSize: '13px', fontWeight: '600', display: 'block' }}>{t('notifications')}</span>
+                <span style={{ color: 'var(--accent-color)', fontSize: '13px', fontWeight: '800', display: 'block' }}>{t('notifications')}</span>
                 <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{t('notifDesc')}</span>
               </div>
               <div style={{
@@ -1238,61 +1333,9 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               </div>
             </div>
 
-            <div 
-              onClick={() => setIsSimulation(!isSimulation)}
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                padding: '14px 16px', borderRadius: '16px', 
-                background: 'rgba(0, 240, 255, 0.03)', border: '1px solid rgba(0, 240, 255, 0.1)',
-                cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              <div>
-                <span style={{ color: 'var(--accent-color)', fontSize: '13px', fontWeight: '800', display: 'block' }}>{t('simulateRide')}</span>
-                <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{t('simulateRideDesc')}</span>
-              </div>
-              <div style={{
-                width: '42px', height: '22px', borderRadius: '12px',
-                background: isSimulation ? 'rgba(0, 240, 255, 0.3)' : 'rgba(255,255,255,0.05)',
-                border: isSimulation ? '1px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.1)',
-                position: 'relative', transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                boxShadow: isSimulation ? '0 0 15px rgba(0, 240, 255, 0.3)' : 'none'
-              }}>
-                <div style={{
-                  width: '14px', height: '14px', borderRadius: '50%',
-                  background: isSimulation ? '#fff' : 'rgba(255,255,255,0.3)',
-                  position: 'absolute', top: '3px',
-                  left: isSimulation ? '24px' : '4px',
-                  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  boxShadow: isSimulation ? '0 0 10px #fff' : 'none'
-                }} />
-              </div>
-            </div>
+
           </div>
 
-
-          {/* Reset Action */}
-          <div style={{ marginTop: '12px', textAlign: 'center' }}>
-            {!confirmReset ? (
-              <button 
-                className="glass-button" 
-                type="button"
-                style={{ background: 'transparent', borderColor: 'rgba(255, 51, 102, 0.2)', color: 'var(--danger-color)', fontSize: '11px', padding: '8px 16px' }} 
-                onClick={() => setConfirmReset(true)}
-              >
-                {t('resetApp')}
-              </button>
-            ) : (
-              <button 
-                className="glass-button" 
-                type="button"
-                style={{ background: 'var(--danger-color)', color: '#fff', fontSize: '11px', padding: '8px 16px' }} 
-                onClick={() => { tracker.resetData(); onClose(); }}
-              >
-                {t('areYouSure')}
-              </button>
-            )}
-          </div>
 
           {/* Footer Save */}
           <div style={{ display: 'flex', gap: '16px', marginTop: '28px', justifyContent: 'center' }}>
@@ -1320,6 +1363,27 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             >
               {t('save')}
             </button>
+          </div>
+
+          {/* Reset Action - Discreet bottom right */}
+          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', opacity: 0.4, transition: 'opacity 0.3s' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}>
+            {!confirmReset ? (
+              <button 
+                type="button"
+                style={{ background: 'transparent', border: 'none', color: 'var(--danger-color)', fontSize: '9px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px' }} 
+                onClick={() => setConfirmReset(true)}
+              >
+                {t('resetApp')}
+              </button>
+            ) : (
+              <button 
+                type="button"
+                style={{ background: 'var(--danger-color)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '9px', fontWeight: '700', padding: '4px 8px', cursor: 'pointer' }} 
+                onClick={() => { tracker.resetData(); onClose(); }}
+              >
+                {t('areYouSure')}
+              </button>
+            )}
           </div>
         </div>
       </div>

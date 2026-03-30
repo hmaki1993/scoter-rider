@@ -11,6 +11,7 @@ export interface FuelSettings {
   autoTrack: boolean; // Automatically start GPS on app load
   enableAlerts: boolean; // Sound/Vibrate on low fuel
   language: 'en' | 'ar';
+  accentColor: string;
 }
 
 export interface UserProfile {
@@ -46,6 +47,7 @@ const DEFAULT_SETTINGS: FuelSettings = {
   autoTrack: false,
   enableAlerts: true,
   language: 'ar',
+  accentColor: '#00f0ff',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

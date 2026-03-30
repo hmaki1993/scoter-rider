@@ -1,10 +1,9 @@
 export const translations = {
   ar: {
-    // Header
     appName: 'Fuel Tracker',
     premiumSystem: 'Premium Intelligence System',
-    live: 'شغال ✅',
-    paused: 'واقف ⏸️',
+    live: 'شغال',
+    paused: 'واقف',
     welcomeBack: 'نورت يا وحش 👋',
     
     // Dashboard

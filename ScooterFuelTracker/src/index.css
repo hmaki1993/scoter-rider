@@ -18,8 +18,8 @@ body {
   padding: 0;
   background-color: var(--primary-bg);
   background-image:
-    radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(255, 51, 102, 0.05), transparent 25%);
+    radial-gradient(circle at 15% 50%, color-mix(in srgb, var(--accent-color), transparent 95%), transparent 25%),
+    radial-gradient(circle at 85% 30%, color-mix(in srgb, var(--accent-color), transparent 95%), transparent 25%);
   color: var(--text-primary);
   font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
