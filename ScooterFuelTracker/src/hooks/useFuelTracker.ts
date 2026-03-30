@@ -323,12 +323,12 @@ export const useFuelTracker = () => {
           backgroundTitle: translations[settingsRef.current.language === 'ar' ? 'ar' : 'en']?.bgTitle ?? 'Scooter Tracker',
           requestPermissions: true,
           stale: false,
-          distanceFilter: 2, // Lowered from 10 to 2 for higher sensitivity
+          distanceFilter: 0, // Set to 0 for continuous background updates as requested
         },
         (pos: any, err: any) => {
           if (err) { 
             console.error('[FuelTracker] GPS error:', err);
-            setTrackingError({ message: 'GPS Connection Lost' }); // Simplified error reporting
+            setTrackingError({ message: 'GPS Connection Lost' });
             return; 
           }
           if (!pos) return;
@@ -356,9 +356,9 @@ export const useFuelTracker = () => {
                 lastPositionRef.current.latitude, lastPositionRef.current.longitude,
                 pos.latitude, pos.longitude
               );
-              // Threshold 0.002km (2 meters) to match distanceFilter
-              if (dist > 0.002) {
-                const consumed = dist / settingsRef.current.avgConsumption;
+              // Threshold 0.0005km (0.5 meter) to be ultra sensitive but filter tiny noise/jitter
+              if (dist > 0.0005) {
+                const consumed = dist / settingsRef.current.avgConsumption; // Use settingsRef.current
                 lastPositionRef.current = posToSave;
                 return {
                   ...prev,
