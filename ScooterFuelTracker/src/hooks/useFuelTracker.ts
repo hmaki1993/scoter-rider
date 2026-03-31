@@ -55,21 +55,41 @@ const DEFAULT_SETTINGS: FuelSettings = {
 };
 
 // ── Audio Engine (Web Audio API) ───────────────────────────────────────────
-export const playTone = (type: string, customTones: { name: string; data: string }[] = []) => {
+export const playTone = (
+  type: string, 
+  customTones: { name: string; data: string }[] = [],
+  audioCtxRef?: React.MutableRefObject<AudioContext | null>,
+  activeAudioRef?: React.MutableRefObject<HTMLAudioElement | null>
+) => {
   try {
-    // ── Handle Custom Tone (Look up in list) ──
+    // ── 1. Cleanup any existing audio ──
+    if (audioCtxRef?.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+    if (activeAudioRef?.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.src = "";
+      activeAudioRef.current = null;
+    }
+
+    // ── 2. Handle Custom Tone (Look up in list) ──
     const custom = customTones.find(t => t.name === type);
     if (custom) {
       const audio = new Audio(custom.data);
       audio.volume = 0.5;
+      if (activeAudioRef) activeAudioRef.current = audio;
       audio.play().catch(e => console.warn('Custom audio playback failed', e));
       return;
     }
 
+    // ── 3. Handle Web Audio Tones ──
     const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     
     const ctx = new AudioContextClass();
+    if (audioCtxRef) audioCtxRef.current = ctx;
+
     const now = ctx.currentTime;
     
     const playBeep = (freq: number, startTime: number, duration: number, vol = 0.1, wave: 'sine'|'square'|'sawtooth'|'triangle' = 'sine') => {
@@ -107,7 +127,13 @@ export const playTone = (type: string, customTones: { name: string; data: string
         playBeep(2500, now + 0.1, 0.05);
     }
     
-    setTimeout(() => ctx.close(), 2000);
+    // Auto-close context after safe duration
+    setTimeout(() => {
+      if (audioCtxRef?.current === ctx) {
+        ctx.close().catch(() => {});
+        if (audioCtxRef) audioCtxRef.current = null;
+      }
+    }, 2500);
   } catch(e) { console.error('Audio failed', e); }
 };
 
@@ -146,7 +172,10 @@ export const useFuelTracker = () => {
   const lastPositionRef = useRef<any>(null);
   const watchId = useRef<string | null>(null);
   const wakeLock = useRef<any>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastNotifiedStepRef = useRef<number>(999);
+  const lastNotifiedKmRef = useRef<number>(999);
 
   // ── settingsRef: always up-to-date inside GPS callbacks (fixes stale closure) ──
   const settingsRef = useRef(settings);
@@ -219,7 +248,7 @@ export const useFuelTracker = () => {
         });
         
         // Play the chosen tone
-        playTone(settings.alertTone || 'Digital', settings.customTones);
+        playTone(settings.alertTone || 'Digital', settings.customTones, audioCtxRef, activeAudioRef);
         
         // Strong vibrate
         if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800]);
@@ -660,42 +689,44 @@ export const useFuelTracker = () => {
   // ── Low-Fuel Alerts ───────────────────────────────────────────────────────
   useEffect(() => {
     const range = fuelState.estimatedFuelLiters * settings.avgConsumption;
-    if (range <= 0) return;
+    if (range <= 0 || !settings.enableAlerts) return;
 
-    const steps = [15.1, 13.1, 11.1, 9.1, 7.1, 5.1, 3.1, 1.1];
-    // Find ALL crossed steps and take the most recent (last one in list that is >= range)
-    const crossedSteps = steps.filter(s => range <= s && lastNotifiedStepRef.current > s);
-    const hit = crossedSteps[crossedSteps.length - 1]; // Get the 'deepest' step crossed
+    // ── 1km Granular Logic ──
+    const currentKmFloor = Math.floor(range);
+    
+    // Only alert if we are below the user's chosen threshold (e.g. 15km, 20km)
+    if (range <= settings.warningThreshold + 0.1) {
+      if (currentKmFloor < lastNotifiedKmRef.current) {
+        if (!isMuted) {
+          const lang = (settings.language in translations) ? settings.language : 'ar';
+          const display = currentKmFloor.toString();
+          
+          import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+            LocalNotifications.schedule({
+              notifications: [{
+                title: (translations[lang] as any)?.lowFuelAlertTitle,
+                body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
+                  ? (translations[lang] as any).lowFuelAlertBody(display) 
+                  : display,
+                id: 8888, // Constant ID to REPLACE the previous notification
+                schedule: { at: new Date(Date.now() + 500) },
+                actionTypeId: 'FUEL_ALARM_ACTIONS',
+                channelId: 'fuel_alerts',
+              }]
+            }).catch(console.warn);
+          });
 
-    if (hit) {
-      const display = range.toFixed(1); // Use ACTUAL range for dynamic number in notification
-      if (!isMuted && range <= 15.1) {
-        const lang = (settings.language in translations) ? settings.language : 'ar';
-        import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-          LocalNotifications.schedule({
-            notifications: [{
-              title: (translations[lang] as any)?.lowFuelAlertTitle,
-              body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
-                ? (translations[lang] as any).lowFuelAlertBody(display) 
-                : display,
-              id: Math.floor(hit * 10), // Unique ID based on step
-              schedule: { at: new Date(Date.now() + 1000) },
-              sound: 'alarm.wav',
-              actionTypeId: 'FUEL_ALARM_ACTIONS',
-              channelId: 'fuel_alerts',
-              attachments: [],
-              extra: null,
-            }]
-          }).catch(console.warn);
-        });
-        playWarningSound(true);
+          playWarningSound(true);
+        }
+        lastNotifiedKmRef.current = currentKmFloor;
       }
-      lastNotifiedStepRef.current = hit;
-    } else if (range > 15.1 && range <= settings.warningThreshold && lastNotifiedStepRef.current > settings.warningThreshold) {
-      if (!isMuted) playWarningSound(false);
-      lastNotifiedStepRef.current = settings.warningThreshold;
+    } else {
+      // If fuel is added, reset the notification tracker
+      if (currentKmFloor > lastNotifiedKmRef.current) {
+        lastNotifiedKmRef.current = 999;
+      }
     }
-  }, [fuelState.estimatedFuelLiters, settings.avgConsumption, settings.warningThreshold, isMuted]);
+  }, [fuelState.estimatedFuelLiters, settings.avgConsumption, settings.warningThreshold, isMuted, settings.enableAlerts]);
 
   // ── Refuel ────────────────────────────────────────────────────────────────
   const addRefuel = (odo: number, liters: number, price: number | undefined, isFullTank: boolean) => {
@@ -794,6 +825,7 @@ export const useFuelTracker = () => {
     gpsUpdateCount, lastGpsTime,
     setSettings, addRefuel, updateCurrentOdo, updateUserProfile,
     startTracking, stopTracking, setIsMuted, playWarningSound,
-    resetData, requestAllPermissions, setCurrentSpeed
+    resetData, requestAllPermissions, setCurrentSpeed,
+    audioCtxRef, activeAudioRef
   };
 };

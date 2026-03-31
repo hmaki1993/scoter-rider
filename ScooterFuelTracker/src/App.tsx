@@ -1240,7 +1240,10 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               {['Digital', 'Radar', 'Cyber', 'Alarm'].map(tone => (
                 <div 
                   key={tone}
-                  onClick={() => { tracker.setSettings({...tracker.settings, alertTone: tone}); playTone(tone); }}
+                  onClick={() => { 
+                    tracker.setSettings({...tracker.settings, alertTone: tone}); 
+                    playTone(tone, tracker.settings.customTones, tracker.audioCtxRef, tracker.activeAudioRef); 
+                  }}
                   style={{ 
                     background: tracker.settings.alertTone === tone ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
                     color: tracker.settings.alertTone === tone ? '#fff' : 'rgba(255,255,255,0.5)',
@@ -1265,7 +1268,10 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               {(tracker.settings.customTones || []).map((ct: { name: string; data: string }, idx: number) => (
                 <div 
                   key={`custom-${idx}`}
-                  onClick={() => { tracker.setSettings({...tracker.settings, alertTone: ct.name}); playTone(ct.name, tracker.settings.customTones); }}
+                  onClick={() => { 
+                    tracker.setSettings({...tracker.settings, alertTone: ct.name}); 
+                    playTone(ct.name, tracker.settings.customTones, tracker.audioCtxRef, tracker.activeAudioRef); 
+                  }}
                   style={{ 
                     background: tracker.settings.alertTone === ct.name ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
                     color: tracker.settings.alertTone === ct.name ? '#fff' : 'rgba(255,255,255,0.5)',
