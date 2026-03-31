@@ -54,6 +54,10 @@ const DEFAULT_SETTINGS: FuelSettings = {
   customTones: []
 };
 
+// ── Global Audio Singleton for overlap prevention ───────────────────────────
+let globalAudioCtx: AudioContext | null = null;
+let globalActiveAudio: HTMLAudioElement | null = null;
+
 // ── Audio Engine (Web Audio API) ───────────────────────────────────────────
 export const playTone = (
   type: string, 
@@ -63,9 +67,19 @@ export const playTone = (
 ) => {
   try {
     // ── 1. Cleanup any existing audio ──
+    if (globalAudioCtx) {
+      globalAudioCtx.close().catch(() => {});
+      globalAudioCtx = null;
+    }
     if (audioCtxRef?.current) {
       audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
+    }
+
+    if (globalActiveAudio) {
+      globalActiveAudio.pause();
+      globalActiveAudio.src = "";
+      globalActiveAudio = null;
     }
     if (activeAudioRef?.current) {
       activeAudioRef.current.pause();
@@ -78,6 +92,7 @@ export const playTone = (
     if (custom) {
       const audio = new Audio(custom.data);
       audio.volume = 0.5;
+      globalActiveAudio = audio;
       if (activeAudioRef) activeAudioRef.current = audio;
       audio.play().catch(e => console.warn('Custom audio playback failed', e));
       return;
@@ -88,6 +103,7 @@ export const playTone = (
     if (!AudioContextClass) return;
     
     const ctx = new AudioContextClass();
+    globalAudioCtx = ctx;
     if (audioCtxRef) audioCtxRef.current = ctx;
 
     const now = ctx.currentTime;
@@ -127,7 +143,6 @@ export const playTone = (
         playBeep(2500, now + 0.1, 0.05);
     }
     
-    // Auto-close context after safe duration
     setTimeout(() => {
       if (audioCtxRef?.current === ctx) {
         ctx.close().catch(() => {});
@@ -135,6 +150,18 @@ export const playTone = (
       }
     }, 2500);
   } catch(e) { console.error('Audio failed', e); }
+};
+
+export const stopTone = () => {
+  if (globalAudioCtx) {
+    globalAudioCtx.close().catch(() => {});
+    globalAudioCtx = null;
+  }
+  if (globalActiveAudio) {
+    globalActiveAudio.pause();
+    globalActiveAudio.src = "";
+    globalActiveAudio = null;
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,7 +238,7 @@ export const useFuelTracker = () => {
         });
 
         await LocalNotifications.createChannel({
-          id: 'fuel_alerts',
+          id: 'fuel_alerts_v2',
           name: 'Fuel Alerts',
           description: 'Critical fuel reminders',
           importance: 5,
@@ -250,12 +277,23 @@ export const useFuelTracker = () => {
         // Play the chosen tone
         playTone(settings.alertTone || 'Digital', settings.customTones, audioCtxRef, activeAudioRef);
         
-        // Strong vibrate
-        if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800]);
+        // Strong vibrate using Haptics and Fallback
+        import('@capacitor/haptics').then(({ Haptics }) => {
+          let count = 0;
+          const vibInterval = setInterval(() => {
+            Haptics.vibrate();
+            count++;
+            if (count > 5) clearInterval(vibInterval);
+          }, 800);
+        }).catch(() => {
+          if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800]);
+        });
       } else {
         // Soft pre-warning
         playTone('Digital'); // Always soft for subtle pre-warning
-        if (navigator.vibrate) navigator.vibrate(200);
+        import('@capacitor/haptics').then(({ Haptics }) => Haptics.vibrate()).catch(() => {
+          if (navigator.vibrate) navigator.vibrate(200);
+        });
       }
     } catch (e) { console.warn('Audio failed', e); }
   };
@@ -539,7 +577,7 @@ export const useFuelTracker = () => {
               body: (translations[lang] as any)?.gpsOffBody,
               id: 9999,
               schedule: { at: new Date(Date.now() + 500) },
-              channelId: 'fuel_alerts',
+              channelId: 'fuel_alerts_v2',
               attachments: [],
               extra: null,
             }]
@@ -711,7 +749,7 @@ export const useFuelTracker = () => {
                 id: 8888, // Constant ID to REPLACE the previous notification
                 schedule: { at: new Date(Date.now() + 500) },
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
-                channelId: 'fuel_alerts',
+                channelId: 'fuel_alerts_v2',
               }]
             }).catch(console.warn);
           });

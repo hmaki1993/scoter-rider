@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useFuelTracker, playTone } from './hooks/useFuelTracker';
-import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Volume2, Music } from 'lucide-react';
+import { useFuelTracker, playTone, stopTone } from './hooks/useFuelTracker';
+import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Music } from 'lucide-react';
 import { translations } from './translations';
 import gsap from 'gsap';
 import './index.css';
@@ -185,7 +185,10 @@ function App() {
               cursor: 'pointer', transition: 'all 0.3s ease',
               padding: 0
             }}
-            onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
+            onClick={() => {
+              stopTone();
+              tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts });
+            }}
           >
             {tracker.settings.enableAlerts ? (
               <Bell size={24} color="#ff5e00" strokeWidth={2.5} />
@@ -1116,13 +1119,14 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const [avg, setAvg] = useState((tracker.settings.avgConsumption || 30).toString());
   const [cap, setCap] = useState((tracker.settings.tankCapacity || 7.5).toString());
   const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.5).toString());
-  const [alerts, setAlerts] = useState(!!tracker.settings.enableAlerts);
+  const [threshold, setThreshold] = useState((tracker.settings.warningThreshold || 15).toString());
   const [confirmReset, setConfirmReset] = useState(false);
+  const [toneDropOpen, setToneDropOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
     tracker.updateUserProfile({ ...tracker.userProfile, name, phone, vehicleType: vehicle, photoUrl: photo, photoPosition: objPos });
-    tracker.setSettings({ ...tracker.settings, avgConsumption: Number(avg), tankCapacity: Number(cap), fuelPricePerLiter: Number(price), enableAlerts: alerts });
+    tracker.setSettings({ ...tracker.settings, avgConsumption: Number(avg), tankCapacity: Number(cap), fuelPricePerLiter: Number(price), warningThreshold: Number(threshold) });
     onClose();
   };
 
@@ -1175,15 +1179,15 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           <label className="fusion-label" style={{ marginBottom: '16px' }}>{t('userProfile') || 'USER PROFILE'}</label>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
              <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
-                <User size={18} color="var(--accent-color)" opacity={0.3} />
+                <User size={18} color="#ff9800" opacity={0.4} />
                 <input className="fusion-input" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" style={{ background: 'transparent' }} />
              </div>
              <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
-                <Smartphone size={18} color="var(--accent-color)" opacity={0.3} />
+                <Smartphone size={18} color="#ff9800" opacity={0.4} />
                 <input type="tel" className="fusion-input" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="Phone Number" style={{ background: 'transparent' }} />
              </div>
              <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
-                <Settings size={18} color="var(--accent-color)" opacity={0.3} />
+                <Settings size={18} color="#ff9800" opacity={0.4} />
                 <input className="fusion-input" value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle Type" style={{ background: 'transparent' }} />
              </div>
           </div>
@@ -1208,23 +1212,11 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           </div>
         </div>
 
-        {/* Section 3: APP SETTINGS */}
-        <div style={{ marginBottom: '32px' }}>
-           <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>{t('appSettings') || 'APP SETTINGS'}</label>
-           <div onClick={() => setAlerts(!alerts)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1.5px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.3s' }}>
-              <div>
-                <div style={{ color: 'var(--accent-secondary)', fontSize: '14px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('notifications')}</div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', marginTop: '4px' }}>{t('notifDesc')}</div>
-              </div>
-              <div style={{ width: '40px', height: '22px', borderRadius: '12px', background: 'transparent', position: 'relative', border: `1.5px solid ${alerts ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.1)'}`, transition: 'all 0.3s' }}>
-                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: alerts ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.4)', position: 'absolute', top: '3.5px', left: alerts ? '23px' : '3.5px', transition: 'all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)', boxShadow: alerts ? '0 0 12px var(--accent-secondary)' : 'none' }} />
-              </div>
-           </div>
-        </div>
+
 
         {/* Section 4: THEME */}
         <div style={{ marginBottom: '32px' }}>
-           <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '24px' }}>{t('appTheme')}</label>
+           <label className="fusion-label" style={{ marginBottom: '24px' }}>{t('appTheme')}</label>
            <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', justifyContent: 'center' }}>
              {THEME_COLORS.map(c => (
                <div key={c.name} onClick={() => tracker.setSettings({...tracker.settings, accentColor: c.hex})} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`, border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s', transform: tracker.settings.accentColor === c.hex ? 'scale(1.1)' : 'scale(1)', boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}66` : 'none' }} />
@@ -1234,91 +1226,101 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
 
         {/* Section 5: NOTIFICATION TONE */}
         <div style={{ marginBottom: '40px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>{t('notificationTone')}</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-              {/* Preset Tones */}
-              {['Digital', 'Radar', 'Cyber', 'Alarm'].map(tone => (
-                <div 
-                  key={tone}
-                  onClick={() => { 
-                    tracker.setSettings({...tracker.settings, alertTone: tone}); 
-                    playTone(tone, tracker.settings.customTones, tracker.audioCtxRef, tracker.activeAudioRef); 
-                  }}
-                  style={{ 
-                    background: tracker.settings.alertTone === tone ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
-                    color: tracker.settings.alertTone === tone ? '#fff' : 'rgba(255,255,255,0.5)',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: '700',
+            <label className="fusion-label" style={{ marginBottom: '16px', opacity: 0.5, fontSize: '10px' }}>{t('notificationTone')}</label>
+
+            {/* Alert Threshold input */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('warningThreshold')} 🔔</span>
+              <div style={{ background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.4)', borderRadius: '8px', padding: '2px 8px', display: 'flex', alignItems: 'center' }}>
+                <input type="number" className="fusion-input" style={{ width: '36px', fontSize: '13px', fontWeight: '900', background: 'transparent', padding: 0, textAlign: 'center', color: '#ff9800', outline: 'none', border: 'none' }} value={threshold} onChange={e => setThreshold(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+              {/* Premium Custom Dropdown */}
+              <div style={{ position: 'relative', flex: 1 }}>
+                <div
+                  onClick={() => setToneDropOpen(o => !o)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: 'rgba(255,255,255,0.06)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: `1px solid ${toneDropOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: '10px',
+                    padding: '6px 10px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
                     gap: '6px'
                   }}
                 >
-                  {tracker.settings.alertTone === tone && <Volume2 size={12} />}
-                  {t(`tone${tone}`)}
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>
+                    🎵 {tracker.settings.alertTone?.replace(/\.[^.]+$/, '').slice(0, 14) || 'Digital'}
+                  </span>
+                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>▾</span>
                 </div>
-              ))}
 
-              {/* Custom Uploaded Tones */}
-              {(tracker.settings.customTones || []).map((ct: { name: string; data: string }, idx: number) => (
-                <div 
-                  key={`custom-${idx}`}
-                  onClick={() => { 
-                    tracker.setSettings({...tracker.settings, alertTone: ct.name}); 
-                    playTone(ct.name, tracker.settings.customTones, tracker.audioCtxRef, tracker.activeAudioRef); 
-                  }}
-                  style={{ 
-                    background: tracker.settings.alertTone === ct.name ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
-                    color: tracker.settings.alertTone === ct.name ? '#fff' : 'rgba(255,255,255,0.5)',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    maxWidth: '120px'
-                  }}
-                >
-                  {tracker.settings.alertTone === ct.name && <Volume2 size={12} />}
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ct.name}</span>
-                </div>
-              ))}
+                {toneDropOpen && (
+                  <div
+                    style={{
+                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 999,
+                      background: 'rgba(20,20,24,0.92)',
+                      backdropFilter: 'blur(24px)',
+                      WebkitBackdropFilter: 'blur(24px)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                      animation: 'fadeIn 0.15s ease'
+                    }}
+                  >
+                    {[...['Digital', 'Radar', 'Cyber', 'Alarm'],
+                      ...(tracker.settings.customTones || []).map((ct: { name: string }) => ct.name)
+                    ].map((tone, i) => (
+                      <div
+                        key={tone}
+                        onClick={() => {
+                          tracker.setSettings({...tracker.settings, alertTone: tone});
+                          playTone(tone, tracker.settings.customTones, tracker.audioCtxRef, tracker.activeAudioRef);
+                        }}
+                        style={{
+                          padding: '9px 14px',
+                          fontSize: '11px',
+                          fontWeight: tracker.settings.alertTone === tone ? '800' : '500',
+                          color: tracker.settings.alertTone === tone ? '#fff' : 'rgba(255,255,255,0.45)',
+                          background: tracker.settings.alertTone === tone ? 'rgba(255,255,255,0.06)' : 'transparent',
+                          borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {tracker.settings.alertTone === tone && <span style={{ marginRight: '6px', color: 'var(--accent-color)' }}>▶</span>}
+                        {tone.replace(/\.[^.]+$/, '').slice(0, 22)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              {/* Persistent ADD/UPLOAD Button */}
-              <div 
+              {/* Upload Button */}
+              <div
                 onClick={() => document.getElementById('tone-upload')?.click()}
-                style={{ 
-                  background: 'rgba(255,255,255,0.03)',
-                  color: 'var(--accent-color)',
-                  padding: '8px 14px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  fontWeight: '700',
+                style={{
+                  background: 'transparent',
+                  color: '#ff9800',
+                  width: '32px', height: '32px',
+                  borderRadius: '9px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  border: '1px dashed var(--accent-color)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
+                  border: '1px dashed rgba(255,152,0,0.5)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0
                 }}
               >
-                <Music size={12} />
-                <span>+</span>
-                
-                <input 
-                  id="tone-upload"
-                  type="file" 
-                  accept="audio/*" 
-                  style={{ display: 'none' }} 
+                <Music size={13} />
+                <input
+                  id="tone-upload" type="file" accept="audio/*" style={{ display: 'none' }}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
@@ -1328,11 +1330,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
                         const base64 = res.target?.result as string;
                         const newTone = { name: file.name, data: base64 };
                         const updatedTones = [...(tracker.settings.customTones || []), newTone];
-                        tracker.setSettings({
-                          ...tracker.settings, 
-                          alertTone: file.name,
-                          customTones: updatedTones
-                        });
+                        tracker.setSettings({ ...tracker.settings, alertTone: file.name, customTones: updatedTones });
                         playTone(file.name, updatedTones);
                       };
                       reader.readAsDataURL(file);

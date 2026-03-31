@@ -78,6 +78,8 @@ body {
 
 * {
   box-sizing: border-box;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 #root {
@@ -172,7 +174,7 @@ body {
   display: block;
   font-size: 13px;
   font-weight: 900;
-  color: var(--accent-color);
+  color: #4ade80; /* Vibrant Green */
   text-transform: uppercase;
   letter-spacing: 2px;
   margin-bottom: 24px;
