@@ -102,30 +102,10 @@ function App() {
           flexDirection: 'column', 
           alignItems: 'flex-start',
           paddingRight: '4px',
-          paddingLeft: '0',
-          direction: 'ltr' // Sub-lock for logo container
+          direction: 'ltr'
         }}>
-          <h1 className="logo-text" style={{ 
-            margin: 0, 
-            fontSize: 'var(--logo-font-size)', 
-            letterSpacing: '-1.5px',
-            lineHeight: '1',
-            opacity: 1,
-            whiteSpace: 'nowrap',
-            display: 'block',
-            textAlign: 'left',
-            background: 'linear-gradient(90deg, #ffffff 0%, #ffffff 70%, rgba(255,255,255,0.5) 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>{t('appName')}</h1>
-          <div className="subtitle-text" style={{ 
-            fontSize: '8.5px', 
-            marginTop: '1px', 
-            letterSpacing: '0.1px', 
-            opacity: 0.7,
-            whiteSpace: 'nowrap',
-            textAlign: 'left'
-          }}>{t('premiumSystem')}</div>
+          <h1 className="logo-text" style={{ margin: 0, fontSize: 'var(--logo-font-size)' }}>{t('appName')}</h1>
+          <div className="subtitle-text" style={{ marginTop: '4px' }}>{t('premiumSystem')}</div>
         </div>
 
         <div style={{ 
@@ -843,7 +823,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
 const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void }) => {
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
-  const [odo, setOdo] = useState('0.0');
+  const [odo, setOdo] = useState(tracker.fuelState.lastOdo.toFixed(1));
 
   const handleSync = () => {
     const val = Number(odo);

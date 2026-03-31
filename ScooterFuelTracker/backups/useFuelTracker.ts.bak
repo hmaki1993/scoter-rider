@@ -243,7 +243,7 @@ export const useFuelTracker = () => {
           description: 'Critical fuel reminders',
           importance: 5,
           visibility: 1,
-          sound: undefined, // Set to undefined to avoid default system beep/strange sound
+          sound: 'alarm.wav',
           vibration: true
         });
 
@@ -269,10 +269,12 @@ export const useFuelTracker = () => {
     if (!settings.enableAlerts || isMuted) return;
     try {
       if (isAlarm) {
-        // Full Alarm sequence: We rely on JS playTone for chosen sound
-        // and haptics for vibration. We remove AlarmPlugin.playAlarm to avoid double sounds.
+        // Full Alarm sequence
+        import('@capacitor/core').then(({ registerPlugin }) => {
+          registerPlugin<any>('AlarmPlugin').playAlarm().catch(() => {});
+        });
         
-        // Play the chosen tone from settings
+        // Play the chosen tone
         playTone(settings.alertTone || 'Digital', settings.customTones, audioCtxRef, activeAudioRef);
         
         // Strong vibrate using Haptics and Fallback
@@ -466,15 +468,11 @@ export const useFuelTracker = () => {
               }
             }
 
-            // 2. Use the most responsive speed value (Trust native more, use calculated as backup)
+            // 2. Use the most responsive speed value (Max of native and calculated)
             if (nativeSpeed !== null && nativeSpeed !== undefined) {
               const nativeKmh = nativeSpeed * 3.6;
-              // If native speed is very low (< 3km/h), ignore high "calculated" speeds which are likely GPS jitter
-              if (nativeKmh < 3 && calculatedKmh > 10) {
-                currentKmh = nativeKmh;
-              } else {
-                currentKmh = Math.max(nativeKmh, calculatedKmh);
-              }
+              // Take the higher one to ensure responsiveness, but cap outliers
+              currentKmh = Math.max(nativeKmh, calculatedKmh);
             } else {
               currentKmh = calculatedKmh;
             }
@@ -484,8 +482,8 @@ export const useFuelTracker = () => {
             setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
 
             // ── PROFESSIONAL FILTERING ─────────────────────────────────────────
-            const MIN_TRACKING_SPEED = 15; // km/h (Filter Walking/Running)
-            const MAX_GPS_ACCURACY = 20;   // meters (Filter Jitter)
+            const MIN_TRACKING_SPEED = 12; // km/h (Filter Walking/Running)
+            const MAX_GPS_ACCURACY = 30;   // meters (Filter Jitter)
 
             // Ignore jumpy/poor GPS signals (> 30m accuracy)
             if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
@@ -749,7 +747,7 @@ export const useFuelTracker = () => {
                   ? (translations[lang] as any).lowFuelAlertBody(display) 
                   : display,
                 id: 8888, // Constant ID to REPLACE the previous notification
-                schedule: { at: new Date() }, // Immediate Heads-up Drop-down
+                schedule: { at: new Date(Date.now() + 500) },
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
                 channelId: 'fuel_alerts_v2',
               }]
@@ -800,14 +798,10 @@ export const useFuelTracker = () => {
   const updateCurrentOdo = (odo: number) => {
     setFuelState(prev => {
       const diff = odo - prev.lastOdo;
-      // Calculate fuel adjustment based on the odometer shift (positive or negative)
-      const fuelAdjustment = diff / settings.avgConsumption;
-      
-      return { 
-        ...prev, 
-        lastOdo: odo, 
-        estimatedFuelLiters: Math.max(0, Math.min(settings.tankCapacity, prev.estimatedFuelLiters - fuelAdjustment))
-      };
+      if (diff > 0) {
+        return { ...prev, lastOdo: odo, estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - diff / settings.avgConsumption) };
+      }
+      return { ...prev, lastOdo: odo };
     });
   };
 

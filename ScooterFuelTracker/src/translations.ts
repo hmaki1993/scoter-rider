@@ -1,7 +1,7 @@
 export const translations = {
   ar: {
     appName: 'Fuel Tracker',
-    premiumSystem: 'Premium Intelligence System',
+    premiumSystem: 'ADVANCED FUEL TRACKING',
     live: 'نشط',
     paused: 'متوقف',
     welcomeBack: 'نورت يا وحش 👋',
@@ -116,7 +116,7 @@ export const translations = {
   en: {
     // Header
     appName: 'Fuel Tracker',
-    premiumSystem: 'Premium Intelligence System',
+    premiumSystem: 'ADVANCED FUEL TRACKING',
     live: 'ON',
     paused: 'OFF',
     welcomeBack: 'Welcome back 👋',

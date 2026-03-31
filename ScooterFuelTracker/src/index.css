@@ -40,17 +40,38 @@ body {
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
   text-transform: uppercase;
-  background: linear-gradient(90deg, #ffffff 15%, #999 50%, #444 80%, rgba(0, 0, 0, 0) 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 50%, var(--accent-secondary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
   position: relative;
-  letter-spacing: -1.5px;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.logo-text::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 20px;
+  height: 2px;
+  background: var(--accent-secondary);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-secondary);
 }
 
 .subtitle-text {
-  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Inter', sans-serif;
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #ffffff;
+  margin-top: 4px;
+  opacity: 1;
+  display: block;
 }
 
 /* Responsive Header Tweaks */
@@ -58,7 +79,8 @@ body {
   :root {
     --header-btn-size: 38px;
     --header-gap: 4px;
-    --logo-font-size: 19px; /* Increased from 16px */
+    --logo-font-size: 19px;
+    /* Increased from 16px */
   }
 }
 
@@ -66,11 +88,13 @@ body {
   :root {
     --header-btn-size: 34px;
     --header-gap: 2px;
-    --logo-font-size: 17px; /* Increased from 14px */
+    --logo-font-size: 17px;
+    /* Increased from 14px */
   }
 
   .subtitle-text {
-    font-size: 8px; /* Slightly smaller on tiny screens instead of hiding */
+    font-size: 8px;
+    /* Slightly smaller on tiny screens instead of hiding */
     opacity: 0.8;
   }
 }
@@ -150,31 +174,62 @@ body {
 
 /* --- Fusion Input System --- */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.4); transform: scale(1); }
-  70% { box-shadow: 0 0 0 10px rgba(0, 240, 255, 0); transform: scale(1.05); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); transform: scale(1); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.4);
+    transform: scale(1);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 240, 255, 0);
+    transform: scale(1.05);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 240, 255, 0);
+    transform: scale(1);
+  }
 }
 
 .fusion-label {
   display: block;
   font-size: 13px;
   font-weight: 900;
-  color: #4ade80; /* Vibrant Green */
+  color: #4ade80;
+  /* Vibrant Green */
   text-transform: uppercase;
   letter-spacing: 2px;
   margin-bottom: 24px;
@@ -234,25 +289,55 @@ input[type=number] {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

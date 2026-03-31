@@ -89,17 +89,11 @@ public class BackgroundTrackingService extends Service {
         }
     }
 
-    private static final float MIN_SPEED_KMH = 15.0f;
-    private static final float MAX_ACCURACY_METERS = 20.0f;
+    private static final float MIN_SPEED_KMH = 12.0f;
 
     private final LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(@NonNull Location location) {
-            // --- Accuracy Filter ---
-            if (location.hasAccuracy() && location.getAccuracy() > MAX_ACCURACY_METERS) {
-                return; // Ignore low accuracy points
-            }
-
             if (lastLocation != null) {
                 // Returns distance in meters
                 float distanceMeters = lastLocation.distanceTo(location);
@@ -111,15 +105,10 @@ public class BackgroundTrackingService extends Service {
                 } else {
                     // Fallback: calculate speed from distance and time
                     long timeDeltaMs = location.getTime() - lastLocation.getTime();
-                    if (timeDeltaMs > 0 && timeDeltaMs < 30000) { // Filter out long gaps
+                    if (timeDeltaMs > 0) {
                         float hours = timeDeltaMs / (1000.0f * 60.0f * 60.0f);
                         currentSpeedKmh = (distanceMeters / 1000.0f) / hours;
                     }
-                }
-
-                // If native speed is very low, ignore high calculated speeds which are likely jitter
-                if (location.hasSpeed() && location.getSpeed() * 3.6f < 3.0f && currentSpeedKmh > 10.0f) {
-                    currentSpeedKmh = location.getSpeed() * 3.6f;
                 }
 
                 // Basic filter: ignore absurd GPS jumps and WALKING speeds

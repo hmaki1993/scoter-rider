@@ -1,5 +1,5 @@
 @echo off
-echo Starting Healy Academy App...
+echo Starting Gymnastic System 1...
 cd /d "%~dp0app"
 
 :: Start the dev server in the background
@@ -15,6 +15,6 @@ start chrome http://localhost:3000
 
 :: Keep the window open to show logs
 echo.
-echo Healy Academy is running! 🚀
+echo Gymnastic System 1 is running! 🚀
 echo Keep this window open while using the app.
 pause

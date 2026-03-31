@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd ScooterFuelTracker && npm run build",
+  "installCommand": "cd ScooterFuelTracker && npm install --legacy-peer-deps",
+  "outputDirectory": "ScooterFuelTracker/dist",
+  "framework": "vite",
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}

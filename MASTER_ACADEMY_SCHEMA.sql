@@ -1,8 +1,12 @@
 -- ============================================================
--- FULL SCHEMA EXPORT - HEALY ACADEMY SYSTEM
+-- MASTER SCHEMA EXPORT - HEALY ACADEMY SYSTEM (CONSOLIDATED)
 -- ============================================================
+-- Created: 2026-03-12
+-- This file includes ALL core tables, finance history, jump sessions,
+-- communication/chat tables, and extended theme settings.
+--
 -- HOW TO USE:
--- 1. Create a new Supabase project for your new academy.
+-- 1. Create a new Supabase project.
 -- 2. Open the SQL Editor in the new project.
 -- 3. Copy and paste this ENTIRE file and click "Run".
 -- 4. Done! Your database is ready.
@@ -176,11 +180,22 @@ CREATE TABLE IF NOT EXISTS public.refunds (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- [12] Finance History (Recycle Bin functionality)
+CREATE TABLE IF NOT EXISTS public.finance_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name TEXT NOT NULL,
+    row_id UUID NOT NULL,
+    row_data JSONB NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('DELETE', 'UPDATE')),
+    created_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ================================================================
 -- PT (Personal Training) TABLES
 -- ================================================================
 
--- [12] PT Subscriptions
+-- [13] PT Subscriptions
 CREATE TABLE IF NOT EXISTS public.pt_subscriptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id UUID REFERENCES public.students(id),
@@ -197,7 +212,7 @@ CREATE TABLE IF NOT EXISTS public.pt_subscriptions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- [13] PT Attendance
+-- [14] PT Attendance
 CREATE TABLE IF NOT EXISTS public.pt_attendance (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   pt_subscription_id UUID REFERENCES public.pt_subscriptions(id) ON DELETE CASCADE,
@@ -211,10 +226,60 @@ CREATE TABLE IF NOT EXISTS public.pt_attendance (
 );
 
 -- ================================================================
--- NOTIFICATIONS & VOICE BROADCAST
+-- COMMUNICATION SUITE TABLES
 -- ================================================================
 
--- [14] Notifications
+-- [15] Conversations Table
+CREATE TABLE IF NOT EXISTS public.conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL DEFAULT 'direct', -- 'direct' or 'group'
+  name TEXT, -- only for group chats
+  avatar_url TEXT, -- optional group avatar
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- [16] Conversation Participants Table
+CREATE TABLE IF NOT EXISTS public.conversation_participants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  last_read_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(conversation_id, user_id)
+);
+
+-- [17] Messages Table
+CREATE TABLE IF NOT EXISTS public.messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  content TEXT,
+  type TEXT NOT NULL DEFAULT 'text', -- 'text', 'image', 'voice', 'video', 'call_event'
+  media_url TEXT,
+  media_duration INTEGER, -- seconds (for voice/video)
+  media_size INTEGER,     -- bytes
+  call_status TEXT,       -- for call_event type: 'missed', 'answered', 'rejected'
+  call_duration INTEGER,  -- seconds for ended calls
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- [18] Call Records Table
+CREATE TABLE IF NOT EXISTS public.call_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE,
+  caller_id UUID REFERENCES public.profiles(id),
+  call_type TEXT NOT NULL DEFAULT 'audio', -- 'audio' or 'video'
+  status TEXT DEFAULT 'ringing',           -- 'ringing', 'active', 'ended', 'missed', 'rejected'
+  agora_channel_id TEXT UNIQUE,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  ended_at TIMESTAMPTZ,
+  duration_seconds INTEGER
+);
+
+-- [19] Notifications
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -229,7 +294,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- [15] Voice Broadcasts (Walkie-Talkie)
+-- [20] Voice Broadcasts (Walkie-Talkie)
 CREATE TABLE IF NOT EXISTS public.voice_broadcasts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   sender_id UUID REFERENCES public.profiles(id),
@@ -240,10 +305,101 @@ CREATE TABLE IF NOT EXISTS public.voice_broadcasts (
 );
 
 -- ================================================================
--- GYM SETTINGS
+-- CUSTOM APP & USER TABLES
 -- ================================================================
 
--- [16] Gym Settings
+-- [21] Jump Sessions
+CREATE TABLE IF NOT EXISTS public.jump_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    date DATE DEFAULT CURRENT_DATE,
+    jump_count INTEGER DEFAULT 0,
+    work_time INTEGER DEFAULT 0,
+    rest_time INTEGER DEFAULT 0,
+    jpm INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- [22] User Settings (Per-user customization)
+CREATE TABLE IF NOT EXISTS public.user_settings (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    language TEXT DEFAULT 'en',
+    primary_color TEXT,
+    secondary_color TEXT,
+    accent_color TEXT,
+    font_family TEXT,
+    font_scale FLOAT,
+    border_radius TEXT,
+    glass_opacity FLOAT,
+    surface_color TEXT,
+    search_icon_color TEXT,
+    search_bg_color TEXT,
+    search_border_color TEXT,
+    search_text_color TEXT,
+    hover_color TEXT,
+    hover_border_color TEXT,
+    input_bg_color TEXT,
+    clock_position TEXT,
+    -- Expanded login customization columns
+    login_bg_url TEXT,
+    login_logo_url TEXT,
+    login_card_opacity FLOAT8 DEFAULT 0.6,
+    login_card_color TEXT DEFAULT '#000000',
+    login_card_border_color TEXT DEFAULT '#ffffff33',
+    login_card_scale FLOAT8 DEFAULT 1.0,
+    login_show_logo BOOLEAN DEFAULT TRUE,
+    login_text_color TEXT DEFAULT '#ffffff',
+    login_accent_color TEXT DEFAULT '#D4AF37',
+    login_logo_opacity FLOAT8 DEFAULT 1.0,
+    login_logo_scale FLOAT8 DEFAULT 1.0,
+    login_logo_x_offset FLOAT8 DEFAULT 0,
+    login_logo_y_offset FLOAT8 DEFAULT 0,
+    login_bg_blur INT DEFAULT 0,
+    login_bg_brightness FLOAT8 DEFAULT 1.0,
+    login_bg_zoom FLOAT8 DEFAULT 1.0,
+    login_bg_x_offset FLOAT8 DEFAULT 0,
+    login_bg_y_offset FLOAT8 DEFAULT 0,
+    login_bg_fit TEXT DEFAULT 'cover',
+    login_bg_opacity FLOAT8 DEFAULT 0.8,
+    login_card_x_offset FLOAT8 DEFAULT 0,
+    login_card_y_offset FLOAT8 DEFAULT 0,
+    login_card_width INT DEFAULT 440,
+    login_card_height INT DEFAULT 600,
+    login_heading_size INT DEFAULT 24,
+    login_input_size INT DEFAULT 24,
+    login_label_size INT DEFAULT 11,
+    login_card_border_width NUMERIC DEFAULT 1,
+    login_card_glow_size NUMERIC DEFAULT 60,
+    login_card_glow_opacity NUMERIC DEFAULT 50,
+    login_mobile_bg_url TEXT,
+    login_mobile_logo_url TEXT,
+    login_mobile_card_opacity FLOAT8,
+    login_mobile_card_color TEXT,
+    login_mobile_card_border_color TEXT,
+    login_mobile_card_scale FLOAT8,
+    login_mobile_show_logo BOOLEAN DEFAULT TRUE,
+    login_mobile_text_color TEXT,
+    login_mobile_accent_color TEXT,
+    login_mobile_logo_opacity FLOAT8,
+    login_mobile_logo_scale FLOAT8,
+    login_mobile_logo_x_offset FLOAT8,
+    login_mobile_logo_y_offset FLOAT8,
+    login_mobile_bg_blur INT,
+    login_mobile_bg_brightness FLOAT8,
+    login_mobile_bg_zoom FLOAT8 DEFAULT 1.0,
+    login_mobile_bg_x_offset FLOAT8,
+    login_mobile_bg_y_offset FLOAT8,
+    login_mobile_bg_fit TEXT DEFAULT 'cover',
+    login_mobile_bg_opacity FLOAT8,
+    login_mobile_card_x_offset FLOAT8,
+    login_mobile_card_y_offset FLOAT8,
+    login_mobile_card_width INT DEFAULT 340,
+    login_mobile_card_height INT DEFAULT 500,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- [23] Gym Settings
 CREATE TABLE IF NOT EXISTS public.gym_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   gym_name TEXT DEFAULT 'New Academy',
@@ -268,6 +424,66 @@ CREATE TABLE IF NOT EXISTS public.gym_settings (
   currency TEXT DEFAULT 'EGP',
   currency_symbol TEXT DEFAULT 'ج.م',
   language TEXT DEFAULT 'ar',
+  -- Theme columns
+  surface_color TEXT,
+  text_color_base TEXT,
+  text_color_muted TEXT,
+  -- Desktop Login Columns
+  login_bg_url TEXT,
+  login_logo_url TEXT,
+  login_card_opacity FLOAT8 DEFAULT 0.6,
+  login_card_color TEXT DEFAULT '#000000',
+  login_card_border_color TEXT DEFAULT '#ffffff33',
+  login_card_scale FLOAT8 DEFAULT 1.0,
+  login_show_logo BOOLEAN DEFAULT TRUE,
+  login_text_color TEXT DEFAULT '#ffffff',
+  login_accent_color TEXT DEFAULT '#D4AF37',
+  login_logo_opacity FLOAT8 DEFAULT 1.0,
+  login_logo_scale FLOAT8 DEFAULT 1.0,
+  login_logo_x_offset FLOAT8 DEFAULT 0,
+  login_logo_y_offset FLOAT8 DEFAULT 0,
+  login_bg_blur INT DEFAULT 0,
+  login_bg_brightness FLOAT8 DEFAULT 1.0,
+  login_bg_zoom FLOAT8 DEFAULT 1.0,
+  login_bg_x_offset FLOAT8 DEFAULT 0,
+  login_bg_y_offset FLOAT8 DEFAULT 0,
+  login_bg_fit TEXT DEFAULT 'cover',
+  login_bg_opacity FLOAT8 DEFAULT 0.8,
+  login_card_x_offset FLOAT8 DEFAULT 0,
+  login_card_y_offset FLOAT8 DEFAULT 0,
+  login_card_width INT DEFAULT 440,
+  login_card_height INT DEFAULT 600,
+  login_heading_size INT DEFAULT 24,
+  login_input_size INT DEFAULT 24,
+  login_label_size INT DEFAULT 11,
+  login_card_border_width NUMERIC DEFAULT 1,
+  login_card_glow_size NUMERIC DEFAULT 60,
+  login_card_glow_opacity NUMERIC DEFAULT 50,
+  -- Mobile Login Columns
+  login_mobile_bg_url TEXT,
+  login_mobile_logo_url TEXT,
+  login_mobile_card_opacity FLOAT8,
+  login_mobile_card_color TEXT,
+  login_mobile_card_border_color TEXT,
+  login_mobile_card_scale FLOAT8,
+  login_mobile_show_logo BOOLEAN DEFAULT TRUE,
+  login_mobile_text_color TEXT,
+  login_mobile_accent_color TEXT,
+  login_mobile_logo_opacity FLOAT8,
+  login_mobile_logo_scale FLOAT8,
+  login_mobile_logo_x_offset FLOAT8,
+  login_mobile_logo_y_offset FLOAT8,
+  login_mobile_bg_blur INT,
+  login_mobile_bg_brightness FLOAT8,
+  login_mobile_bg_zoom FLOAT8 DEFAULT 1.0,
+  login_mobile_bg_x_offset FLOAT8,
+  login_mobile_bg_y_offset FLOAT8,
+  login_mobile_bg_fit TEXT DEFAULT 'cover',
+  login_mobile_bg_opacity FLOAT8,
+  login_mobile_card_x_offset FLOAT8,
+  login_mobile_card_y_offset FLOAT8,
+  login_mobile_card_width INT DEFAULT 340,
+  login_mobile_card_height INT DEFAULT 500,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -278,7 +494,7 @@ ON CONFLICT DO NOTHING;
 
 
 -- ================================================================
--- ENABLE ROW LEVEL SECURITY
+-- ROW LEVEL SECURITY (RLS)
 -- ================================================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -292,23 +508,25 @@ ALTER TABLE public.coach_attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.refunds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pt_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pt_attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.call_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.voice_broadcasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gym_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.jump_sessions ENABLE ROW LEVEL SECURITY;
 
-
--- ================================================================
--- RLS POLICIES
--- ================================================================
-
--- Profiles
+-- POLICIES (Simplified "Enable all for authenticated" for faster setup)
 CREATE POLICY "Profiles readable by authenticated" ON public.profiles FOR SELECT TO authenticated USING (TRUE);
 CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Students / Groups / Plans / Subscriptions / Attendance / Finance
+-- Core/Finance Policies
 CREATE POLICY "Enable all for authenticated" ON public.students FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "Enable all for authenticated" ON public.groups FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "Enable all for authenticated" ON public.student_groups FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
@@ -321,14 +539,31 @@ CREATE POLICY "Enable all for authenticated" ON public.expenses FOR ALL TO authe
 CREATE POLICY "Enable all for authenticated" ON public.refunds FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "Enable all for authenticated" ON public.pt_subscriptions FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "Enable all for authenticated" ON public.pt_attendance FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
-CREATE POLICY "Enable all for authenticated" ON public.voice_broadcasts FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "Enable all for authenticated" ON public.gym_settings FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
+CREATE POLICY "Enable all for authenticated" ON public.voice_broadcasts FOR ALL TO authenticated USING (TRUE) WITH CHECK (TRUE);
+
+-- Communication Policies
+CREATE POLICY "conversations_select" ON public.conversations FOR SELECT USING (id IN (SELECT conversation_id FROM conversation_participants WHERE user_id = auth.uid()));
+CREATE POLICY "conversations_insert" ON public.conversations FOR INSERT WITH CHECK (created_by = auth.uid());
+CREATE POLICY "participants_select" ON public.conversation_participants FOR SELECT USING (conversation_id IN (SELECT conversation_id FROM conversation_participants WHERE user_id = auth.uid()));
+CREATE POLICY "messages_select" ON public.messages FOR SELECT USING (conversation_id IN (SELECT conversation_id FROM conversation_participants WHERE user_id = auth.uid()));
+CREATE POLICY "messages_insert" ON public.messages FOR INSERT WITH CHECK (sender_id = auth.uid() AND conversation_id IN (SELECT conversation_id FROM conversation_participants WHERE user_id = auth.uid()));
+CREATE POLICY "calls_select" ON public.call_records FOR SELECT USING (conversation_id IN (SELECT conversation_id FROM conversation_participants WHERE user_id = auth.uid()));
+CREATE POLICY "calls_insert" ON public.call_records FOR INSERT WITH CHECK (caller_id = auth.uid());
 
 -- Notifications
 CREATE POLICY "Notifications viewable by all authenticated" ON public.notifications FOR SELECT TO authenticated USING (TRUE);
 CREATE POLICY "Authenticated users can insert notifications" ON public.notifications FOR INSERT TO authenticated WITH CHECK (TRUE);
 CREATE POLICY "Allow delete notifications" ON public.notifications FOR DELETE TO authenticated USING (TRUE);
 
+-- User-Specific Policies
+CREATE POLICY "Users can view own settings" ON public.user_settings FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own settings" ON public.user_settings FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage own jump sessions" ON public.jump_sessions FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admins and Coaches can view all jump sessions" ON public.jump_sessions FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'admin' OR role = 'coach')));
+
+-- Finance History
+CREATE POLICY "Allow admins to manage finance history" ON public.finance_history FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- ================================================================
 -- TRIGGERS & FUNCTIONS
@@ -351,105 +586,43 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
-
--- Auto-sync email from profiles to auth.users
-CREATE OR REPLACE FUNCTION public.sync_profile_email_to_auth()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.email IS DISTINCT FROM OLD.email THEN
-    UPDATE auth.users SET email = NEW.email WHERE id = NEW.id;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_profile_email_updated ON public.profiles;
-CREATE TRIGGER on_profile_email_updated
-  AFTER UPDATE ON public.profiles
-  FOR EACH ROW EXECUTE PROCEDURE public.sync_profile_email_to_auth();
-
-
--- Notification: New Student
-CREATE OR REPLACE FUNCTION public.notify_new_student_v2()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.notifications (title, message, type, related_student_id, related_coach_id, target_role)
-  VALUES ('New Gymnast', NEW.full_name || ' just registered', 'student', NEW.id, NEW.coach_id, NULL);
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_student_created ON public.students;
-CREATE TRIGGER on_student_created
-  AFTER INSERT ON public.students
-  FOR EACH ROW EXECUTE FUNCTION public.notify_new_student_v2();
-
-
--- Notification: New Payment
-CREATE OR REPLACE FUNCTION public.notify_new_payment_v2()
-RETURNS TRIGGER AS $$
-DECLARE student_name TEXT; student_coach_id UUID;
-BEGIN
-  SELECT full_name, coach_id INTO student_name, student_coach_id FROM public.students WHERE id = NEW.student_id;
-  INSERT INTO public.notifications (title, message, type, related_student_id, related_coach_id, target_role)
-  VALUES ('Payment Received', COALESCE(NEW.amount::TEXT, '0') || ' from ' || COALESCE(student_name, 'Unknown'), 'payment', NEW.student_id, student_coach_id, 'admin_reception');
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_payment_created ON public.payments;
-CREATE TRIGGER on_payment_created
-  AFTER INSERT ON public.payments
-  FOR EACH ROW EXECUTE FUNCTION public.notify_new_payment_v2();
-
-
--- Notification: New PT Subscription
-CREATE OR REPLACE FUNCTION public.notify_new_pt_subscription()
-RETURNS TRIGGER AS $$
-DECLARE student_name TEXT; coach_name TEXT;
-BEGIN
-  SELECT full_name INTO student_name FROM public.students WHERE id = NEW.student_id;
-  SELECT full_name INTO coach_name FROM public.profiles WHERE id = NEW.coach_id;
-  INSERT INTO public.notifications (title, message, type, related_student_id, related_coach_id)
-  VALUES ('New PT Subscription', COALESCE(student_name, 'Student') || ' subscribed to PT with ' || COALESCE(coach_name, 'Coach'), 'pt_subscription', NEW.student_id, NEW.coach_id);
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_pt_subscription_created ON public.pt_subscriptions;
-CREATE TRIGGER on_pt_subscription_created
-  AFTER INSERT ON public.pt_subscriptions
-  FOR EACH ROW EXECUTE FUNCTION public.notify_new_pt_subscription();
-
-
--- RPC: Delete user by ID (called by Admin UI)
+-- RPC: Delete user by ID
 CREATE OR REPLACE FUNCTION public.delete_user_by_id(user_id UUID)
 RETURNS void AS $$
 BEGIN
   DELETE FROM auth.users WHERE id = user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 GRANT EXECUTE ON FUNCTION public.delete_user_by_id TO authenticated;
+
+-- Notification Triggers (Example)
+CREATE OR REPLACE FUNCTION public.notify_new_student_v2()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.notifications (title, message, type, related_student_id, related_coach_id)
+  VALUES ('New Gymnast', NEW.full_name || ' just registered', 'student', NEW.id, NEW.coach_id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_student_created AFTER INSERT ON public.students FOR EACH ROW EXECUTE FUNCTION public.notify_new_student_v2();
 
 
 -- ================================================================
--- ENABLE REALTIME
+-- REALTIME
 -- ================================================================
 DO $$
 BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications; EXCEPTION WHEN OTHERS THEN NULL; END;
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.voice_broadcasts; EXCEPTION WHEN OTHERS THEN NULL; END;
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.coach_attendance; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.messages; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.call_records; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.user_settings; EXCEPTION WHEN OTHERS THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance; EXCEPTION WHEN OTHERS THEN NULL; END;
 END $$;
 
 
 -- ================================================================
--- ALL DONE! Your new academy database is ready.
--- Next: Update your .env file with the new Supabase URL and ANON_KEY
+-- ALL DONE!
 -- ================================================================
