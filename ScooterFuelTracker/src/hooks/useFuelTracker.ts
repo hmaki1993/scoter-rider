@@ -12,6 +12,8 @@ export interface FuelSettings {
   enableAlerts: boolean; // Sound/Vibrate on low fuel
   language: 'en' | 'ar';
   accentColor: string;
+  alertTone: string; // Now stores the tone name or index
+  customTones: { name: string; data: string }[];
 }
 
 export interface UserProfile {
@@ -48,6 +50,65 @@ const DEFAULT_SETTINGS: FuelSettings = {
   enableAlerts: true,
   language: 'en',
   accentColor: '#326144',
+  alertTone: 'Digital',
+  customTones: []
+};
+
+// ── Audio Engine (Web Audio API) ───────────────────────────────────────────
+export const playTone = (type: string, customTones: { name: string; data: string }[] = []) => {
+  try {
+    // ── Handle Custom Tone (Look up in list) ──
+    const custom = customTones.find(t => t.name === type);
+    if (custom) {
+      const audio = new Audio(custom.data);
+      audio.volume = 0.5;
+      audio.play().catch(e => console.warn('Custom audio playback failed', e));
+      return;
+    }
+
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+    
+    const playBeep = (freq: number, startTime: number, duration: number, vol = 0.1, wave: 'sine'|'square'|'sawtooth'|'triangle' = 'sine') => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = wave;
+      osc.frequency.setValueAtTime(freq, startTime);
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+
+    switch(type) {
+      case 'Radar':
+        playBeep(880, now, 0.5, 0.15);
+        playBeep(440, now + 0.5, 0.5, 0.1);
+        break;
+      case 'Cyber':
+        playBeep(1200, now, 0.1, 0.1, 'square');
+        playBeep(800, now + 0.15, 0.1, 0.1, 'square');
+        playBeep(1600, now + 0.3, 0.2, 0.1, 'square');
+        break;
+      case 'Alarm':
+        for(let i=0; i<3; i++) {
+          playBeep(500, now + i*0.4, 0.2, 0.2, 'sawtooth');
+          playBeep(800, now + i*0.4 + 0.2, 0.2, 0.2, 'sawtooth');
+        }
+        break;
+      default: // 'Digital'
+        playBeep(2000, now, 0.05);
+        playBeep(2500, now + 0.1, 0.05);
+    }
+    
+    setTimeout(() => ctx.close(), 2000);
+  } catch(e) { console.error('Audio failed', e); }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,26 +212,20 @@ export const useFuelTracker = () => {
   const playWarningSound = (isAlarm = false) => {
     if (!settings.enableAlerts || isMuted) return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const playBeep = (freq: number, start: number, dur: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(freq, start);
-        gain.gain.setValueAtTime(0.5, start);
-        gain.gain.exponentialRampToValueAtTime(0.01, start + dur);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(start); osc.stop(start + dur);
-      };
       if (isAlarm) {
+        // Full Alarm sequence
         import('@capacitor/core').then(({ registerPlugin }) => {
           registerPlugin<any>('AlarmPlugin').playAlarm().catch(() => {});
         });
-        for (let i = 0; i < 20; i++) playBeep(i % 2 === 0 ? 900 : 1800, ctx.currentTime + i * 0.15, 0.12);
-        if (navigator.vibrate) navigator.vibrate([300,100,300,100,300,500,800,200,800,200,800]);
+        
+        // Play the chosen tone
+        playTone(settings.alertTone || 'Digital', settings.customTones);
+        
+        // Strong vibrate
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800]);
       } else {
-        playBeep(600, ctx.currentTime, 0.4);
+        // Soft pre-warning
+        playTone('Digital'); // Always soft for subtle pre-warning
         if (navigator.vibrate) navigator.vibrate(200);
       }
     } catch (e) { console.warn('Audio failed', e); }

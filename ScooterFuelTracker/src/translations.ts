@@ -45,6 +45,15 @@ export const translations = {
     areYouSure: 'متأكد يا زميلي؟',
     cancel: 'إلغاء',
     save: 'حفظ',
+    notificationTone: 'نغمة التنبيه',
+    toneDigital: 'رقمي (هادي)',
+    toneRadar: 'رادار (واضح)',
+    toneCyber: 'سايبر (حديث)',
+    toneAlarm: 'إنذار (قوي)',
+    uploadCustomTone: 'رفع نغمة من الموبايل 🎵',
+    customTone: 'نغمتك الخاصة',
+    deleteTone: 'مسح النغمة',
+    fileTooLarge: 'الملف كبير زيادة (خليك تحت 1 ميجا)',
     
     // Refuel Modal
     addRefuel: 'تفويلة جديدة',
@@ -151,6 +160,15 @@ export const translations = {
     areYouSure: 'Are you sure?',
     cancel: 'Cancel',
     save: 'Save',
+    notificationTone: 'Notification Tone',
+    toneDigital: 'Digital (Soft)',
+    toneRadar: 'Radar (Clear)',
+    toneCyber: 'Cyber (Modern)',
+    toneAlarm: 'Alarm (Strong)',
+    uploadCustomTone: 'Upload from Mobile 🎵',
+    customTone: 'Custom Tone',
+    deleteTone: 'Delete Tone',
+    fileTooLarge: 'File too large (keep under 1MB)',
     
     // Refuel Modal
     addRefuel: 'New Refuel Log',
