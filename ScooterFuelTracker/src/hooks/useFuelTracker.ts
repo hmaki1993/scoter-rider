@@ -339,8 +339,11 @@ export const useFuelTracker = () => {
                 pos.coords.latitude, pos.coords.longitude
               );
               const timeDiffMs = Math.max(1, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
-              const hours = timeDiffMs / (1000 * 60 * 60);
-              calculatedKmh = dist / hours;
+              // Filter logic: ignore time diffs > 30s as they might be app resumes
+              if (timeDiffMs < 30000) {
+                const hours = timeDiffMs / (1000 * 60 * 60);
+                calculatedKmh = dist / hours;
+              }
             }
 
             // 2. Use the most responsive speed value (Max of native and calculated)
@@ -352,19 +355,28 @@ export const useFuelTracker = () => {
               currentKmh = calculatedKmh;
             }
 
-            // 3. Smooth and update UI (No artificial logic filter here, just show it)
+            // 3. Smooth and update UI
             const finalDisplaySpeed = Math.round(currentKmh);
             setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
+
+            // ── PROFESSIONAL FILTERING ─────────────────────────────────────────
+            const MIN_TRACKING_SPEED = 12; // km/h (Filter Walking/Running)
+            const MAX_GPS_ACCURACY = 30;   // meters (Filter Jitter)
+
+            // Ignore jumpy/poor GPS signals (> 30m accuracy)
+            if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
+              console.warn(`[FuelTracker] Weak GPS Signal: Accuracy=${pos.coords.accuracy}m. Ignoring movement.`);
+              return;
+            }
 
             // ── Persist latest position so it survives app kill ───────────────
             const posToSave = {
               latitude: pos.coords?.latitude,
               longitude: pos.coords?.longitude,
-              timestamp: pos.timestamp ?? Date.now()
+              timestamp: pos.timestamp ?? Date.now(),
+              accuracy: pos.coords?.accuracy
             };
             localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
-
-            const MIN_TRACKING_SPEED = 10; // km/h
 
             setFuelState(prev => {
               if (lastPositionRef.current && pos.coords) {
@@ -373,7 +385,7 @@ export const useFuelTracker = () => {
                   pos.coords.latitude, pos.coords.longitude
                 );
                 
-                // Threshold 0.005km (5 meters) to filter GPS jitter
+                // Effective movement must be > 5 meters to prevent jitter
                 if (dist > 0.005) {
                   // ONLY track mileage if effective speed is above threshold (Filter Walking)
                   if (currentKmh >= MIN_TRACKING_SPEED) {

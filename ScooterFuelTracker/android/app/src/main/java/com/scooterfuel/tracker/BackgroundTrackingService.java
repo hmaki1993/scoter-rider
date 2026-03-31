@@ -89,16 +89,34 @@ public class BackgroundTrackingService extends Service {
         }
     }
 
+    private static final float MIN_SPEED_KMH = 12.0f;
+
     private final LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(@NonNull Location location) {
             if (lastLocation != null) {
                 // Returns distance in meters
                 float distanceMeters = lastLocation.distanceTo(location);
-                // Basic filter: ignore absurd GPS jumps, e.g., > 100 meters in 5 seconds
+                
+                // --- Speed Filter Logic (Filter Walking/Running) ---
+                float currentSpeedKmh = 0.0f;
+                if (location.hasSpeed()) {
+                    currentSpeedKmh = location.getSpeed() * 3.6f;
+                } else {
+                    // Fallback: calculate speed from distance and time
+                    long timeDeltaMs = location.getTime() - lastLocation.getTime();
+                    if (timeDeltaMs > 0) {
+                        float hours = timeDeltaMs / (1000.0f * 60.0f * 60.0f);
+                        currentSpeedKmh = (distanceMeters / 1000.0f) / hours;
+                    }
+                }
+
+                // Basic filter: ignore absurd GPS jumps and WALKING speeds
                 if (distanceMeters > 5.0f && distanceMeters < 150.0f) {
-                    accumulatedDistanceKm += (distanceMeters / 1000.0f);
-                    saveAccumulatedDistance(accumulatedDistanceKm);
+                    if (currentSpeedKmh >= MIN_SPEED_KMH) {
+                        accumulatedDistanceKm += (distanceMeters / 1000.0f);
+                        saveAccumulatedDistance(accumulatedDistanceKm);
+                    }
                 }
             }
             lastLocation = location;

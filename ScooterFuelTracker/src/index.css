@@ -11,6 +11,9 @@
   --success-color: #00ff88;
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.6);
+  --header-btn-size: 46px;
+  --header-gap: 10px;
+  --logo-font-size: 21px;
 }
 
 .primary-glow {
@@ -49,6 +52,28 @@ body {
 .subtitle-text {
   color: rgba(255, 255, 255, 0.9);
 }
+
+/* Responsive Header Tweaks */
+@media screen and (max-width: 440px) {
+  :root {
+    --header-btn-size: 38px;
+    --header-gap: 4px;
+    --logo-font-size: 19px; /* Increased from 16px */
+  }
+}
+
+@media screen and (max-width: 360px) {
+  :root {
+    --header-btn-size: 34px;
+    --header-gap: 2px;
+    --logo-font-size: 17px; /* Increased from 14px */
+  }
+
+  .subtitle-text {
+    display: none !important; /* Hide subtitle on tiny screens to save vertical/horizontal clutter */
+  }
+}
+
 
 * {
   box-sizing: border-box;
@@ -121,6 +146,27 @@ body {
 }
 
 /* --- Fusion Input System --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.4); transform: scale(1); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 240, 255, 0); transform: scale(1.05); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); transform: scale(1); }
+}
+
 .fusion-label {
   display: block;
   font-size: 10px;

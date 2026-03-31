@@ -35,6 +35,7 @@ function App() {
   const [showRefuel, setShowRefuel] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPhotoZoom, setShowPhotoZoom] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{ version: string, url: string, notes: string } | null>(null);
 
   const appRef = useRef<HTMLDivElement>(null);
@@ -75,7 +76,7 @@ function App() {
   }, []);
 
   return (
-    <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px 24px 8px 24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
 
       {/* Immersive Header Section */}
@@ -85,70 +86,95 @@ function App() {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        marginBottom: '18px',
+        marginBottom: '20px',
         flexWrap: 'nowrap',
         width: '100%',
-        gap: '4px'
+        gap: 'var(--header-gap)',
+        position: 'relative',
+        zIndex: 10
       }}>
         <div style={{ 
           flex: 1,
           minWidth: 0,
           display: 'flex', 
           flexDirection: 'column', 
-          alignItems: lang === 'ar' ? 'flex-end' : 'flex-start' 
+          alignItems: lang === 'ar' ? 'flex-end' : 'flex-start',
+          paddingRight: lang === 'ar' ? '0' : '4px',
+          paddingLeft: lang === 'ar' ? '4px' : '0'
         }}>
           <h1 className="logo-text" style={{ 
             margin: 0, 
-            fontSize: '21px', 
-            letterSpacing: '-1px',
+            fontSize: 'var(--logo-font-size)', 
+            letterSpacing: '-1.5px',
+            lineHeight: '1',
             opacity: 1,
             whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: 'inline-block',
-            background: 'linear-gradient(90deg, #ffffff 20%, #999 50%, #444 80%, rgba(255,255,255,0) 100%)',
+            display: 'block',
+            textAlign: lang === 'ar' ? 'right' : 'left',
+            background: 'linear-gradient(90deg, #ffffff 0%, #ffffff 70%, rgba(255,255,255,0.5) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}>{t('appName')}</h1>
           <div className="subtitle-text" style={{ 
-            fontSize: '10px', 
+            fontSize: '8.5px', 
             marginTop: '1px', 
-            letterSpacing: '0.5px', 
+            letterSpacing: '0.1px', 
             opacity: 0.7,
             whiteSpace: 'nowrap',
             textAlign: lang === 'ar' ? 'right' : 'left'
           }}>{t('premiumSystem')}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          {/* Compact Language Switcher */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', padding: '2px', marginRight: '4px' }}>
-             <button onClick={() => tracker.setSettings({...tracker.settings, language: 'ar'})} style={{ padding: '4px 8px', borderRadius: '8px', border: 'none', background: tracker.settings.language === 'ar' ? 'rgba(255,94,0,0.15)' : 'transparent', color: tracker.settings.language === 'ar' ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.25)', fontWeight: '900', cursor: 'pointer', fontSize: '9px', transition: 'all 0.3s' }}>AR</button>
-             <button onClick={() => tracker.setSettings({...tracker.settings, language: 'en'})} style={{ padding: '4px 8px', borderRadius: '8px', border: 'none', background: tracker.settings.language === 'en' ? 'rgba(255,94,0,0.15)' : 'transparent', color: tracker.settings.language === 'en' ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.25)', fontWeight: '900', cursor: 'pointer', fontSize: '9px', transition: 'all 0.3s' }}>EN</button>
-          </div>
 
-          {/* Tracking Status Badge (Now Clickable) */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 'var(--header-gap)', 
+          flexShrink: 0,
+          background: 'none',
+          padding: '0',
+          borderRadius: '0',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          border: 'none',
+          boxShadow: 'none'
+        }}>
+          {/* Single Language Toggle Box */}
+          <button 
+            onClick={() => tracker.setSettings({...tracker.settings, language: tracker.settings.language === 'ar' ? 'en' : 'ar'})}
+            style={{ 
+              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '10px', 
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+              color: 'var(--accent-secondary)', fontWeight: '900', fontSize: '9px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            {tracker.settings.language === 'ar' ? 'EN' : 'AR'}
+          </button>
+
+          {/* Tracking Status Badge */}
           <button 
             onClick={() => {
               if (tracker.isTracking) tracker.stopTracking();
               else tracker.startTracking(false);
             }}
             style={{
-              width: '40px', height: '40px', borderRadius: '50%',
+              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', border: 'none',
               background: 'none'
             }}
           >
             <div style={{
-              width: '8px', height: '8px', borderRadius: '50%',
+              width: '12px', height: '12px', borderRadius: '50%',
               background: tracker.isTracking ? '#00f064' : '#ff3366',
-              boxShadow: tracker.isTracking ? '0 0 10px #00f064' : '0 0 10px #ff3366',
+              boxShadow: tracker.isTracking ? '0 0 12px #00f064' : '0 0 12px #ff3366',
               animation: tracker.isTracking ? 'pulse 1.5s infinite' : 'none'
             }} />
           </button>
+
           <button
             style={{
-              width: '40px', height: '40px', borderRadius: '50%',
+              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '50%',
               background: 'none',
               border: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -158,14 +184,15 @@ function App() {
             onClick={() => tracker.setSettings({ ...tracker.settings, enableAlerts: !tracker.settings.enableAlerts })}
           >
             {tracker.settings.enableAlerts ? (
-              <Bell size={20} color="#ff5e00" strokeWidth={2.5} />
+              <Bell size={24} color="#ff5e00" strokeWidth={2.5} />
             ) : (
-              <BellOff size={20} color="rgba(255,255,255,0.4)" strokeWidth={2} />
+              <BellOff size={24} color="rgba(255,255,255,0.4)" strokeWidth={2} />
             )}
           </button>
+
           <button 
             style={{ 
-              width: '44px', height: '44px', borderRadius: '50%', 
+              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '50%', 
               background: 'none', 
               border: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -173,7 +200,7 @@ function App() {
             }} 
             onClick={() => setShowSettings(true)}
           >
-            <Settings size={20} color="#ffffff" strokeWidth={2} />
+            <Settings size={24} color="#ffffff" strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -187,13 +214,19 @@ function App() {
           border: 'none',
           width: 'fit-content'
         }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
+          <div 
+          onClick={() => setShowPhotoZoom(true)}
+          style={{
+            width: '52px', height: '52px', borderRadius: '14px',
             overflow: 'hidden', border: '1.5px solid var(--accent-color)',
-            boxShadow: '0 0 8px rgba(0, 240, 255, 0.2)',
+            boxShadow: '0 0 15px rgba(0, 240, 255, 0.1)',
             flexShrink: 0, background: 'rgba(0, 240, 255, 0.05)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-in', transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
             {tracker.userProfile.photoUrl ? (
               <img
                 src={tracker.userProfile.photoUrl}
@@ -211,8 +244,32 @@ function App() {
             )}
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '3px', opacity: 0.8 }}>{t('welcomeBack')}</div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{tracker.userProfile.name}</div>
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: '850',
+              background: 'linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent-color) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '6px', 
+              opacity: 1,
+              letterSpacing: '1.2px',
+              textTransform: 'uppercase',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+            }}>
+              {t('welcomeBack')}
+            </div>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '950', 
+              background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-1.5px',
+              lineHeight: '1',
+              filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.3))'
+            }}>
+              {tracker.userProfile.name}
+            </div>
           </div>
         </div>
       )}
@@ -268,14 +325,14 @@ function App() {
                    }}>
                      <line 
                         x1="90" y1="95" x2="35" y2="95" 
-                        stroke={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-color)'} 
+                        stroke={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-secondary)'} 
                         strokeWidth="2.5" 
                         strokeLinecap="round" 
                         style={{ filter: 'drop-shadow(0 0 2px currentColor)', transition: 'stroke 0.5s' }}
                      />
                      <circle 
                         cx="90" cy="95" r="3" 
-                        fill={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-color)'} 
+                        fill={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-secondary)'} 
                         style={{ transition: 'fill 0.5s' }}
                      />
                    </g>
@@ -485,7 +542,7 @@ function App() {
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', marginTop: 'auto', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', marginTop: 'auto', marginBottom: '8px', paddingTop: '40px' }}>
         <button
           className="glass-button"
           style={{ 
@@ -528,7 +585,7 @@ function App() {
       {/* Fusion HUD Footer */}
       <div style={{ 
         width: '100%', 
-        padding: '8px 0 40px 0', 
+        padding: '0 0 10px 0', 
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center', 
@@ -542,7 +599,14 @@ function App() {
           <span style={{ fontSize: '7.5px', color: '#fff', fontWeight: '800', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.2 }}>RIDE HUD DASHBOARD • V1.2.0 • ELITE EDITION</span>
           <div style={{ fontSize: '7.5px', color: '#fff', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
             <span style={{ opacity: 0.3 }}>SYSTEM ARCHITECT: </span>
-            <span style={{ opacity: 1, textShadow: '0 0 10px rgba(255,255,255,0.4)' }}>AHMED HAMAKI</span>
+            <span style={{ 
+              opacity: 1, 
+              background: 'linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent-color) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: '950',
+              letterSpacing: '2px'
+            }}>AHMED HAMAKI</span>
           </div>
         </div>
       </div>
@@ -562,6 +626,14 @@ function App() {
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
       {updateInfo && <UpdateModal info={updateInfo} tracker={tracker} onClose={() => setUpdateInfo(null)} />}
+      
+      {showPhotoZoom && (
+        <PhotoZoomModal 
+          photoUrl={tracker.userProfile?.photoUrl} 
+          photoPosition={tracker.userProfile?.photoPosition}
+          onClose={() => setShowPhotoZoom(false)} 
+        />
+      )}
 
     </div>
   );
@@ -1211,4 +1283,69 @@ function UpdateModal({ info, tracker, onClose }: { info: any, tracker: any, onCl
 
 
 export default App;
+
+// Photo Zoom Modal Component
+const PhotoZoomModal = ({ photoUrl, photoPosition, onClose }: { photoUrl?: string, photoPosition?: any, onClose: () => void }) => {
+  return (
+    <div 
+      className="modal-overlay" 
+      onClick={onClose}
+      style={{ 
+        position: 'fixed', inset: 0, zIndex: 10000, 
+        background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px', animation: 'fadeIn 0.3s ease'
+      }}
+    >
+      <div 
+        style={{ 
+          position: 'relative', width: '100%', maxWidth: '340px', 
+          aspectRatio: '1', borderRadius: '24px', overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.15)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.85)',
+          animation: 'scaleUp 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+          background: '#0a0a0c'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {photoUrl ? (
+          <img 
+            src={photoUrl} alt="Rider Full" 
+            style={{ 
+              width: '100%', height: '100%', objectFit: 'contain', background: '#000',
+              transform: photoPosition 
+                ? `translate(${(photoPosition.x || 0) * 4}px, ${(photoPosition.y || 0) * 4}px) scale(${(photoPosition.scale || 100) / 100})`
+                : 'scale(1)',
+              transformOrigin: 'center'
+            }} 
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)' }}>
+            <User size={100} color="var(--accent-color)" opacity={0.4} />
+          </div>
+        )}
+        
+        {/* Close Button - Smaller & In-Card */}
+        <button 
+          onClick={onClose}
+          style={{ 
+            position: 'absolute', top: '12px', right: '12px', 
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)',
+            color: '#fff', fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            zIndex: 10
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+};
 
