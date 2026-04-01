@@ -834,8 +834,8 @@ export const useFuelTracker = () => {
                 body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
                   ? (translations[lang] as any).lowFuelAlertBody(display) 
                   : display,
-                id: Math.floor(Math.random() * 100000) + 1, // Random ID ensures Android pops it as new Heads-up
-                schedule: { allowWhileIdle: true },         // Forces OS Doze-bypass!
+                id: Math.floor(Math.random() * 100000) + 1,
+                schedule: { at: new Date(Date.now() + 300), allowWhileIdle: true },
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
                 channelId: `fuel_alert_v5_high_priority`,
               } as any]
