@@ -203,6 +203,7 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void updateWidgetStats(PluginCall call) {
             try {
+                Context context = getContext();
                 String range = call.getString("range", "0.0 KM");
                 int fuelPercent = call.getDouble("fuelPercent", 0.0).intValue();
                 String litersLeft = call.getString("litersLeft", "0.0 L");
