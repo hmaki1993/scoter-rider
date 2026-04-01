@@ -18,16 +18,37 @@ import com.getcapacitor.PluginMethod;
 
 public class MainActivity extends BridgeActivity {
     public Ringtone currentRingtone;
+    public static String pendingWidgetAction = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AlarmPlugin.class);
         super.onCreate(savedInstanceState);
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("widget_action")) {
+            pendingWidgetAction = intent.getStringExtra("widget_action");
+        }
     }
 
     @CapacitorPlugin(name = "AlarmPlugin")
     public static class AlarmPlugin extends Plugin {
         
+        @PluginMethod
+        public void getWidgetAction(PluginCall call) {
+            com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+            ret.put("action", pendingWidgetAction);
+            pendingWidgetAction = null; // Clear after reading once
+            call.resolve(ret);
+        }
         @PluginMethod
         public void openLocationSettings(PluginCall call) {
             try {

@@ -14,6 +14,8 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.widget.RemoteViews;
 
+import com.scooterfuel.tracker.R;
+
 public class SpeedometerWidget extends AppWidgetProvider {
 
     public static final String ACTION_UPDATE_STATS = "com.scooterfuel.tracker.ACTION_UPDATE_STATS";
@@ -26,6 +28,14 @@ public class SpeedometerWidget extends AppWidgetProvider {
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, mainIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.top_row, pendingIntent);
+
+        // Settings Button -> Open App + Extra Instruction
+        Intent configIntent = new Intent(context, MainActivity.class);
+        configIntent.putExtra("widget_action", "open_settings");
+        configIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent configPendingIntent = PendingIntent.getActivity(context, appWidgetId + 1000, configIntent, 
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(R.id.widget_btn_settings, configPendingIntent);
 
         // Default values from SharedPreferences (Cached Stats)
         android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);

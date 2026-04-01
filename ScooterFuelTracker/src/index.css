@@ -419,3 +419,33 @@ input[type=number] {
   50% { transform: scale(1.3); opacity: 0.6; box-shadow: 0 0 15px #00f86b; }
   100% { transform: scale(1); opacity: 1; box-shadow: 0 0 5px #00f86b; }
 }
+
+/* --- Widget Mini Settings Customization --- */
+.widget-settings-card {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(25px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 254, 0.12) !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6) !important;
+  animation: mini-scale-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes mini-scale-up {
+  from { opacity: 0; transform: scale(0.85) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.color-dot-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.color-dot-btn.active {
+  border-color: #fff;
+  transform: scale(1.2);
+  box-shadow: 0 0 15px currentColor;
+}

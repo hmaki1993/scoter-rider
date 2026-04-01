@@ -290,46 +290,50 @@ export const useFuelTracker = () => {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
         const isWeb = (window as any).Capacitor?.getPlatform() === 'web' || !(window as any).Capacitor;
         
-        if (isWeb) return; // Skip native-only notification setup on web
+        if (isWeb) return;
 
-        const lang = (settings.language in translations) ? settings.language : 'en';
+        // ── Channel Strategy (V14) ───────────────────────────────────────────
+        const channelId = `fuel_alert_v14_premium`;
+        
+        // ── Permissions & Cleanup ──────────────────────────────────────────
+        const status = await LocalNotifications.checkPermissions();
+        if (status.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
+        }
+
+        try {
+          const existing = await LocalNotifications.listChannels();
+          for (const ch of existing.channels || []) {
+            // Delete ALL previous notification channels to prevent priority conflicts
+            if (ch.id.startsWith('fuel_') && ch.id !== channelId) {
+              await LocalNotifications.deleteChannel({ id: ch.id });
+            }
+          }
+        } catch { /* ignore */ }
+
+        await LocalNotifications.createChannel({
+          id: channelId,
+          name: 'Fuel Alerts (Urgent Peek)',
+          description: 'High priority alerts with heads-up support',
+          importance: 5,      // IMPORTANCE_MAX -> Heads-up
+          visibility: 1,      // VISIBILITY_PUBLIC
+          vibration: true,    // Essential for Peek
+          lights: true,
+          lightColor: '#FF3366',
+          sound: 'default',   // Use system default to guarantee peek/Heads-up
+        } as any);
+
+        const lang = (settings.language in translations) ? settings.language : 'ar';
         await LocalNotifications.registerActionTypes({
           types: [{
             id: 'FUEL_ALARM_ACTIONS',
             actions: [{
               id: 'silence',
               title: (translations[lang] as any)?.stopNotif || 'Stop',
-              // foreground: true ensures the action always shows on the notification
               foreground: true,
             }]
           }]
         });
-
-        // ── Channel Strategy ────────────────────────────────────────────────────
-        // IMPORTANT: Use a SILENT channel (sound: null) so the notification drops down
-        // IMMEDIATELY during our alarm without or OS sound conflict/delay!
-        const channelId = `fuel_alert_v11_urgent`;
-        // Delete old channels to prevent Android from reusing stale settings
-        try {
-          const existing = await LocalNotifications.listChannels();
-          for (const ch of existing.channels || []) {
-            if (ch.id.startsWith('fuel_') && ch.id !== channelId) {
-              await LocalNotifications.deleteChannel({ id: ch.id });
-            }
-          }
-        } catch { /* ignore — some builds don't support deleteChannel */ }
-
-        await LocalNotifications.createChannel({
-          id: channelId,
-          name: 'Fuel Alerts (Silent)',
-          description: 'Heads-up alert - audio handled natively by app',
-          importance: 5,      // IMPORTANCE_MAX → Heads-Up delivery
-          visibility: 1,      // VISIBILITY_PUBLIC
-          vibration: false,   // Handle vibration natively
-          lights: true,
-          lightColor: '#FF3366',
-          sound: null as any, // EXPLICITLY NULL → truly silent OS channel
-        } as any);
 
         const listener = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
           if (action.actionId === 'silence') {
@@ -346,7 +350,7 @@ export const useFuelTracker = () => {
         console.warn('[FuelTracker] Notification setup failed:', e);
       }
     })();
-  }, [settings.alertTone, settings.language]);
+  }, [settings.language]);
 
   // ── Audio Warning ─────────────────────────────────────────────────────────
   const playWarningSound = (isAlarm = false) => {
@@ -666,9 +670,10 @@ export const useFuelTracker = () => {
               body: (translations[lang] as any)?.gpsOffBody,
               id: 9999,
               schedule: { at: new Date(Date.now() + 200) },
-              channelId: `fuel_v3_${settings.alertTone || 'Default'}`,
+              channelId: `fuel_alert_v14_premium`,
               attachments: [],
               extra: null,
+              priority: 2,
             } as any]
           });
         } catch { /* noop */ }
@@ -838,8 +843,9 @@ export const useFuelTracker = () => {
               id: Math.floor(Math.random() * 100000) + 1,
               schedule: { at: new Date(), allowWhileIdle: true },
               actionTypeId: 'FUEL_ALARM_ACTIONS',
-              channelId: `fuel_alert_v11_urgent`,
+              channelId: `fuel_alert_v14_premium`,
               importance: 5, 
+              priority: 2,
             } as any]
           }).catch(console.warn);
 

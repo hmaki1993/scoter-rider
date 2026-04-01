@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker, playTone, stopTone } from './hooks/useFuelTracker';
 import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Music, Fuel, Trash2 } from 'lucide-react';
 import { translations } from './translations';
+import { App as CapApp } from '@capacitor/app';
 import gsap from 'gsap';
 import './index.css';
 
@@ -54,6 +55,7 @@ function App() {
   const [showRefuel, setShowRefuel] = useState(false);
   const [showSync, setShowSync] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showWidgetMiniSettings, setShowWidgetMiniSettings] = useState(false);
   const [showPhotoZoom, setShowPhotoZoom] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{ version: string, url: string, notes: string } | null>(null);
 
@@ -92,11 +94,33 @@ function App() {
 
     const timer = setTimeout(checkForUpdate, 1500);
 
+    // --- Widget Action Handling (Deep Link from Widget Buttons) ---
+    const handleWidgetAction = async () => {
+      try {
+        const { registerPlugin } = await import('@capacitor/core');
+        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        const res = await alarmPlugin.getWidgetAction();
+        if (res && res.action === 'open_settings') {
+          console.log('[App] Widget action received: open_settings');
+          setShowWidgetMiniSettings(true); // Open the mini settings instead of full
+        }
+      } catch (e) {
+        console.warn('[App] Widget action check failed:', e);
+      }
+    };
+
+    handleWidgetAction();
+    let stateListener: any = null;
+    CapApp.addListener('appStateChange', (state: any) => {
+      if (state.isActive) handleWidgetAction();
+    }).then(l => { stateListener = l; });
+
     // --- Kill any orphaned GSAP animations on the refuel btn ---
     gsap.killTweensOf('.premium-refuel-btn');
 
     return () => {
       clearTimeout(timer);
+      if (stateListener) stateListener.remove();
     };
   }, []);
 
@@ -685,6 +709,13 @@ function App() {
           photoPosition={tracker.userProfile?.photoPosition}
           tracker={tracker}
           onClose={() => setShowPhotoZoom(false)}
+        />
+      )}
+
+      {showWidgetMiniSettings && (
+        <WidgetMiniSettingsCard
+          tracker={tracker}
+          onClose={() => setShowWidgetMiniSettings(false)}
         />
       )}
 
@@ -1535,4 +1566,84 @@ const PhotoZoomModal = ({ photoUrl, photoPosition, tracker, onClose }: { photoUr
     </div>
   );
 };
+// ── Widget Mini Settings Card (Live Customization) ──────────────────────────
+const WidgetMiniSettingsCard = ({ tracker, onClose }: { tracker: any, onClose: () => void }) => {
+  const colors = [
+    '#00f0ff', '#ff3366', '#00ff64', '#ffcc00', '#af52de', '#ff9500', '#ffffff'
+  ];
 
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '24px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)'
+    }}>
+      <div className="widget-settings-card" style={{
+        width: '100%', maxWidth: '320px', padding: '24px',
+        borderRadius: '24px',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '13px', fontWeight: '950', color: '#fff', letterSpacing: '3px', marginBottom: '24px', textTransform: 'uppercase', opacity: 0.8 }}>
+          WIDGET DESIGNER
+        </div>
+
+        {/* Color Sped-Dial */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', justifyContent: 'center', marginBottom: '32px' }}>
+          {colors.map(c => (
+            <button
+              key={c}
+              onClick={() => {
+                tracker.setSettings({ ...tracker.settings, widgetAccentColor: c });
+                tracker.updateWidgetStats({ ...tracker.fuelState, ...tracker.settings, widgetAccentColor: c });
+              }}
+              className={`color-dot-btn ${tracker.settings.widgetAccentColor === c ? 'active' : ''}`}
+              style={{
+                background: c,
+                color: c // for currentColor shadow
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Opacity Slider */}
+        <div style={{ marginBottom: '32px', padding: '0 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontWeight: '900', letterSpacing: '1.5px', marginBottom: '12px' }}>
+            <span>TRANSPARENCY</span>
+            <span style={{ color: tracker.settings.widgetAccentColor || '#fff' }}>{tracker.settings.widgetOpacity}%</span>
+          </div>
+          <input
+            type="range"
+            min="10"
+            max="100"
+            value={tracker.settings.widgetOpacity}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              tracker.setSettings({ ...tracker.settings, widgetOpacity: val });
+              tracker.updateWidgetStats({ ...tracker.fuelState, ...tracker.settings, widgetOpacity: val });
+            }}
+            style={{ 
+              width: '100%', 
+              accentColor: tracker.settings.widgetAccentColor || '#00f0ff',
+              height: '4px',
+              cursor: 'pointer'
+            }}
+          />
+        </div>
+
+        <button
+          onClick={onClose}
+          className="glass-button primary-glow"
+          style={{
+            width: '100%', 
+            borderRadius: '14px',
+            fontSize: '11px', 
+            letterSpacing: '4px',
+            background: tracker.settings.widgetAccentColor || 'var(--accent-color)'
+          }}
+        >
+          APPLY CHANGES
+        </button>
+      </div>
+    </div>
+  );
+};
