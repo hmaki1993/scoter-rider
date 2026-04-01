@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
 import { App } from '@capacitor/app';
 import { translations } from '../translations';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 export interface FuelSettings {
   tankCapacity: number; // Liters
@@ -365,7 +366,7 @@ export const useFuelTracker = () => {
           });
         });
 
-        // ── STOP after 3 rounds (8 seconds) ──
+        // ── HARD STOP after 3 rounds (8 seconds) ──
         setTimeout(() => stopTone(), 8000);
 
       } else {
@@ -826,22 +827,23 @@ export const useFuelTracker = () => {
           const lang = (settings.language in translations) ? settings.language : 'ar';
           const display = currentKmFloor.toString();
           
-          import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-            LocalNotifications.schedule({
-              notifications: [{
-                title: (translations[lang] as any)?.lowFuelAlertTitle,
-                body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
-                  ? (translations[lang] as any).lowFuelAlertBody(display) 
-                  : display,
-                id: Math.floor(Math.random() * 100000) + 1,
-                schedule: { at: new Date(), allowWhileIdle: true },
-                actionTypeId: 'FUEL_ALARM_ACTIONS',
-                channelId: `fuel_alert_v10_silent`,
-              } as any]
-            }).catch(console.warn);
-          });
+          // ── STEP 1: DROP NOTIFICATION FIRST (Pre-imported, High Importance) ──
+          LocalNotifications.schedule({
+            notifications: [{
+              title: (translations[lang] as any)?.lowFuelAlertTitle,
+              body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
+                ? (translations[lang] as any).lowFuelAlertBody(display) 
+                : display,
+              id: Math.floor(Math.random() * 100000) + 1,
+              schedule: { at: new Date(), allowWhileIdle: true },
+              actionTypeId: 'FUEL_ALARM_ACTIONS',
+              channelId: `fuel_alert_v10_silent`,
+              importance: 5, // MAX IMPORTANT (Importance.MAX might mismatch TS types, using raw value)
+            } as any]
+          }).catch(console.warn);
 
-          playWarningSound(true);
+          // ── STEP 2: Trigger Alarm Sound/Vibration Immediately ──
+          playWarningSound(true); 
         }
         lastNotifiedKmRef.current = currentKmFloor;
       }
