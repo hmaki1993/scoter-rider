@@ -77,11 +77,11 @@ public class BackgroundTrackingService extends Service {
         lastLocation = null;
         
         try {
-            // Request location every 5 seconds, minimum 1 meter displacement
+            // Request location every 1 second (1000ms), 0 meters displacement for LIVE response
             locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    5000,
-                    1.0f,
+                    1000,
+                    0.0f,
                     locationListener
             );
         } catch (Exception e) {
@@ -129,6 +129,9 @@ public class BackgroundTrackingService extends Service {
                         saveAccumulatedDistance(accumulatedDistanceKm);
                     }
                 }
+
+                // ── LIVE WIDGET UPDATE FROM BACKGROUND ──
+                broadcastWidgetUpdate(Math.round(currentSpeedKmh));
             }
             lastLocation = location;
         }
@@ -142,7 +145,7 @@ public class BackgroundTrackingService extends Service {
     };
 
     private void saveAccumulatedDistance(float dist) {
-        SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
         // We add to whatever might already be unread
         float currentStored = prefs.getFloat("native_gps_distance", 0.0f);
         SharedPreferences.Editor editor = prefs.edit();
@@ -151,6 +154,22 @@ public class BackgroundTrackingService extends Service {
         
         // Reset local accumulator strictly after saving
         accumulatedDistanceKm = 0.0f; 
+    }
+
+    private void broadcastWidgetUpdate(int speed) {
+        SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+        Intent intent = new Intent(this, SpeedometerWidget.class);
+        intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
+        
+        intent.putExtra("speed", speed);
+        intent.putExtra("range", prefs.getString("latest_range", "-- KM"));
+        intent.putExtra("fuelPercent", prefs.getInt("latest_fuelPercent", 0));
+        intent.putExtra("litersLeft", prefs.getString("latest_litersLeft", "-- L"));
+        intent.putExtra("emptyAt", prefs.getString("latest_emptyAt", "EMPTY: --"));
+        intent.putExtra("oilLeft", prefs.getString("latest_oilLeft", "OIL: -- KM"));
+        intent.putExtra("accentColor", prefs.getString("latest_accentColor", "#00f0ff"));
+        
+        sendBroadcast(intent);
     }
 
     private void createNotificationChannel() {

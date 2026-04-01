@@ -355,20 +355,18 @@ export const useFuelTracker = () => {
         if (globalToneIntervalLock) return;
         globalToneIntervalLock = true;
 
-        // ── Play tone ONCE (isLoop=false) ──
-        // The 2500ms timeout below is the SOLE stop mechanism.
-        // This avoids any interval/onended race conditions.
-        playTone(settingsRef.current.alertTone || 'Digital', settingsRef.current.customTones, audioCtxRef, activeAudioRef, false);
+        // ── Loop tone for 3 rounds (approx 8 seconds) ──
+        playTone(settingsRef.current.alertTone || 'Digital', settingsRef.current.customTones, audioCtxRef, activeAudioRef, true);
 
-        // ── Native vibration (3x pattern defined in Java, auto-stops) ──
+        // ── Native vibration (3x pattern in Java) ──
         import('@capacitor/core').then(({ registerPlugin }) => {
           registerPlugin<any>('AlarmPlugin').startVibration().catch(() => {
-            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800]);
+            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800]);
           });
         });
 
-        // ── HARD STOP at 2500ms ──
-        setTimeout(() => stopTone(), 2500);
+        // ── STOP after 3 rounds (8 seconds) ──
+        setTimeout(() => stopTone(), 8000);
 
       } else {
         // Soft pre-warning (single short beep + gentle buzz)
@@ -836,7 +834,7 @@ export const useFuelTracker = () => {
                   ? (translations[lang] as any).lowFuelAlertBody(display) 
                   : display,
                 id: Math.floor(Math.random() * 100000) + 1,
-                schedule: { at: new Date(Date.now() + 300), allowWhileIdle: true },
+                schedule: { at: new Date(), allowWhileIdle: true },
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
                 channelId: `fuel_alert_v10_silent`,
               } as any]

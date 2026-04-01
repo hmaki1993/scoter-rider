@@ -27,25 +27,30 @@ public class SpeedometerWidget extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.top_row, pendingIntent);
 
-        // Default values
+        // Default values from SharedPreferences (Cached Stats)
+        android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+        
         int speed = 0;
-        String range = "-- KM";
-        int fuelPercent = 0;
-        String litersLeft = "-- L";
-        String emptyAt = "EMPTY: --";
-        String oilLeft = "OIL: -- KM";
+        String range = prefs.getString("latest_range", "-- KM");
+        int fuelPercent = prefs.getInt("latest_fuelPercent", 0);
+        String litersLeft = prefs.getString("latest_litersLeft", "-- L");
+        String emptyAt = prefs.getString("latest_emptyAt", "EMPTY: --");
+        String oilLeft = prefs.getString("latest_oilLeft", "OIL: -- KM");
+        String accentColorStr = prefs.getString("latest_accentColor", "#00f0ff");
         int themeColor = Color.parseColor("#00f0ff");
+        try { themeColor = Color.parseColor(accentColorStr); } catch (Exception ignored) {}
 
+        // Override with Live Intent data if it's a broadcast
         if (intent != null && ACTION_UPDATE_STATS.equals(intent.getAction())) {
             speed = intent.getIntExtra("speed", 0);
-            range = intent.getStringExtra("range") != null ? intent.getStringExtra("range") : "0.0 KM";
-            fuelPercent = intent.getIntExtra("fuelPercent", 0);
-            litersLeft = intent.getStringExtra("litersLeft") != null ? intent.getStringExtra("litersLeft") : "0.0 L";
-            emptyAt = intent.getStringExtra("emptyAt") != null ? intent.getStringExtra("emptyAt") : "EMPTY: 0.0 KM";
-            oilLeft = intent.getStringExtra("oilLeft") != null ? intent.getStringExtra("oilLeft") : "OIL: 0 KM";
-            String accentColorStr = intent.getStringExtra("accentColor");
-            if (accentColorStr != null && !accentColorStr.isEmpty()) {
-                try { themeColor = Color.parseColor(accentColorStr); } catch (Exception ignored) {}
+            range = intent.getStringExtra("range") != null ? intent.getStringExtra("range") : range;
+            fuelPercent = intent.getIntExtra("fuelPercent", fuelPercent);
+            litersLeft = intent.getStringExtra("litersLeft") != null ? intent.getStringExtra("litersLeft") : litersLeft;
+            emptyAt = intent.getStringExtra("emptyAt") != null ? intent.getStringExtra("emptyAt") : emptyAt;
+            oilLeft = intent.getStringExtra("oilLeft") != null ? intent.getStringExtra("oilLeft") : oilLeft;
+            String intentAccent = intent.getStringExtra("accentColor");
+            if (intentAccent != null && !intentAccent.isEmpty()) {
+                try { themeColor = Color.parseColor(intentAccent); } catch (Exception ignored) {}
             }
         }
 

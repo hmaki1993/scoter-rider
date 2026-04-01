@@ -203,22 +203,36 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void updateWidgetStats(PluginCall call) {
             try {
-                Context context = getContext();
+                String range = call.getString("range", "0.0 KM");
+                int fuelPercent = call.getDouble("fuelPercent", 0.0).intValue();
+                String litersLeft = call.getString("litersLeft", "0.0 L");
+                String emptyAt = call.getString("emptyAt", "EMPTY");
+                String oilLeft = call.getString("oilLeft", "OIL: 0 KM");
+                String accentColor = call.getString("accentColor", "#00f0ff");
+
+                // Persist stats so Background Service can update the widget with context
+                android.content.SharedPreferences.Editor editor = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE).edit();
+                editor.putString("latest_range", range);
+                editor.putInt("latest_fuelPercent", fuelPercent);
+                editor.putString("latest_litersLeft", litersLeft);
+                editor.putString("latest_emptyAt", emptyAt);
+                editor.putString("latest_oilLeft", oilLeft);
+                editor.putString("latest_accentColor", accentColor);
+                editor.apply();
+
                 Intent intent = new Intent(context, SpeedometerWidget.class);
                 intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
-
                 intent.putExtra("speed", call.getDouble("speed", 0.0).intValue());
-                intent.putExtra("range", call.getString("range", "0.0 KM"));
-                intent.putExtra("fuelPercent", call.getDouble("fuelPercent", 0.0).intValue());
-                intent.putExtra("litersLeft", call.getString("litersLeft", "0.0 L"));
-                intent.putExtra("emptyAt", call.getString("emptyAt", "EMPTY"));
-                intent.putExtra("oilLeft", call.getString("oilLeft", "OIL: 0 KM"));
+                intent.putExtra("range", range);
+                intent.putExtra("fuelPercent", fuelPercent);
+                intent.putExtra("litersLeft", litersLeft);
+                intent.putExtra("emptyAt", emptyAt);
+                intent.putExtra("oilLeft", oilLeft);
                 intent.putExtra("isDanger", call.getBoolean("isDanger", false));
                 intent.putExtra("isWarning", call.getBoolean("isWarning", false));
-                intent.putExtra("accentColor", call.getString("accentColor", "#00f0ff"));
+                intent.putExtra("accentColor", accentColor);
 
                 context.sendBroadcast(intent);
-
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
