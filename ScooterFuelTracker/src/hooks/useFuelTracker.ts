@@ -64,6 +64,7 @@ const DEFAULT_SETTINGS: FuelSettings = {
 let globalAudioCtx: AudioContext | null = null;
 let globalActiveAudio: HTMLAudioElement | null = null;
 let globalToneInterval: any = null;
+let globalToneIntervalLock = false; // TRUE IF CURRENTLY RINGING AN ALARM
 
 // ── Audio Engine (Web Audio API) ───────────────────────────────────────────
 export const playTone = (
@@ -192,11 +193,17 @@ export const playTone = (
 };
 
 export const stopTone = () => {
+  globalToneIntervalLock = false; // RELEASE LOCK
+  
   if (globalToneInterval) {
     clearInterval(globalToneInterval);
     globalToneInterval = null;
   }
   if (globalAudioCtx) {
+    // Graceful and instant suspension of the web audio context
+    if (globalAudioCtx.state === 'running') {
+       globalAudioCtx.suspend().catch(() => {});
+    }
     globalAudioCtx.close().catch(() => {});
     globalAudioCtx = null;
   }
@@ -343,20 +350,25 @@ export const useFuelTracker = () => {
     if (!settings.enableAlerts || isMuted) return;
     try {
       if (isAlarm) {
-        // ── FIX: Play the USER-SELECTED tone via JS engine instead of Android's default system alarm.
-        // Then start native vibration separately via AlarmPlugin.startVibration().
-        // This ensures the correct tone plays AND vibration can be independently stopped.
-        playTone(settingsRef.current.alertTone || 'Digital', settingsRef.current.customTones, audioCtxRef, activeAudioRef, true);
+        // ── GUARD: Prevent overlapping simultaneous alarms ──
+        if (globalToneIntervalLock) return;
+        globalToneIntervalLock = true;
 
+        // ── Play tone ONCE (isLoop=false) ──
+        // The 2500ms timeout below is the SOLE stop mechanism.
+        // This avoids any interval/onended race conditions.
+        playTone(settingsRef.current.alertTone || 'Digital', settingsRef.current.customTones, audioCtxRef, activeAudioRef, false);
+
+        // ── Native vibration (3x pattern defined in Java, auto-stops) ──
         import('@capacitor/core').then(({ registerPlugin }) => {
           registerPlugin<any>('AlarmPlugin').startVibration().catch(() => {
-            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500, 400, 200, 400]);
+            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800]);
           });
         });
-        
-        // ── STRICT FAILSAFE: Stop whatever audio is playing exactly when vibration finishes (2.5 seconds)
+
+        // ── HARD STOP at 2500ms ──
         setTimeout(() => stopTone(), 2500);
-        
+
       } else {
         // Soft pre-warning (single short beep + gentle buzz)
         playTone('Digital');
@@ -823,6 +835,7 @@ export const useFuelTracker = () => {
                   ? (translations[lang] as any).lowFuelAlertBody(display) 
                   : display,
                 id: Math.floor(Math.random() * 100000) + 1, // Random ID ensures Android pops it as new Heads-up
+                schedule: { allowWhileIdle: true },         // Forces OS Doze-bypass!
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
                 channelId: `fuel_alert_v5_high_priority`,
               } as any]

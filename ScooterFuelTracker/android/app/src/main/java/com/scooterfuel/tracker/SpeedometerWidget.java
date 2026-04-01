@@ -23,87 +23,97 @@ public class SpeedometerWidget extends AppWidgetProvider {
 
         // Click on widget -> Open App
         Intent mainIntent = new Intent(context, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, mainIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, mainIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.top_row, pendingIntent);
-        
-        // If we received live stats from our Background Service
+
+        // Default values (shown before app connects)
+        int speed = 0;
+        String range = "-- KM";
+        int fuelPercent = 0;
+        String litersLeft = "-- L";
+        String emptyAt = "EMPTY: --";
+        String oilLeft = "OIL: -- KM";
+        int themeColor = Color.parseColor("#00f0ff");
+
         if (intent != null && ACTION_UPDATE_STATS.equals(intent.getAction())) {
-            int speed = intent.getIntExtra("speed", 0);
-            String range = intent.getStringExtra("range") != null ? intent.getStringExtra("range") : "0.0 KM";
-            int fuelPercent = intent.getIntExtra("fuelPercent", 0);
-            String litersLeft = intent.getStringExtra("litersLeft") != null ? intent.getStringExtra("litersLeft") : "0.0 L";
-            String emptyAt = intent.getStringExtra("emptyAt") != null ? intent.getStringExtra("emptyAt") : "EMPTY: 0.0 KM";
-            String oilLeft = intent.getStringExtra("oilLeft") != null ? intent.getStringExtra("oilLeft") : "OIL: 0 KM";
-            boolean isDanger = intent.getBooleanExtra("isDanger", false);
-            boolean isWarning = intent.getBooleanExtra("isWarning", false);
+            speed = intent.getIntExtra("speed", 0);
+            range = intent.getStringExtra("range") != null ? intent.getStringExtra("range") : "0.0 KM";
+            fuelPercent = intent.getIntExtra("fuelPercent", 0);
+            litersLeft = intent.getStringExtra("litersLeft") != null ? intent.getStringExtra("litersLeft") : "0.0 L";
+            emptyAt = intent.getStringExtra("emptyAt") != null ? intent.getStringExtra("emptyAt") : "EMPTY: 0.0 KM";
+            oilLeft = intent.getStringExtra("oilLeft") != null ? intent.getStringExtra("oilLeft") : "OIL: 0 KM";
             String accentColorStr = intent.getStringExtra("accentColor");
-            
-            int themeColor = Color.parseColor("#00f0ff");
             if (accentColorStr != null && !accentColorStr.isEmpty()) {
-                try {
-                    themeColor = Color.parseColor(accentColorStr);
-                } catch (Exception e) {}
+                try { themeColor = Color.parseColor(accentColorStr); } catch (Exception ignored) {}
             }
-
-            // ── Draw Native Neon Canvas Speedometer ──
-            Bitmap bitmap = Bitmap.createBitmap(540, 360, Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(bitmap);
-
-            Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            bgPaint.setStyle(Paint.Style.STROKE);
-            bgPaint.setStrokeWidth(24f);
-            bgPaint.setStrokeCap(Paint.Cap.ROUND);
-            bgPaint.setColor(Color.parseColor("#1AFFFFFF"));
-
-            RectF rect = new RectF(50, 50, 490, 490);
-            
-            // Draw background track
-            canvas.drawArc(rect, 180, 180, false, bgPaint);
-
-            // Draw foreground track
-            int activeColor = speed > 80 ? Color.parseColor("#ff3366") : themeColor;
-            Paint fgPaint = new Paint(bgPaint);
-            fgPaint.setColor(activeColor);
-            
-            float progressAngle = (Math.min(speed, 120) / 120f) * 180f;
-            canvas.drawArc(rect, 180, progressAngle, false, fgPaint);
-
-            // Draw texts (Center Speed)
-            Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            textPaint.setColor(Color.WHITE);
-            textPaint.setTextSize(100f);
-            textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-            textPaint.setTextAlign(Paint.Align.CENTER);
-            
-            // Small shadow effect
-            textPaint.setShadowLayer(8f, 0, 0, Color.parseColor("#4D00F0FF"));
-            canvas.drawText(String.valueOf(speed), 270, 210, textPaint);
-
-            // KM/H subtle text
-            textPaint.clearShadowLayer();
-            textPaint.setTextSize(26f);
-            textPaint.setColor(Color.parseColor("#80FFFFFF"));
-            canvas.drawText("KM/H", 270, 260, textPaint);
-
-            // Draw Needle
-            Paint needlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            needlePaint.setColor(activeColor);
-            needlePaint.setStrokeWidth(10f);
-            needlePaint.setStrokeCap(Paint.Cap.ROUND);
-            
-            double angleRad = Math.toRadians(180 + progressAngle);
-            float endX = (float) (270 + 200 * Math.cos(angleRad));
-            float endY = (float) (270 + 200 * Math.sin(angleRad));
-            
-            // Draw needle line and pivot circle
-            canvas.drawLine(270, 270, endX, endY, needlePaint);
-            needlePaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(270, 270, 14f, needlePaint);
-
-            // Apply bitmap
-            views.setImageViewBitmap(R.id.widget_gauge_img, bitmap);
-
         }
+
+        // ── Build Canvas Speedometer Bitmap ──────────────────────────────────
+        // 540×300px bitmap: top half is the gauge arc, bottom area is the speed number
+        Bitmap bitmap = Bitmap.createBitmap(540, 300, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+
+        // Arc geometry: center at (270, 10), radius 230 → draws a half-circle
+        float arcCx = 270f;
+        float arcCy = 10f;
+        float radius = 230f;
+        RectF rect = new RectF(arcCx - radius, arcCy - radius, arcCx + radius, arcCy + radius);
+
+        // 1. Background track (dim white)
+        Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bgPaint.setStyle(Paint.Style.STROKE);
+        bgPaint.setStrokeWidth(22f);
+        bgPaint.setStrokeCap(Paint.Cap.ROUND);
+        bgPaint.setColor(Color.parseColor("#22FFFFFF"));
+        canvas.drawArc(rect, 180, 180, false, bgPaint);
+
+        // 2. Foreground neon arc (speed progress)
+        int activeColor = speed > 80 ? Color.parseColor("#ff3366") : themeColor;
+        Paint fgPaint = new Paint(bgPaint);
+        fgPaint.setColor(activeColor);
+        float progressAngle = (Math.min(speed, 120) / 120f) * 180f;
+        canvas.drawArc(rect, 180, progressAngle, false, fgPaint);
+
+        // 3. Needle
+        Paint needlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        needlePaint.setColor(activeColor);
+        needlePaint.setStrokeWidth(8f);
+        needlePaint.setStrokeCap(Paint.Cap.ROUND);
+        double needleRad = Math.toRadians(180 + progressAngle);
+        float needleLen = radius - 20f;
+        float needleX = arcCx + (float)(needleLen * Math.cos(needleRad));
+        float needleY = arcCy + (float)(needleLen * Math.sin(needleRad));
+        canvas.drawLine(arcCx, arcCy, needleX, needleY, needlePaint);
+        needlePaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(arcCx, arcCy, 10f, needlePaint);
+
+        // 4. Speed number & KM/H label (drawn in lower center)
+        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setColor(Color.WHITE);
+        textPaint.setTextSize(96f);
+        textPaint.setShadowLayer(8f, 0, 0, 0x4400F0FF);
+        canvas.drawText(String.valueOf(speed), arcCx, 210f, textPaint);
+        textPaint.clearShadowLayer();
+        textPaint.setTextSize(22f);
+        textPaint.setColor(Color.parseColor("#80FFFFFF"));
+        canvas.drawText("KM/H", arcCx, 246f, textPaint);
+
+        // Apply bitmap to ImageView
+        views.setImageViewBitmap(R.id.widget_gauge_img, bitmap);
+
+        // ── Update all text & info views ─────────────────────────────────────
+        views.setTextViewText(R.id.widget_range_text, range);
+        views.setTextViewText(R.id.widget_fuel_left_text, litersLeft);
+        views.setTextViewText(R.id.widget_empty_text, emptyAt);
+        views.setTextViewText(R.id.widget_oil_text, oilLeft);
+
+        // Fuel bar fill level (0-10000 range for ImageView level)
+        views.setInt(R.id.widget_fuel_progress_fill, "setImageLevel", Math.min(fuelPercent * 100, 10000));
+        views.setInt(R.id.widget_fuel_progress_fill, "setColorFilter", activeColor);
+        views.setInt(R.id.widget_oil_dot, "setColorFilter", activeColor);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
@@ -122,7 +132,6 @@ public class SpeedometerWidget extends AppWidgetProvider {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
             ComponentName thisWidget = new ComponentName(context, SpeedometerWidget.class);
             int[] appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget);
-            
             for (int appWidgetId : appWidgetIds) {
                 updateAppWidget(context, appWidgetManager, appWidgetId, intent);
             }

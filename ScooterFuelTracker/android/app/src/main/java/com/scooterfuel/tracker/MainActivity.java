@@ -207,9 +207,9 @@ public class MainActivity extends BridgeActivity {
                 Intent intent = new Intent(context, SpeedometerWidget.class);
                 intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
 
-                intent.putExtra("speed", call.getInt("speed", 0));
+                intent.putExtra("speed", call.getDouble("speed", 0.0).intValue());
                 intent.putExtra("range", call.getString("range", "0.0 KM"));
-                intent.putExtra("fuelPercent", call.getInt("fuelPercent", 0));
+                intent.putExtra("fuelPercent", call.getDouble("fuelPercent", 0.0).intValue());
                 intent.putExtra("litersLeft", call.getString("litersLeft", "0.0 L"));
                 intent.putExtra("emptyAt", call.getString("emptyAt", "EMPTY"));
                 intent.putExtra("oilLeft", call.getString("oilLeft", "OIL: 0 KM"));
