@@ -55,7 +55,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
         Canvas canvas = new Canvas(bitmap);
 
         float cx = 270f;
-        float cy = 250f; // Shift down to make room for ticks/labels
+        float cy = 220f; // Shifted UP to prevent overlap with bottom text data
         float radius = 180f;
         RectF rect = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
 

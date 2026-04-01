@@ -98,7 +98,7 @@ function App() {
     return () => {
       clearTimeout(timer);
     };
-  }, [tracker.settings.accentColor]);
+  }, []);
 
   return (
     <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px 24px 8px 24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
