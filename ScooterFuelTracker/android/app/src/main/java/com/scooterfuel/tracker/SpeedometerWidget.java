@@ -37,6 +37,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
         String emptyAt = prefs.getString("latest_emptyAt", "EMPTY: --");
         String oilLeft = prefs.getString("latest_oilLeft", "OIL: -- KM");
         String accentColorStr = prefs.getString("latest_accentColor", "#00f0ff");
+        int opacity = prefs.getInt("latest_opacity", 100);
         int themeColor = Color.parseColor("#00f0ff");
         try { themeColor = Color.parseColor(accentColorStr); } catch (Exception ignored) {}
 
@@ -52,6 +53,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
             if (intentAccent != null && !intentAccent.isEmpty()) {
                 try { themeColor = Color.parseColor(intentAccent); } catch (Exception ignored) {}
             }
+            opacity = intent.getIntExtra("opacity", opacity);
         }
 
         // ── Drawing the Speedometer (Matching App Style) ──────────────────────
@@ -140,6 +142,10 @@ public class SpeedometerWidget extends AppWidgetProvider {
         
         needlePaint.setStyle(Paint.Style.FILL);
         canvas.drawCircle(cx, cy - 10f, 8f, needlePaint);
+
+        // Apply background opacity (0-255)
+        int alpha = (int) (opacity * 2.55f);
+        views.setInt(R.id.widget_bg_image, "setImageAlpha", alpha);
 
         // Apply bitmap
         views.setImageViewBitmap(R.id.widget_gauge_img, bitmap);

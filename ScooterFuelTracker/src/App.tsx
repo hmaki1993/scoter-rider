@@ -1082,6 +1082,8 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const [cap, setCap] = useState((tracker.settings.tankCapacity || 7.5).toString());
   const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.5).toString());
   const [threshold, setThreshold] = useState((tracker.settings.warningThreshold || 15).toString());
+  const [wColor, setWColor] = useState(tracker.settings.widgetAccentColor || '#00f0ff');
+  const [wOpacity, setWOpacity] = useState(tracker.settings.widgetOpacity ?? 100);
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [toneDropOpen, setToneDropOpen] = useState(false);
@@ -1109,7 +1111,9 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
       tankCapacity: Number(cap), 
       fuelPricePerLiter: Number(price), 
       warningThreshold: Number(threshold),
-      isLightMode: tracker.settings.isLightMode
+      isLightMode: tracker.settings.isLightMode,
+      widgetAccentColor: wColor,
+      widgetOpacity: wOpacity
     });
     onClose();
   };
@@ -1231,6 +1235,37 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', justifyContent: 'center' }}>
             {THEME_COLORS.map(c => (
               <div key={c.name} onClick={() => tracker.setSettings({ ...tracker.settings, accentColor: c.hex })} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`, border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s', transform: tracker.settings.accentColor === c.hex ? 'scale(1.1)' : 'scale(1)', boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}66` : 'none' }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Section 4.1: WIDGET STYLING */}
+        <div style={{ marginBottom: '24px', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '14px' }}>
+          <label className="fusion-label" style={{ marginBottom: '10px', display: 'block', fontSize: '10px', color: 'var(--accent-secondary)' }}>
+            {tracker.settings.language === 'ar' ? 'تصميم الـ WIDGET' : 'WIDGET STYLING'}
+          </label>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>{tracker.settings.language === 'ar' ? 'الشفافية' : 'Opacity'}</span>
+              <span style={{ fontSize: '10px', fontWeight: '900', color: 'var(--accent-color)' }}>{wOpacity}%</span>
+            </div>
+            <input 
+              type="range" min="0" max="100" value={wOpacity} 
+              onChange={e => setWOpacity(Number(e.target.value))} 
+              style={{ width: '100%', accentColor: 'var(--accent-secondary)' }} 
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {[...THEME_COLORS, { name: 'CyanNeon', hex: '#00f0ff', secondary: '#00f0ff' }].map((c, idx) => (
+              <div key={idx} onClick={() => setWColor(c.hex)} style={{ 
+                width: '24px', height: '24px', borderRadius: '50%', background: c.hex, 
+                border: wColor === c.hex ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer', transform: wColor === c.hex ? 'scale(1.15)' : 'scale(1)',
+                boxShadow: wColor === c.hex ? `0 0 10px ${c.hex}88` : 'none',
+                transition: 'all 0.15s'
+              }} />
             ))}
           </div>
         </div>

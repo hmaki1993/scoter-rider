@@ -210,6 +210,7 @@ public class MainActivity extends BridgeActivity {
                 String emptyAt = call.getString("emptyAt", "EMPTY");
                 String oilLeft = call.getString("oilLeft", "OIL: 0 KM");
                 String accentColor = call.getString("accentColor", "#00f0ff");
+                int opacity = call.getInt("opacity", 100);
 
                 // Persist stats so Background Service can update the widget with context
                 android.content.SharedPreferences.Editor editor = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE).edit();
@@ -219,6 +220,7 @@ public class MainActivity extends BridgeActivity {
                 editor.putString("latest_emptyAt", emptyAt);
                 editor.putString("latest_oilLeft", oilLeft);
                 editor.putString("latest_accentColor", accentColor);
+                editor.putInt("latest_opacity", opacity);
                 editor.apply();
 
                 Intent intent = new Intent(context, SpeedometerWidget.class);
@@ -232,6 +234,7 @@ public class MainActivity extends BridgeActivity {
                 intent.putExtra("isDanger", call.getBoolean("isDanger", false));
                 intent.putExtra("isWarning", call.getBoolean("isWarning", false));
                 intent.putExtra("accentColor", accentColor);
+                intent.putExtra("opacity", opacity);
 
                 context.sendBroadcast(intent);
                 call.resolve();

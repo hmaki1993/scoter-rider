@@ -18,6 +18,8 @@ export interface FuelSettings {
   isLightMode: boolean;
   oilChangeInterval: number;
   lastOilChangeOdo: number;
+  widgetAccentColor: string;
+  widgetOpacity: number;
 }
 
 export interface UserProfile {
@@ -58,7 +60,9 @@ const DEFAULT_SETTINGS: FuelSettings = {
   customTones: [],
   isLightMode: false,
   oilChangeInterval: 1000,
-  lastOilChangeOdo: 0
+  lastOilChangeOdo: 0,
+  widgetAccentColor: '#00f0ff',
+  widgetOpacity: 100,
 };
 
 // ── Global Audio Singleton for overlap prevention ───────────────────────────
@@ -173,15 +177,12 @@ export const playTone = (
       }
       
       sequenceCount++;
-      if (sequenceCount >= 3) { // Stop after 3 times!
-         stopTone();
-      }
     };
     
     playSequence();
     
     if (isLoop) {
-      globalToneInterval = setInterval(playSequence, 2000);
+      globalToneInterval = setInterval(playSequence, 3000);
     } else {
       setTimeout(() => {
         if (audioCtxRef?.current === ctx) {
@@ -307,7 +308,7 @@ export const useFuelTracker = () => {
         // ── Channel Strategy ────────────────────────────────────────────────────
         // IMPORTANT: Use a SILENT channel (sound: null) so the notification drops down
         // IMMEDIATELY during our alarm without or OS sound conflict/delay!
-        const channelId = `fuel_alert_v10_silent`;
+        const channelId = `fuel_alert_v11_urgent`;
         // Delete old channels to prevent Android from reusing stale settings
         try {
           const existing = await LocalNotifications.listChannels();
@@ -366,8 +367,8 @@ export const useFuelTracker = () => {
           });
         });
 
-        // ── HARD STOP after 3 rounds (8 seconds) ──
-        setTimeout(() => stopTone(), 8000);
+        // ── HARD STOP after 3 rounds (approx 10 seconds) ──
+        setTimeout(() => stopTone(), 10000);
 
       } else {
         // Soft pre-warning (single short beep + gentle buzz)
@@ -837,8 +838,8 @@ export const useFuelTracker = () => {
               id: Math.floor(Math.random() * 100000) + 1,
               schedule: { at: new Date(), allowWhileIdle: true },
               actionTypeId: 'FUEL_ALARM_ACTIONS',
-              channelId: `fuel_alert_v10_silent`,
-              importance: 5, // MAX IMPORTANT (Importance.MAX might mismatch TS types, using raw value)
+              channelId: `fuel_alert_v11_urgent`,
+              importance: 5, 
             } as any]
           }).catch(console.warn);
 
@@ -971,11 +972,36 @@ export const useFuelTracker = () => {
           oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)} KM`,
           isWarning,
           isDanger,
-          accentColor: settings.accentColor
+          accentColor: settings.widgetAccentColor,
+          opacity: settings.widgetOpacity
         }).catch(() => {});
       });
     } catch (e) { /* ignore */ }
-  }, [currentSpeed, rangeRemainingKm, fuelPercentage, runOutOdo, kmUntilNextOilChange, fuelState.estimatedFuelLiters, isWarning, isDanger, settings.accentColor]);
+  }, [currentSpeed, rangeRemainingKm, fuelPercentage, runOutOdo, kmUntilNextOilChange, fuelState.estimatedFuelLiters, isWarning, isDanger]);
+
+  // Debounced Widget Update for Theme/Opacity changes to avoid Bridge Lag
+  useEffect(() => {
+    if (!isAndroidPlatform()) return;
+    const timer = setTimeout(() => {
+      try {
+        import('@capacitor/core').then(({ registerPlugin }) => {
+          registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+            speed: Math.round(currentSpeed || 0),
+            range: `${rangeRemainingKm.toFixed(1)} KM`,
+            fuelPercent: Math.round(fuelPercentage),
+            litersLeft: `${fuelState.estimatedFuelLiters.toFixed(1)} L`,
+            emptyAt: `EMPTY: ${runOutOdo.toFixed(1)} KM`,
+            oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)} KM`,
+            isWarning,
+            isDanger,
+            accentColor: settings.widgetAccentColor,
+            opacity: settings.widgetOpacity
+          }).catch(() => {});
+        });
+      } catch (e) {}
+    }, 150); // 150ms debounce
+    return () => clearTimeout(timer);
+  }, [settings.widgetAccentColor, settings.widgetOpacity]);
 
   return {
     fuelState, settings, userProfile, logs,
