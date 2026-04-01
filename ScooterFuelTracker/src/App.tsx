@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker, playTone, stopTone } from './hooks/useFuelTracker';
-import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Music } from 'lucide-react';
+import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Music, Fuel, Trash2 } from 'lucide-react';
 import { translations } from './translations';
 import gsap from 'gsap';
 import './index.css';
@@ -21,10 +21,29 @@ function App() {
   // Sync Global Theme Color
   useEffect(() => {
     const root = document.documentElement;
+    const isLight = tracker.settings.isLightMode;
+    
     root.style.setProperty('--accent-color', tracker.settings.accentColor);
     const theme = THEME_COLORS.find(c => c.hex === tracker.settings.accentColor);
-    root.style.setProperty('--accent-secondary', theme?.secondary || tracker.settings.accentColor);
-  }, [tracker.settings.accentColor]);
+    if (theme) {
+      root.style.setProperty('--accent-secondary', theme.secondary);
+      
+      // ── Elite High-Contrast Mode Switching ──
+      if (isLight) {
+        root.style.setProperty('--primary-bg', '#ffffff');
+        root.style.setProperty('--text-primary', '#000000'); // Ink Black
+        root.style.setProperty('--text-secondary', 'rgba(0,0,0,0.7)');
+        root.style.setProperty('--glass-bg', 'rgba(255,255,255,0.92)'); // Frosted White
+        root.style.setProperty('--glass-border', 'rgba(0,0,0,0.12)');
+      } else {
+        root.style.setProperty('--primary-bg', '#0a0a0c');
+        root.style.setProperty('--text-primary', '#ffffff');
+        root.style.setProperty('--text-secondary', 'rgba(255,255,255,0.6)');
+        root.style.setProperty('--glass-bg', 'rgba(255,255,255,0.03)');
+        root.style.setProperty('--glass-border', 'rgba(255,255,255,0.08)');
+      }
+    }
+  }, [tracker.settings.accentColor, tracker.settings.isLightMode, tracker.isWarning, tracker.isDanger]);
 
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'en';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
@@ -72,8 +91,14 @@ function App() {
     };
 
     const timer = setTimeout(checkForUpdate, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+
+    // --- Kill any orphaned GSAP animations on the refuel btn ---
+    gsap.killTweensOf('.premium-refuel-btn');
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [tracker.settings.accentColor]);
 
   return (
     <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px 24px 8px 24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -82,12 +107,12 @@ function App() {
       {/* Immersive Header Section */}
 
       {/* Header - App Name small top-left */}
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: 'row',
         direction: 'ltr', // Absolute lock to LTR to keep logo left
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: '20px',
         flexWrap: 'nowrap',
         width: '100%',
@@ -95,24 +120,32 @@ function App() {
         position: 'relative',
         zIndex: 10
       }}>
-        <div style={{ 
+        <div style={{
           flex: 1,
           minWidth: 0,
-          display: 'flex', 
-          flexDirection: 'column', 
+          display: 'flex',
+          flexDirection: 'column',
           alignItems: 'flex-start',
           paddingRight: '4px',
           direction: 'ltr'
         }}>
-          <h1 className="logo-text" style={{ margin: 0, fontSize: 'var(--logo-font-size)' }}>{t('appName')}</h1>
-          <div className="subtitle-text" style={{ marginTop: '4px' }}>{t('premiumSystem')}</div>
+          <h1 className="logo-text" style={{ 
+            margin: 0, 
+            fontSize: 'var(--logo-font-size)',
+            background: tracker.settings.isLightMode 
+              ? 'linear-gradient(135deg, #111 0%, #444 50%, var(--accent-secondary) 100%)' 
+              : 'linear-gradient(135deg, #fff 0%, #fff 50%, var(--accent-secondary) 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>{t('appName')}</h1>
+          <div className="subtitle-text" style={{ marginTop: '4px', color: 'var(--text-secondary)', fontWeight: '800' }}>{t('premiumSystem')}</div>
         </div>
 
-        <div style={{ 
-          display: 'flex', 
+        <div style={{
+          display: 'flex',
           flexDirection: 'row',
-          alignItems: 'center', 
-          gap: 'var(--header-gap)', 
+          alignItems: 'center',
+          gap: 'var(--header-gap)',
           flexShrink: 0,
           background: 'none',
           padding: '0',
@@ -123,20 +156,21 @@ function App() {
           boxShadow: 'none'
         }}>
           {/* Single Language Toggle Box */}
-          <button 
-            onClick={() => tracker.setSettings({...tracker.settings, language: tracker.settings.language === 'ar' ? 'en' : 'ar'})}
-            style={{ 
-              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '10px', 
-              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          <button
+            onClick={() => tracker.setSettings({ ...tracker.settings, language: tracker.settings.language === 'ar' ? 'en' : 'ar' })}
+            style={{
+              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '10px',
+              background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
               color: 'var(--accent-secondary)', fontWeight: '900', fontSize: '9px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
             }}
           >
             {tracker.settings.language === 'ar' ? 'EN' : 'AR'}
           </button>
 
           {/* Tracking Status Badge */}
-          <button 
+          <button
             onClick={() => {
               if (tracker.isTracking) tracker.stopTracking();
               else tracker.startTracking(false);
@@ -171,23 +205,23 @@ function App() {
             }}
           >
             {tracker.settings.enableAlerts ? (
-              <Bell size={24} color="#ff5e00" strokeWidth={2.5} />
+              <Bell size={24} color="var(--accent-secondary)" strokeWidth={2.5} />
             ) : (
-              <BellOff size={24} color="rgba(255,255,255,0.4)" strokeWidth={2} />
+              <BellOff size={24} color="var(--text-secondary)" opacity={0.6} strokeWidth={2} />
             )}
           </button>
 
-          <button 
-            style={{ 
-              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '50%', 
-              background: 'none', 
+          <button
+            style={{
+              width: 'var(--header-btn-size)', height: 'var(--header-btn-size)', borderRadius: '50%',
+              background: 'none',
               border: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', padding: 0
-            }} 
+            }}
             onClick={() => setShowSettings(true)}
           >
-            <Settings size={24} color="#ffffff" strokeWidth={2} />
+            <Settings size={24} color="var(--text-primary)" strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -201,19 +235,19 @@ function App() {
           border: 'none',
           width: 'fit-content'
         }}>
-          <div 
-          onClick={() => setShowPhotoZoom(true)}
-          style={{
-            width: '52px', height: '52px', borderRadius: '14px',
-            overflow: 'hidden', border: '1.5px solid var(--accent-color)',
-            boxShadow: '0 0 15px rgba(0, 240, 255, 0.1)',
-            flexShrink: 0, background: 'rgba(0, 240, 255, 0.05)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'zoom-in', transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
+          <div
+            onClick={() => setShowPhotoZoom(true)}
+            style={{
+              width: '52px', height: '52px', borderRadius: '14px',
+              overflow: 'hidden', border: '1.5px solid var(--accent-color)',
+              boxShadow: '0 0 15px rgba(0, 240, 255, 0.1)',
+              flexShrink: 0, background: 'rgba(0, 240, 255, 0.05)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'zoom-in', transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
             {tracker.userProfile.photoUrl ? (
               <img
                 src={tracker.userProfile.photoUrl}
@@ -231,13 +265,13 @@ function App() {
             )}
           </div>
           <div>
-            <div style={{ 
-              fontSize: '14px', 
+            <div style={{
+              fontSize: '14px',
               fontWeight: '850',
               background: 'linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent-color) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              marginBottom: '6px', 
+              marginBottom: '6px',
               opacity: 1,
               letterSpacing: '1.2px',
               textTransform: 'uppercase',
@@ -245,15 +279,17 @@ function App() {
             }}>
               {t('welcomeBack')}
             </div>
-            <div style={{ 
-              fontSize: '32px', 
-              fontWeight: '950', 
-              background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)',
+            <div style={{
+              fontSize: '32px',
+              fontWeight: '950',
+              background: tracker.settings.isLightMode 
+                ? 'linear-gradient(135deg, #000 0%, #333 100%)' 
+                : 'linear-gradient(135deg, #fff 0%, #aaa 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               letterSpacing: '-1.5px',
               lineHeight: '1',
-              filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.3))'
+              filter: tracker.settings.isLightMode ? 'none' : 'drop-shadow(0 4px 10px rgba(0,0,0,0.3))'
             }}>
               {tracker.userProfile.name}
             </div>
@@ -272,61 +308,91 @@ function App() {
             filter: 'blur(60px)', opacity: 0.1, zIndex: 0
           }} />
 
+          {/* Maintenance / Status Pill - Prominent & Interactive */}
+          <div 
+            className={`elite-status-pill ${tracker.kmUntilNextOilChange <= 100 ? 'oil-warning-pulse' : ''}`}
+            onClick={() => {
+              if (window.confirm(tracker.settings.language === 'ar' ? 'هل قمت بتغيير الزيت بالفعل؟' : 'Have you actually changed the oil?')) {
+                tracker.recordOilChange(tracker.fuelState.lastOdo);
+              }
+            }}
+            style={{
+              borderColor: tracker.kmUntilNextOilChange <= 100 ? 'var(--danger-color)' : 'rgba(255,255,255,0.1)',
+              background: tracker.kmUntilNextOilChange <= 100 ? 'rgba(255, 51, 102, 0.1)' : 'rgba(255, 255, 255, 0.03)'
+            }}
+          >
+            {tracker.kmUntilNextOilChange <= 100 ? (
+              <>
+                <Droplets size={12} color="var(--danger-color)" fill="var(--danger-color)" />
+                <span style={{ fontSize: '10px', fontWeight: '950', color: 'var(--danger-color)', letterSpacing: '0.5px' }}>
+                  OIL: {Math.max(0, tracker.kmUntilNextOilChange).toFixed(0)} KM
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="pulse-badge-dot" />
+                <span className="pill-text" style={{ fontSize: '9px', fontWeight: '950', color: 'var(--text-primary)', letterSpacing: '1px' }}>
+                  OIL: {Math.max(0, tracker.kmUntilNextOilChange).toFixed(0)} KM
+                </span>
+              </>
+            )}
+          </div>
+
           {/* Integrated Pro Dashboard - Compact Hybrid */}
           {tracker.isTracking && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', marginTop: '0', animation: 'fadeIn 0.5s ease-out' }}>
               <div style={{ position: 'relative', width: '180px', height: '110px', display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                 <svg width="180" height="110" viewBox="0 0 180 110" style={{ transform: 'translateY(12px)' }}>
-                   {/* Background Arc */}
-                   <path d="M 30,95 A 60,60 0 0,1 150,95" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" strokeLinecap="round" />
-                   {/* Speed Arc */}
-                   <path 
-                     d="M 30,95 A 60,60 0 0,1 150,95" 
-                     fill="none" 
-                     stroke={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-color)'} 
-                     strokeWidth="6" 
-                     strokeLinecap="round" 
-                     strokeDasharray="188.5"
-                     strokeDashoffset={188.5 - (Math.min(tracker.currentSpeed, 120) / 120) * 188.5}
-                     style={{ transition: 'stroke-dashoffset 0.5s ease-out, stroke 0.5s' }}
-                   />
-                   {/* Ticks & Numbers */}
-                   {[0, 20, 40, 60, 80, 100, 120].map((v) => {
-                     const angle = (v / 120) * 180 - 180;
-                     const rad = (angle * Math.PI) / 180;
-                     const x1 = 90 + 55 * Math.cos(rad); const y1 = 95 + 55 * Math.sin(rad);
-                     const x2 = 90 + 64 * Math.cos(rad); const y2 = 95 + 64 * Math.sin(rad);
-                     const tx = 90 + 78 * Math.cos(rad); const ty = 95 + 78 * Math.sin(rad);
-                     return (
-                       <g key={v}>
-                         <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-                         <text x={tx} y={ty} fill="rgba(255,255,255,0.4)" fontSize="10" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">{v}</text>
-                       </g>
-                     );
-                   })}
-                   {/* Needle - Dynamic Theme */}
-                   <g style={{ 
-                     transformOrigin: '90px 95px', 
-                     transform: `rotate(${(Math.min(tracker.currentSpeed, 120) / 120) * 180}deg)`,
-                     transition: 'transform 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67)'
-                   }}>
-                     <line 
-                        x1="90" y1="95" x2="35" y2="95" 
-                        stroke={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-secondary)'} 
-                        strokeWidth="2.5" 
-                        strokeLinecap="round" 
-                        style={{ filter: 'drop-shadow(0 0 2px currentColor)', transition: 'stroke 0.5s' }}
-                     />
-                     <circle 
-                        cx="90" cy="95" r="3" 
-                        fill={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-secondary)'} 
-                        style={{ transition: 'fill 0.5s' }}
-                     />
-                   </g>
+                  {/* Background Arc */}
+                  <path d="M 30,95 A 60,60 0 0,1 150,95" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" strokeLinecap="round" />
+                  {/* Speed Arc */}
+                  <path
+                    d="M 30,95 A 60,60 0 0,1 150,95"
+                    fill="none"
+                    stroke={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-color)'}
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray="188.5"
+                    strokeDashoffset={188.5 - (Math.min(tracker.currentSpeed, 120) / 120) * 188.5}
+                    style={{ transition: 'stroke-dashoffset 0.5s ease-out, stroke 0.5s' }}
+                  />
+                  {/* Ticks & Numbers */}
+                  {[0, 20, 40, 60, 80, 100, 120].map((v) => {
+                    const angle = (v / 120) * 180 - 180;
+                    const rad = (angle * Math.PI) / 180;
+                    const x1 = 90 + 55 * Math.cos(rad); const y1 = 95 + 55 * Math.sin(rad);
+                    const x2 = 90 + 64 * Math.cos(rad); const y2 = 95 + 64 * Math.sin(rad);
+                    const tx = 90 + 78 * Math.cos(rad); const ty = 95 + 78 * Math.sin(rad);
+                    return (
+                      <g key={v}>
+                        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--text-secondary)" strokeWidth="1.5" opacity={tracker.settings.isLightMode ? 0.5 : 0.3} />
+                        <text x={tx} y={ty} fill="var(--text-primary)" fontSize="10" fontWeight="900" textAnchor="middle" alignmentBaseline="middle" opacity={tracker.settings.isLightMode ? 0.9 : 0.6}>{v}</text>
+                      </g>
+                    );
+                  })}
+                  {/* Needle - Dynamic Theme */}
+                  <g style={{
+                    transformOrigin: '90px 95px',
+                    transform: `rotate(${(Math.min(tracker.currentSpeed, 120) / 120) * 180}deg)`,
+                    transition: 'transform 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67)'
+                  }}>
+                    <line
+                      x1="90" y1="95" x2="35" y2="95"
+                      stroke={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-secondary)'}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      style={{ filter: 'drop-shadow(0 0 2px currentColor)', transition: 'stroke 0.5s' }}
+                    />
+                    <circle
+                      cx="90" cy="95" r="3"
+                      fill={tracker.currentSpeed > 80 ? 'var(--danger-color)' : 'var(--accent-secondary)'}
+                      style={{ transition: 'fill 0.5s' }}
+                    />
+                  </g>
                 </svg>
                 {/* Center Digital Speed - Compact */}
                 <div style={{ position: 'absolute', bottom: '15px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '28px', fontWeight: '900', color: '#fff', textShadow: '0 0 10px rgba(0, 240, 255, 0.3)', lineHeight: '1' }}>
+                  <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text-primary)', textShadow: tracker.settings.isLightMode ? 'none' : '0 0 10px rgba(0, 240, 255, 0.3)', lineHeight: '1' }}>
                     {tracker.currentSpeed || 0}
                   </div>
                   <div style={{ fontSize: '8px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{t('kmh')}</div>
@@ -334,18 +400,18 @@ function App() {
               </div>
 
               {/* Diagnostic Panel for GPS Fixes */}
-              <div style={{ 
-                marginTop: '12px', background: 'rgba(255,255,255,0.02)', 
-                border: '1px solid ' + (tracker.trackingError ? 'rgba(255, 51, 51, 0.3)' : 'rgba(255,255,255,0.05)'), 
+              <div style={{
+                marginTop: '12px', background: 'rgba(255,255,255,0.02)',
+                border: '1px solid ' + (tracker.trackingError ? 'rgba(255, 51, 51, 0.3)' : 'rgba(255,255,255,0.05)'),
                 borderRadius: '12px', padding: '8px 16px',
                 display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', width: '100%' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {tracker.trackingError ? <AlertTriangle size={10} color="#ff6666" /> : null}
-                    {t('satelliteFixes')}: <strong style={{color: tracker.trackingError ? '#ff6666' : 'var(--accent-color)'}}>{tracker.gpsUpdateCount}</strong>
+                    {t('satelliteFixes')}: <strong style={{ color: tracker.trackingError ? '#ff6666' : 'var(--accent-color)' }}>{tracker.gpsUpdateCount}</strong>
                   </span>
-                  <span>{t('lastFix')}: <strong style={{color:'var(--accent-color)'}}>{tracker.lastGpsTime || '--:--'}</strong></span>
+                  <span>{t('lastFix')}: <strong style={{ color: 'var(--accent-color)' }}>{tracker.lastGpsTime || '--:--'}</strong></span>
                 </div>
                 {tracker.trackingError && (
                   <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -353,10 +419,10 @@ function App() {
                       ⚠️ {tracker.trackingError.message}
                     </div>
                     {tracker.trackingError.action === 'openGPS' && (
-                      <button 
+                      <button
                         onClick={() => tracker.startTracking()}
                         className="glass-button"
-                        style={{ 
+                        style={{
                           padding: '4px 12px', fontSize: '9px', borderColor: 'rgba(255, 51, 102, 0.4)',
                           background: 'rgba(255, 51, 102, 0.1)', color: '#ffcccc', minHeight: 'unset'
                         }}
@@ -370,11 +436,12 @@ function App() {
             </div>
           )}
 
+
           <div style={{ position: 'relative', zIndex: 1, marginTop: '16px' }}>
             {/* Warning Pill - Slimmer */}
             {tracker.isWarning && (
-              <div style={{ 
-                display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', 
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center',
                 padding: '4px 10px', borderRadius: '10px', background: 'rgba(255, 51, 102, 0.12)',
                 border: '1px solid rgba(255, 51, 102, 0.25)', marginBottom: '16px',
                 animation: 'pulse 1.5s infinite'
@@ -399,10 +466,10 @@ function App() {
               <div style={{
                 height: '100%',
                 width: `${tracker.fuelPercentage}%`,
-                background: tracker.isDanger 
-                  ? 'var(--danger-color)' 
-                  : tracker.isWarning 
-                    ? 'var(--warning-color)' 
+                background: tracker.isDanger
+                  ? 'var(--danger-color)'
+                  : tracker.isWarning
+                    ? 'var(--warning-color)'
                     : `linear-gradient(90deg, var(--accent-color), var(--accent-secondary))`,
                 transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
                 boxShadow: tracker.isTracking ? `0 0 10px var(--accent-secondary)` : 'none'
@@ -418,6 +485,13 @@ function App() {
               </div>
               <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '500' }}>
                 {t('emptyAt')} <span style={{ color: 'var(--text-primary)', fontWeight: '800' }}>{(tracker.fuelState.lastOdo + tracker.rangeRemainingKm).toFixed(1)}</span> {t('kmRemaining')}
+                <button 
+                  onClick={() => setShowSync(true)} 
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-color)', padding: '2px 4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginLeft: '4px', opacity: 0.8 }}
+                  title={t('sync')}
+                >
+                  <MapPin size={10} />
+                </button>
               </div>
             </div>
           </div>
@@ -427,13 +501,13 @@ function App() {
         {/* Start Tracking Prompt (Centered small) */}
         {!tracker.isTracking && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-            <div 
-              className="glass-panel" 
-              style={{ 
-                padding: '12px 20px', 
+            <div
+              className="glass-panel"
+              style={{
+                padding: '12px 20px',
                 width: 'fit-content',
                 margin: '0 auto',
-                background: 'rgba(255, 255, 255, 0.01)', 
+                background: 'rgba(255, 255, 255, 0.01)',
                 border: '1px solid rgba(0, 240, 255, 0.15)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -446,11 +520,11 @@ function App() {
               <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7, marginBottom: '2px' }}>
                 {tracker.isStarting ? t('activatingGps') : t('gpsRequired')}
               </div>
-              <button 
-                className="glass-button" 
+              <button
+                className="glass-button"
                 disabled={tracker.isStarting}
-                style={{ 
-                  background: tracker.isStarting ? 'rgba(0, 240, 255, 0.02)' : 'rgba(0, 240, 255, 0.05)', 
+                style={{
+                  background: tracker.isStarting ? 'rgba(0, 240, 255, 0.02)' : 'rgba(0, 240, 255, 0.05)',
                   border: '1px solid var(--accent-color)',
                   color: 'var(--accent-color)',
                   fontWeight: '700',
@@ -468,9 +542,9 @@ function App() {
               >
                 {tracker.isStarting ? (
                   <>
-                    <span style={{ 
-                      display: 'inline-block', 
-                      width: '10px', height: '10px', 
+                    <span style={{
+                      display: 'inline-block',
+                      width: '10px', height: '10px',
                       border: '2px solid var(--accent-color)',
                       borderTopColor: 'transparent',
                       borderRadius: '50%',
@@ -508,7 +582,7 @@ function App() {
                       style={{ fontSize: '11px', padding: '5px 14px', borderRadius: '12px', color: '#ff6666', borderColor: 'rgba(255,51,51,0.4)', background: 'rgba(255,51,51,0.05)' }}
                       onClick={() => {
                         import('@capacitor/core').then(({ registerPlugin }) => {
-                          registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
+                          registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => { });
                         });
                       }}
                     >
@@ -530,64 +604,55 @@ function App() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', marginTop: 'auto', marginBottom: '8px', paddingTop: '40px' }}>
-        <button
-          className="glass-button"
-          style={{ 
-            width: 'fit-content', 
-            gap: '8px', 
-            padding: '6px 14px', 
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.01)',
-            backdropFilter: 'blur(10px)',
-            border: '0.4px solid rgba(255, 94, 0, 0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.3s'
-          }}
-          onClick={() => setShowSync(true)}
-        >
-          <MapPin size={12} color="var(--accent-secondary)" />
-          <span style={{ fontSize: '11px', fontWeight: '900', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>{t('sync')}</span>
-        </button>
 
         <button
-          className="glass-button"
+          className="premium-refuel-btn"
           style={{
-            width: 'fit-content',
+            width: '250px',
+            height: '44px',
             gap: '8px',
-            padding: '6px 14px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.01)',
+            borderRadius: '12px',
+            background: 'var(--glass-bg)',
             backdropFilter: 'blur(10px)',
-            border: '0.4px solid rgba(255, 94, 0, 0.2)',
+            border: '1.5px solid var(--accent-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+            transition: 'all 0.4s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden'
           }}
           onClick={() => setShowRefuel(true)}
+          onMouseDown={(e) => {
+            gsap.to(e.currentTarget, { scale: 0.95, duration: 0.1 });
+          }}
+          onMouseUp={(e) => {
+            gsap.to(e.currentTarget, { scale: 1, duration: 0.3, ease: 'back.out(2)' });
+          }}
         >
-          <span style={{ fontSize: '13px', marginRight: '2px' }}>⛽</span>
-          <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>{t('refuel')}</span>
+          <Fuel size={16} style={{ color: 'var(--accent-color)' }} strokeWidth={2.5} />
+          <span style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '8px', fontFamily: "'Inter', sans-serif", marginLeft: '8px' }}>{t('refuel')}</span>
         </button>
       </div>
 
       {/* Fusion HUD Footer */}
-      <div style={{ 
-        width: '100%', 
-        padding: '0 0 10px 0', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+      <div style={{
+        width: '100%',
+        padding: '0 0 10px 0',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         gap: '6px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8 }}>
           <div className="pulse-dot" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--accent-color)', boxShadow: '0 0 8px var(--accent-color)' }} />
-          <span style={{ fontSize: '9px', fontWeight: '950', color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>FUSION SYSTEM ACTIVE</span>
+          <span style={{ fontSize: '9px', fontWeight: '950', color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 0 4px rgba(255,255,255,0.3)' }}>FUSION SYSTEM ACTIVE</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
           <span style={{ fontSize: '7.5px', color: '#fff', fontWeight: '800', letterSpacing: '1.5px', textTransform: 'uppercase', opacity: 0.2 }}>RIDE HUD DASHBOARD • V1.2.0 • ELITE EDITION</span>
           <div style={{ fontSize: '7.5px', color: '#fff', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
             <span style={{ opacity: 0.3 }}>SYSTEM ARCHITECT: </span>
-            <span style={{ 
-              opacity: 1, 
+            <span style={{
+              opacity: 1,
               background: 'linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent-color) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -613,12 +678,13 @@ function App() {
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} />}
       {updateInfo && <UpdateModal info={updateInfo} tracker={tracker} onClose={() => setUpdateInfo(null)} />}
-      
+
       {showPhotoZoom && (
-        <PhotoZoomModal 
-          photoUrl={tracker.userProfile?.photoUrl} 
+        <PhotoZoomModal
+          photoUrl={tracker.userProfile?.photoUrl}
           photoPosition={tracker.userProfile?.photoPosition}
-          onClose={() => setShowPhotoZoom(false)} 
+          tracker={tracker}
+          onClose={() => setShowPhotoZoom(false)}
         />
       )}
 
@@ -694,11 +760,11 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      style={{ position: 'fixed', inset: 0, background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.88)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
       onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
       onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
     >
-      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', textAlign: 'center' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', textAlign: 'center', boxShadow: tracker.settings.isLightMode ? '0 20px 60px rgba(0,0,0,0.1)' : '0 20px 60px rgba(0,0,0,0.4)' }}>
         <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
 
         {/* Avatar */}
@@ -760,13 +826,15 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
           <div style={{ width: '4px', height: '22px', background: 'var(--accent-color)', borderRadius: '4px', boxShadow: '0 0 12px rgba(0, 240, 255, 0.4)' }} />
-          <h2 style={{ 
-            margin: 0, 
-            fontSize: '24px', 
+          <h2 style={{
+            margin: 0,
+            fontSize: '24px',
             fontFamily: "'Inter', sans-serif",
-            fontWeight: '700', 
-            letterSpacing: '1px', 
-            background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
+            fontWeight: '900',
+            letterSpacing: '1px',
+            background: tracker.settings.isLightMode 
+              ? 'linear-gradient(90deg, #000 0%, #444 100%)' 
+              : 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}> {t('welcomeRider')} </h2>
@@ -777,7 +845,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
           <label className="fusion-label" style={{ marginBottom: '6px', fontSize: '9px' }}>{t('riderName')}</label>
           <div className="fusion-input-group">
             <User size={18} color="var(--accent-color)" opacity={0.5} />
-            <input required type="text" className="fusion-input" value={name} 
+            <input required type="text" className="fusion-input" value={name}
               onChange={e => {
                 const val = e.target.value;
                 setName(val.charAt(0).toUpperCase() + val.slice(1));
@@ -794,7 +862,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
           <label className="fusion-label" style={{ marginBottom: '6px', fontSize: '9px' }}>{t('vehicleType') || 'Vehicle'}</label>
           <div className="fusion-input-group">
             <Settings size={18} color="var(--accent-color)" opacity={0.5} />
-            <input required type="text" className="fusion-input" value={vehicleType} 
+            <input required type="text" className="fusion-input" value={vehicleType}
               onChange={e => setVehicleType(e.target.value.toUpperCase())}
               autoCapitalize="characters" spellCheck="false" />
           </div>
@@ -803,13 +871,13 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
             disabled={!name.trim() || !phone.trim() || !vehicleType.trim()}
             style={{
               alignSelf: 'center', padding: '10px 28px', borderRadius: '20px',
-              background: 'none',
-              border: '1.5px solid var(--accent-color)', color: 'white', fontWeight: '900', marginTop: '20px',
+              background: 'transparent',
+              border: '2px solid var(--accent-color)', color: 'var(--text-primary)', fontWeight: '900', marginTop: '20px',
               textTransform: 'uppercase', letterSpacing: '1px', fontSize: '12px',
               opacity: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 0.3 : 1,
               cursor: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s ease',
-              boxShadow: (!name.trim() || !phone.trim() || !vehicleType.trim()) ? 'none' : '0 0 15px rgba(0, 240, 255, 0.08)'
+              boxShadow: tracker.settings.isLightMode ? 'none' : '0 0 15px rgba(0, 240, 255, 0.08)'
             }}>
             {t('startRide')}
           </button>
@@ -834,35 +902,38 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', animation: 'fadeIn 0.3s ease', backdropFilter: 'blur(12px)', background: 'rgba(0,0,0,0.6)' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', animation: 'fadeIn 0.3s ease', backdropFilter: 'blur(12px)', background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.6)' }}>
       <div
         className="modal-content glass-panel"
         onClick={e => e.stopPropagation()}
         style={{
           animation: 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
-          background: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'var(--glass-bg)',
+          border: '1px solid var(--glass-border)',
           padding: '24px',
           width: '90%',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          boxShadow: tracker.settings.isLightMode ? '0 20px 60px rgba(0,0,0,0.1)' : '0 20px 60px rgba(0,0,0,0.4)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '4px', boxShadow: '0 0 12px color-mix(in srgb, var(--accent-color), transparent 60%)' }} />
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: '18px', 
+            <h2 style={{
+              margin: 0,
+              fontSize: '18px',
               fontFamily: "'Inter', sans-serif",
-              fontWeight: '700', 
-              letterSpacing: '1px', 
-              background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
+              fontWeight: '900',
+              letterSpacing: '1px',
+              background: tracker.settings.isLightMode 
+                ? 'linear-gradient(90deg, #000 0%, #444 100%)' 
+                : 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               textTransform: 'uppercase'
             }}>{t('sync')}</h2>
           </div>
-          <button onClick={onClose} style={{ background: 'color-mix(in srgb, var(--accent-color), transparent 85%)', border: '1px solid color-mix(in srgb, var(--accent-color), transparent 70%)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'var(--glass-border)', border: 'none', color: 'var(--text-primary)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>✕</button>
         </div>
 
         <div style={{ marginBottom: '24px', textAlign: 'left' }}>
@@ -877,15 +948,15 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
                 width: '140px',
                 margin: '0 auto',
                 display: 'block',
-                padding: '6px 12px',
+                padding: '10px 12px',
                 fontSize: '22px',
-                fontWeight: '800',
-                border: '1px solid color-mix(in srgb, var(--accent-color), transparent 85%)',
-                background: 'rgba(255,255,255,0.03)',
+                fontWeight: '900',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--glass-bg)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
                 textAlign: 'center',
-                color: '#ffffff',
+                color: 'var(--text-primary)',
                 borderRadius: '12px',
                 boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
                 outline: 'none',
@@ -933,149 +1004,60 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Use last known odo if field is empty
     const odometerVal = odo ? Number(odo) : tracker.fuelState.lastOdo;
     if (!odometerVal && odometerVal !== 0) return alert('Please enter the odometer reading.');
-
     const price = tracker.settings.fuelPricePerLiter || 14.0;
     const tankCap = tracker.settings.tankCapacity || 7.5;
-
     let liters: number;
     if (inputValue) {
-      // User entered a value
-      liters = inputMode === 'currency'
-        ? Number(inputValue) / price
-        : Number(inputValue);
+      liters = inputMode === 'currency' ? Number(inputValue) / price : Number(inputValue);
     } else if (isFullTank) {
-      // Full tank checked but no amount → use full tank capacity
       liters = tankCap;
     } else {
       return alert('Please enter the fuel amount or check Full Tank.');
     }
-
     tracker.addRefuel(odometerVal, liters, undefined, isFullTank);
     onClose();
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
-      <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '32px 24px', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '32px 24px', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)', boxShadow: tracker.settings.isLightMode ? '0 20px 60px rgba(0,0,0,0.1)' : '0 20px 60px rgba(0,0,0,0.4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '4px', boxShadow: '0 0 12px rgba(0, 240, 255, 0.4)' }} />
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: '18px', 
-              fontFamily: "'Inter', sans-serif",
-              fontWeight: '700', 
-              letterSpacing: '1px', 
-              background: 'linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.6) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textTransform: 'uppercase'
-            }}>Refuel</h2>
+            <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '4px' }} />
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)', textTransform: 'uppercase' }}>Refuel</h2>
           </div>
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '4px' }}>
-            <button type="button" onClick={() => setInputMode('currency')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'currency' ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'transparent', color: inputMode === 'currency' ? 'var(--accent-color)' : 'var(--text-secondary)', boxShadow: inputMode === 'currency' ? 'inset 0 0 0 1px var(--accent-color)' : 'none', transition: 'all 0.2s ease', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}>EGP</button>
-            <button type="button" onClick={() => setInputMode('liters')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'liters' ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'transparent', color: inputMode === 'liters' ? 'var(--accent-color)' : 'var(--text-secondary)', boxShadow: inputMode === 'liters' ? 'inset 0 0 0 1px var(--accent-color)' : 'none', transition: 'all 0.2s ease', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}>Liters</button>
+          <div style={{ display: 'flex', background: 'var(--glass-bg)', borderRadius: '12px', padding: '4px', border: '1px solid var(--glass-border)' }}>
+            <button type="button" onClick={() => setInputMode('currency')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'currency' ? 'var(--accent-secondary)' : 'transparent', color: inputMode === 'currency' ? '#fff' : 'var(--text-secondary)', fontSize: '12px', cursor: 'pointer', fontWeight: '800' }}>EGP</button>
+            <button type="button" onClick={() => setInputMode('liters')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: inputMode === 'liters' ? 'var(--accent-secondary)' : 'transparent', color: inputMode === 'liters' ? '#fff' : 'var(--text-secondary)', fontSize: '12px', cursor: 'pointer', fontWeight: '800' }}>Liters</button>
           </div>
         </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 4px' }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>{t('odoReading')}</label>
-            <input type="number" step="0.1" value={odo} onChange={e => setOdo(e.target.value)} style={{ width: '130px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: '10px', padding: '8px 12px', color: '#fff', fontSize: '15px', fontWeight: '800', textAlign: 'center', outline: 'none', transition: 'all 0.3s' }} />
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>{t('odoReading')}</label>
+            <input type="number" step="0.1" value={odo} onChange={e => setOdo(e.target.value)} style={{ width: '130px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '15px', fontWeight: '800', textAlign: 'center', outline: 'none' }} />
           </div>
-
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 4px' }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
               {inputMode === 'currency' ? (tracker.settings.language === 'ar' ? 'المبلغ (جنيه)' : 'Amount (EGP)') : (tracker.settings.language === 'ar' ? 'الكمية (لتر)' : 'Amount (L)')}
             </label>
             <div style={{ position: 'relative' }}>
-              <input type="number" step="0.1" value={inputValue} onChange={e => setInputValue(e.target.value)} style={{ width: '130px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: '10px', padding: '8px 12px', color: '#fff', fontSize: '15px', fontWeight: '800', textAlign: 'center', outline: 'none', transition: 'all 0.3s' }} autoFocus />
-              {inputMode === 'currency' && tracker.settings.fuelPricePerLiter > 0 && inputValue && (
-                <span style={{ position: 'absolute', right: '-70px', top: '50%', transform: 'translateY(-50%)', whiteSpace: 'nowrap', fontSize: '10px', color: 'var(--accent-color)', fontWeight: '800', opacity: 0.9 }}>
-                  ≈ {(Number(inputValue) / tracker.settings.fuelPricePerLiter).toFixed(1)}L
-                </span>
-              )}
+              <input type="number" step="0.1" value={inputValue} onChange={e => setInputValue(e.target.value)} style={{ width: '130px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '15px', fontWeight: '800', textAlign: 'center', outline: 'none' }} autoFocus />
             </div>
           </div>
-          
-          <div 
-            onClick={() => setIsFullTank(!isFullTank)}
-            style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-              padding: '12px 14px', cursor: 'pointer',
-              background: isFullTank ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'rgba(255,255,255,0.02)',
-              border: isFullTank ? '1px solid color-mix(in srgb, var(--accent-color), transparent 70%)' : '1px solid rgba(255,255,255,0.05)',
-              borderRadius: '14px',
-              marginTop: '4px',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ fontSize: '11px', color: isFullTank ? 'var(--accent-color)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800', transition: 'color 0.2s' }}>
-                {t('isFullTank')}
-              </span>
-              <span style={{ fontSize: '9px', color: 'var(--text-secondary)', opacity: 0.6 }}>
-                {tracker.settings.language === 'ar' ? 'مليت التانك للأخر؟' : 'Did you fill to max?'}
-              </span>
+          <div onClick={() => setIsFullTank(!isFullTank)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer', background: isFullTank ? 'color-mix(in srgb, var(--accent-color), transparent 90%)' : 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', marginTop: '4px', transition: 'all 0.3s ease' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '11px', color: isFullTank ? 'var(--accent-secondary)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>{t('isFullTank')}</span>
+              <span style={{ fontSize: '9px', color: 'var(--text-secondary)', opacity: 0.6 }}>{tracker.settings.language === 'ar' ? 'مليت التانك للأخر؟' : 'Did you fill to max?'}</span>
             </div>
-            <div style={{
-              width: '42px', height: '22px', borderRadius: '12px',
-              background: isFullTank ? 'color-mix(in srgb, var(--accent-color), transparent 80%)' : 'rgba(255,255,255,0.05)',
-              border: isFullTank ? '1px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.1)',
-              position: 'relative', transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              boxShadow: isFullTank ? '0 0 10px color-mix(in srgb, var(--accent-color), transparent 70%)' : 'none'
-            }}>
-              <div style={{
-                width: '14px', height: '14px', borderRadius: '50%',
-                background: isFullTank ? 'var(--accent-color)' : 'rgba(255,255,255,0.3)',
-                position: 'absolute', top: '3px',
-                left: isFullTank ? '24px' : '4px',
-                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                boxShadow: isFullTank ? '0 0 8px var(--accent-color)' : 'none'
-              }} />
+            <div style={{ width: '42px', height: '22px', borderRadius: '12px', background: isFullTank ? 'var(--accent-secondary)' : 'var(--glass-bg)', border: '1px solid var(--glass-border)', position: 'relative', transition: 'all 0.3s' }}>
+              <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: isFullTank ? '24px' : '4px', transition: 'all 0.3s' }} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'center' }}>
-            <button 
-              type="button" 
-              className="glass-button" 
-              style={{ 
-                background: 'transparent', 
-                color: 'var(--text-secondary)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                fontWeight: '600',
-                padding: '10px 20px',
-                fontSize: '13px',
-                borderRadius: '10px',
-                transition: 'all 0.2s ease',
-                minWidth: 'fit-content'
-              }} 
-              onClick={onClose}
-            >
-              {t('cancel')}
-            </button>
-            <button 
-              type="submit" 
-              className="glass-button" 
-              style={{ 
-                background: 'transparent', 
-                color: '#fff', 
-                border: '1px solid var(--accent-color)',
-                fontWeight: '800',
-                padding: '10px 24px',
-                fontSize: '13px',
-                borderRadius: '12px',
-                transition: 'all 0.2s ease',
-                width: 'fit-content',
-                boxShadow: '0 0 15px color-mix(in srgb, var(--accent-color), transparent 80%)'
-              }}
-            >
-              {t('save')}
-            </button>
+            <button type="button" onClick={onClose} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)', fontWeight: '600', padding: '10px 20px', fontSize: '13px', borderRadius: '10px' }}>{t('cancel')}</button>
+            <button type="submit" style={{ background: 'var(--accent-secondary)', color: '#fff', border: 'none', fontWeight: '900', padding: '10px 24px', fontSize: '13px', borderRadius: '12px', boxShadow: '0 8px 25px rgba(255, 94, 0, 0.25)' }}>{t('save')}</button>
           </div>
         </form>
       </div>
@@ -1086,7 +1068,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
 function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'en';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
-  
+
   const [name, setName] = useState(tracker.userProfile?.name || '');
   const [phone, setPhone] = useState(tracker.userProfile?.phone || '');
   const [vehicle, setVehicle] = useState(tracker.userProfile?.vehicleType || '');
@@ -1100,13 +1082,35 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const [cap, setCap] = useState((tracker.settings.tankCapacity || 7.5).toString());
   const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.5).toString());
   const [threshold, setThreshold] = useState((tracker.settings.warningThreshold || 15).toString());
+
   const [confirmReset, setConfirmReset] = useState(false);
   const [toneDropOpen, setToneDropOpen] = useState(false);
+  const toneDropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Close tone dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toneDropRef.current && !toneDropRef.current.contains(e.target as Node)) {
+        setToneDropOpen(false);
+      }
+    };
+    if (toneDropOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [toneDropOpen]);
 
   const handleSave = () => {
     tracker.updateUserProfile({ ...tracker.userProfile, name, phone, vehicleType: vehicle, photoUrl: photo, photoPosition: objPos });
-    tracker.setSettings({ ...tracker.settings, avgConsumption: Number(avg), tankCapacity: Number(cap), fuelPricePerLiter: Number(price), warningThreshold: Number(threshold) });
+    tracker.setSettings({ 
+      ...tracker.settings, 
+      avgConsumption: Number(avg), 
+      tankCapacity: Number(cap), 
+      fuelPricePerLiter: Number(price), 
+      warningThreshold: Number(threshold),
+      isLightMode: tracker.settings.isLightMode
+    });
     onClose();
   };
 
@@ -1127,203 +1131,258 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--primary-bg)', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s ease' }}>
-      
+
       {/* Immersive Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(10, 10, 12, 0.6)', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '4px', height: '18px', background: 'var(--accent-secondary)', borderRadius: '4px', boxShadow: '0 0 10px var(--accent-secondary)' }} />
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px' }}>{t('settings')}</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '2px' }}>{t('settings')}</h2>
         </div>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
+        <button onClick={onClose} style={{ background: 'var(--glass-border)', border: 'none', color: 'var(--text-primary)', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 40px 24px' }}>
-        
+
         {/* Dynamic Avatar Setup */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div 
-             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => setIsDragging(false)}
-             onClick={() => { if (!hasMovedRef.current) fileInputRef.current?.click(); }}
-             style={{ width: '100px', height: '100px', borderRadius: '24px', border: '2px solid var(--accent-secondary)', margin: '0 auto 12px', overflow: 'hidden', cursor: isDragging ? 'grabbing' : (photo ? 'move' : 'pointer'), position: 'relative', touchAction: 'none' }}>
-             {photo ? <img src={photo} draggable="false" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: `translate(${objPos.x}px, ${objPos.y}px) scale(${objPos.scale / 100})`, background: '#000' }} /> : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={26} color="var(--accent-secondary)" /></div>}
-             <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.6)', padding: '4px 0', fontSize: '9px', fontWeight: '900' }}>{t('edit')}</div>
+          <div
+            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => setIsDragging(false)}
+            onClick={() => { if (!hasMovedRef.current) fileInputRef.current?.click(); }}
+            style={{ width: '100px', height: '100px', borderRadius: '24px', border: '2px solid var(--accent-secondary)', margin: '0 auto 12px', overflow: 'hidden', cursor: isDragging ? 'grabbing' : (photo ? 'move' : 'pointer'), position: 'relative', touchAction: 'none' }}>
+            {photo ? <img src={photo} draggable="false" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: `translate(${objPos.x}px, ${objPos.y}px) scale(${objPos.scale / 100})`, background: '#000' }} /> : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={26} color="var(--accent-secondary)" /></div>}
+            <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.6)', padding: '4px 0', fontSize: '9px', fontWeight: '900' }}>{t('edit')}</div>
           </div>
           <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = x => setPhoto(x.target?.result as string); r.readAsDataURL(f); } }} />
           {photo && <input type="range" min="10" max="400" value={objPos.scale} onChange={e => setObjPos((p: any) => ({ ...p, scale: Number(e.target.value) }))} style={{ width: '150px', accentColor: 'var(--accent-secondary)' }} />}
         </div>
 
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '32px' }} />
+        <div style={{ height: '1px', background: 'var(--glass-border)', marginBottom: '32px' }} />
 
         {/* Section 1: PROFILE */}
         <div style={{ marginBottom: '32px' }}>
-          <label className="fusion-label" style={{ marginBottom: '16px' }}>{t('userProfile') || 'USER PROFILE'}</label>
+          <label className="fusion-label" style={{ marginBottom: '16px', color: tracker.settings.accentColor === '#326144' ? '#4ade80' : 'var(--accent-secondary)' }}>{t('userProfile') || 'USER PROFILE'}</label>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
-                <User size={18} color="#ff9800" opacity={0.4} />
-                <input className="fusion-input" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" style={{ background: 'transparent' }} />
-             </div>
-             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
-                <Smartphone size={18} color="#ff9800" opacity={0.4} />
-                <input type="tel" className="fusion-input" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="Phone Number" style={{ background: 'transparent' }} />
-             </div>
-             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '16px 0' }}>
-                <Settings size={18} color="#ff9800" opacity={0.4} />
-                <input className="fusion-input" value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle Type" style={{ background: 'transparent' }} />
-             </div>
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '16px 0' }}>
+              <User size={18} color="#ff9800" opacity={0.6} />
+              <input className="fusion-input" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" style={{ background: 'transparent', color: 'var(--text-primary)', fontWeight: '700' }} />
+            </div>
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '16px 0' }}>
+              <Smartphone size={18} color="#ff9800" opacity={0.6} />
+              <input type="tel" className="fusion-input" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="Phone Number" style={{ background: 'transparent', color: 'var(--text-primary)', fontWeight: '700' }} />
+            </div>
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '16px 0' }}>
+              <Settings size={18} color="#ff9800" opacity={0.6} />
+              <input className="fusion-input" value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle Type" style={{ background: 'transparent', color: 'var(--text-primary)', fontWeight: '700' }} />
+            </div>
           </div>
         </div>
 
         {/* Section 2: SPECS */}
         <div style={{ marginBottom: '32px' }}>
-          <label className="fusion-label" style={{ marginBottom: '16px' }}>{t('vehicleSpecs') || 'VEHICLE SPECS'}</label>
+          <label className="fusion-label" style={{ marginBottom: '16px', color: tracker.settings.accentColor === '#326144' ? '#4ade80' : 'var(--accent-secondary)' }}>{t('vehicleSpecs') || 'VEHICLE SPECS'}</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '900', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('avgConsumption')}</span>
-              <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0 }} value={avg} onChange={e => setAvg(e.target.value)} />
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-secondary)', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('avgConsumption')}</span>
+              <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontWeight: '800' }} value={avg} onChange={e => setAvg(e.target.value)} />
             </div>
-            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '900', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('tankCapacity')}</span>
-              <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0 }} value={cap} onChange={e => setCap(e.target.value)} />
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-secondary)', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('tankCapacity')}</span>
+              <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontWeight: '800' }} value={cap} onChange={e => setCap(e.target.value)} />
             </div>
           </div>
-          <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid rgba(255,255,255,0.05)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '900', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('fuelPrice')}</span>
-            <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0 }} value={price} onChange={e => setPrice(e.target.value)} />
+          <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-secondary)', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('fuelPrice')}</span>
+            <input type="number" className="fusion-input" style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontWeight: '800' }} value={price} onChange={e => setPrice(e.target.value)} />
           </div>
         </div>
 
 
 
+
+        {/* Section 3: MAINTENANCE */}
+        <div style={{ marginBottom: '32px' }}>
+          <label className="fusion-label" style={{ marginBottom: '16px', color: tracker.settings.accentColor === '#326144' ? '#4ade80' : 'var(--accent-secondary)' }}>{t('maintenance')}</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-secondary)', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('oilChangeInterval')}</span>
+              <input 
+                type="number" 
+                className="fusion-input" 
+                style={{ width: '100%', fontSize: '20px', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontWeight: '800' }} 
+                value={tracker.settings.oilChangeInterval === 0 ? '' : tracker.settings.oilChangeInterval} 
+                onChange={e => {
+                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                  tracker.setSettings({ ...tracker.settings, oilChangeInterval: val });
+                }} 
+              />
+            </div>
+
+            <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '12px 0', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '900', color: 'var(--text-secondary)', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('lastOilChangeOdo')}</span>
+              <div style={{ fontSize: '20px', color: 'var(--accent-color)', fontWeight: '800' }}>{tracker.settings.lastOilChangeOdo} KM</div>
+            </div>
+          </div>
+        </div>
+
         {/* Section 4: THEME */}
         <div style={{ marginBottom: '32px' }}>
-           <label className="fusion-label" style={{ marginBottom: '24px' }}>{t('appTheme')}</label>
-           <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', justifyContent: 'center' }}>
-             {THEME_COLORS.map(c => (
-               <div key={c.name} onClick={() => tracker.setSettings({...tracker.settings, accentColor: c.hex})} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`, border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s', transform: tracker.settings.accentColor === c.hex ? 'scale(1.1)' : 'scale(1)', boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}66` : 'none' }} />
-             ))}
-           </div>
+          <label className="fusion-label" style={{ marginBottom: '24px', color: tracker.settings.accentColor === '#326144' ? '#4ade80' : 'var(--accent-secondary)' }}>{t('appTheme')}</label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', justifyContent: 'center' }}>
+            {THEME_COLORS.map(c => (
+              <div key={c.name} onClick={() => tracker.setSettings({ ...tracker.settings, accentColor: c.hex })} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`, border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s', transform: tracker.settings.accentColor === c.hex ? 'scale(1.1)' : 'scale(1)', boxShadow: tracker.settings.accentColor === c.hex ? `0 0 15px ${c.hex}66` : 'none' }} />
+            ))}
+          </div>
         </div>
 
         {/* Section 5: NOTIFICATION TONE */}
         <div style={{ marginBottom: '40px' }}>
-            <label className="fusion-label" style={{ marginBottom: '16px', opacity: 0.5, fontSize: '10px' }}>{t('notificationTone')}</label>
+          <label className="fusion-label" style={{ marginBottom: '16px', opacity: 0.5, fontSize: '10px', color: tracker.settings.accentColor === '#326144' ? '#4ade80' : 'var(--accent-secondary)' }}>{t('notificationTone')}</label>
 
-            {/* Alert Threshold input */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <span style={{ fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('warningThreshold')} 🔔</span>
-              <div style={{ background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.4)', borderRadius: '8px', padding: '2px 8px', display: 'flex', alignItems: 'center' }}>
-                <input type="number" className="fusion-input" style={{ width: '36px', fontSize: '13px', fontWeight: '900', background: 'transparent', padding: 0, textAlign: 'center', color: '#ff9800', outline: 'none', border: 'none' }} value={threshold} onChange={e => setThreshold(e.target.value)} />
-              </div>
+          {/* Alert Threshold input */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <span style={{ fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('warningThreshold')} 🔔</span>
+            <div style={{ background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.4)', borderRadius: '8px', padding: '2px 8px', display: 'flex', alignItems: 'center' }}>
+              <input type="number" className="fusion-input" style={{ width: '36px', fontSize: '13px', fontWeight: '900', background: 'transparent', padding: 0, textAlign: 'center', color: '#ff9800', outline: 'none', border: 'none' }} value={threshold} onChange={e => setThreshold(e.target.value)} />
             </div>
+          </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 
-              {/* Premium Custom Dropdown */}
-              <div style={{ position: 'relative', flex: 1 }}>
+            {/* Premium Custom Dropdown */}
+            <div ref={toneDropRef} style={{ position: 'relative', flex: 1 }}>
+              <div
+                onClick={() => setToneDropOpen(o => !o)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'var(--glass-bg)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: `1px solid var(--glass-border)`,
+                  borderRadius: '10px',
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  gap: '6px'
+                }}
+              >
+                <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>
+                  🎵 {tracker.settings.alertTone?.replace(/\.[^.]+$/, '').slice(0, 14) || 'Digital'}
+                </span>
+                <span style={{ fontSize: '9px', color: 'var(--text-secondary)', opacity: 0.5, flexShrink: 0 }}>▾</span>
+              </div>
+
+              {toneDropOpen && (
                 <div
-                  onClick={() => setToneDropOpen(o => !o)}
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(255,255,255,0.06)',
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    border: `1px solid ${toneDropOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
-                    borderRadius: '10px',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    gap: '6px'
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 999,
+                    background: tracker.settings.isLightMode ? '#fff' : 'rgba(20,20,24,0.92)',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                    animation: 'fadeIn 0.15s ease'
                   }}
                 >
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>
-                    🎵 {tracker.settings.alertTone?.replace(/\.[^.]+$/, '').slice(0, 14) || 'Digital'}
-                  </span>
-                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>▾</span>
-                </div>
-
-                {toneDropOpen && (
-                  <div
-                    style={{
-                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 999,
-                      background: 'rgba(20,20,24,0.92)',
-                      backdropFilter: 'blur(24px)',
-                      WebkitBackdropFilter: 'blur(24px)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-                      animation: 'fadeIn 0.15s ease'
-                    }}
-                  >
-                    {[...['Digital', 'Radar', 'Cyber', 'Alarm'],
-                      ...(tracker.settings.customTones || []).map((ct: { name: string }) => ct.name)
-                    ].map((tone, i) => (
+                  {[...['Digital', 'Radar', 'Cyber', 'Alarm'],
+                  ...(tracker.settings.customTones || []).map((ct: { name: string }) => ct.name)
+                  ].map((tone, i) => {
+                    const isDefault = ['Digital', 'Radar', 'Cyber', 'Alarm'].includes(tone);
+                    return (
                       <div
                         key={tone}
                         onClick={() => {
-                          tracker.setSettings({...tracker.settings, alertTone: tone});
+                          tracker.setSettings({ ...tracker.settings, alertTone: tone });
                           playTone(tone, tracker.settings.customTones, tracker.audioCtxRef, tracker.activeAudioRef);
                         }}
                         style={{
                           padding: '9px 14px',
                           fontSize: '11px',
                           fontWeight: tracker.settings.alertTone === tone ? '800' : '500',
-                          color: tracker.settings.alertTone === tone ? '#fff' : 'rgba(255,255,255,0.45)',
-                          background: tracker.settings.alertTone === tone ? 'rgba(255,255,255,0.06)' : 'transparent',
-                          borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                          color: tracker.settings.alertTone === tone ? 'var(--accent-secondary)' : 'var(--text-primary)',
+                          background: tracker.settings.alertTone === tone ? 'var(--glass-bg)' : 'transparent',
+                          borderTop: i > 0 ? '1px solid var(--glass-border)' : 'none',
                           cursor: 'pointer',
                           transition: 'all 0.15s',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          gap: '8px'
                         }}
                       >
-                        {tracker.settings.alertTone === tone && <span style={{ marginRight: '6px', color: 'var(--accent-color)' }}>▶</span>}
-                        {tone.replace(/\.[^.]+$/, '').slice(0, 22)}
+                        <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
+                          {tracker.settings.alertTone === tone && <span style={{ marginRight: '6px', color: 'var(--accent-color)' }}>▶</span>}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{tone.replace(/\.[^.]+$/, '').slice(0, 22)}</span>
+                        </div>
+                        
+                        {!isDefault && (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(tracker.settings.language === 'ar' ? `هل تريد حذف رنة "${tone}"؟` : `Delete tone "${tone}"?`)) {
+                                const updatedCustomTones = (tracker.settings.customTones || []).filter((ct: any) => ct.name !== tone);
+                                const nextTone = tracker.settings.alertTone === tone ? 'Digital' : tracker.settings.alertTone;
+                                tracker.setSettings({ 
+                                  ...tracker.settings, 
+                                  alertTone: nextTone, 
+                                  customTones: updatedCustomTones 
+                                });
+                              }
+                            }}
+                            style={{ marginLeft: '8px', padding: '4px', opacity: 0.4, transition: 'opacity 0.2s' }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                          >
+                            <Trash2 size={12} color="var(--danger-color)" />
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Upload Button */}
-              <div
-                onClick={() => document.getElementById('tone-upload')?.click()}
-                style={{
-                  background: 'transparent',
-                  color: '#ff9800',
-                  width: '32px', height: '32px',
-                  borderRadius: '9px',
-                  cursor: 'pointer',
-                  border: '1px dashed rgba(255,152,0,0.5)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                <Music size={13} />
-                <input
-                  id="tone-upload" type="file" accept="audio/*" style={{ display: 'none' }}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      if (file.size > 1.5 * 1024 * 1024) { alert(t('fileTooLarge')); return; }
-                      const reader = new FileReader();
-                      reader.onload = (res) => {
-                        const base64 = res.target?.result as string;
-                        const newTone = { name: file.name, data: base64 };
-                        const updatedTones = [...(tracker.settings.customTones || []), newTone];
-                        tracker.setSettings({ ...tracker.settings, alertTone: file.name, customTones: updatedTones });
-                        playTone(file.name, updatedTones);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Upload Button */}
+            <div
+              onClick={() => document.getElementById('tone-upload')?.click()}
+              style={{
+                background: 'transparent',
+                color: '#ff9800',
+                width: '32px', height: '32px',
+                borderRadius: '9px',
+                cursor: 'pointer',
+                border: '1px dashed rgba(255,152,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Music size={13} />
+              <input
+                id="tone-upload" type="file" accept="audio/*" style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 1.5 * 1024 * 1024) { alert(t('fileTooLarge')); return; }
+                    const reader = new FileReader();
+                    reader.onload = (res) => {
+                      const base64 = res.target?.result as string;
+                      const newTone = { name: file.name, data: base64 };
+                      const updatedTones = [...(tracker.settings.customTones || []), newTone];
+                      tracker.setSettings({ ...tracker.settings, alertTone: file.name, customTones: updatedTones });
+                      playTone(file.name, updatedTones);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Minimalist Save Button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
-           <button className="glass-button" style={{ padding: '10px 42px', background: 'transparent', borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)', fontWeight: '900', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }} onClick={handleSave}>{t('save')}</button>
+          <button className="glass-button" style={{ padding: '10px 42px', background: 'transparent', borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)', fontWeight: '900', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }} onClick={handleSave}>{t('save')}</button>
         </div>
 
         {/* Discreet Reset Button */}
@@ -1347,19 +1406,19 @@ function UpdateModal({ info, tracker, onClose }: { info: any, tracker: any, onCl
     const fn = (translations[lang] as any)?.[key];
     return typeof fn === 'function' ? fn(val) : val;
   };
-  
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)' }}>
-      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', textAlign: 'center', border: '1px solid rgba(255, 51, 102, 0.4)', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '32px 24px', textAlign: 'center', border: tracker.settings.isLightMode ? '1px solid var(--glass-border)' : '1px solid rgba(255, 51, 102, 0.4)', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)', boxShadow: tracker.settings.isLightMode ? '0 20px 60px rgba(0,0,0,0.1)' : '0 20px 60px rgba(0,0,0,0.4)' }}>
         <div style={{ background: 'rgba(255, 51, 102, 0.1)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '2px solid var(--danger-color)', boxShadow: '0 0 20px rgba(255, 51, 102, 0.3)' }}>
           <Settings size={34} color="var(--danger-color)" style={{ animation: 'spin 4s linear infinite' }} />
         </div>
-        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: '#fff', fontWeight: '800' }}>{t('updateAvailable')}</h2>
+        <h2 style={{ fontSize: '24px', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '800' }}>{t('updateAvailable')}</h2>
         <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', fontWeight: '600' }}>
           {tFunc('versionAvailable', info.version)}
         </div>
         {info.notes && (
-          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '16px', borderRadius: '12px', fontSize: '13px', color: '#ddd', marginBottom: '24px', lineHeight: '1.7', textAlign: tracker.settings.language === 'ar' ? 'right' : 'left', direction: tracker.settings.language === 'ar' ? 'rtl' : 'ltr' }}>
+          <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '12px', fontSize: '13px', color: 'var(--text-primary)', marginBottom: '24px', lineHeight: '1.7', textAlign: tracker.settings.language === 'ar' ? 'right' : 'left', direction: tracker.settings.language === 'ar' ? 'rtl' : 'ltr' }}>
             {info.notes}
           </div>
         )}
@@ -1378,55 +1437,55 @@ function UpdateModal({ info, tracker, onClose }: { info: any, tracker: any, onCl
 export default App;
 
 // Photo Zoom Modal Component
-const PhotoZoomModal = ({ photoUrl, photoPosition, onClose }: { photoUrl?: string, photoPosition?: any, onClose: () => void }) => {
+const PhotoZoomModal = ({ photoUrl, photoPosition, tracker, onClose }: { photoUrl?: string, photoPosition?: any, tracker: any, onClose: () => void }) => {
   return (
-    <div 
-      className="modal-overlay" 
+      <div
+      className="modal-overlay"
       onClick={onClose}
-      style={{ 
-        position: 'fixed', inset: 0, zIndex: 10000, 
-        background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)',
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '24px', animation: 'fadeIn 0.3s ease'
       }}
     >
-      <div 
-        style={{ 
-          position: 'relative', width: '100%', maxWidth: '340px', 
+      <div
+        style={{
+          position: 'relative', width: '100%', maxWidth: '340px',
           aspectRatio: '1', borderRadius: '24px', overflow: 'hidden',
-          border: '1px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.85)',
+          border: '1px solid var(--glass-border)',
+          boxShadow: tracker.settings.isLightMode ? '0 20px 60px rgba(0,0,0,0.1)' : '0 20px 60px rgba(0,0,0,0.85)',
           animation: 'scaleUp 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
-          background: '#0a0a0c'
+          background: 'var(--primary-bg)'
         }}
         onClick={e => e.stopPropagation()}
       >
         {photoUrl ? (
-          <img 
-            src={photoUrl} alt="Rider Full" 
-            style={{ 
+          <img
+            src={photoUrl} alt="Rider Full"
+            style={{
               width: '100%', height: '100%', objectFit: 'contain', background: '#000',
-              transform: photoPosition 
+              transform: photoPosition
                 ? `translate(${(photoPosition.x || 0) * 4}px, ${(photoPosition.y || 0) * 4}px) scale(${(photoPosition.scale || 100) / 100})`
                 : 'scale(1)',
               transformOrigin: 'center'
-            }} 
+            }}
           />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)' }}>
             <User size={100} color="var(--accent-color)" opacity={0.4} />
           </div>
         )}
-        
+
         {/* Close Button - Smaller & In-Card */}
-        <button 
+        <button
           onClick={onClose}
-          style={{ 
-            position: 'absolute', top: '12px', right: '12px', 
+          style={{
+            position: 'absolute', top: '12px', right: '12px',
             width: '32px', height: '32px', borderRadius: '50%',
-            background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)',
-            color: '#fff', fontSize: '14px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+            color: 'var(--text-primary)', fontSize: '14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(10px)',
             transition: 'all 0.2s ease',
             boxShadow: '0 4px 10px rgba(0,0,0,0.3)',

@@ -84,28 +84,27 @@ public class MainActivity extends BridgeActivity {
 
         @PluginMethod
         public void playAlarm(PluginCall call) {
+            // Legacy method kept for compatibility — delegates to startVibration
+            startVibration(call);
+        }
+
+        @PluginMethod
+        public void startVibration(PluginCall call) {
             try {
-                Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-                if (notification == null) {
-                    notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                // ── Start repeating vibration pattern ONLY (audio is handled by JS/WebAudio) ──
+                Vibrator v = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null) {
+                    long[] pattern = {
+                        0, 400, 200, 400, 200, 800, 500, // 1st
+                        0, 400, 200, 400, 200, 800, 500, // 2nd
+                        0, 400, 200, 400, 200, 800, 500  // 3rd
+                    }; 
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createWaveform(pattern, -1)); // -1 = do not repeat
+                    } else {
+                        v.vibrate(pattern, -1);
+                    }
                 }
-
-                MainActivity activity = (MainActivity) getActivity();
-                if (activity.currentRingtone != null && activity.currentRingtone.isPlaying()) {
-                    activity.currentRingtone.stop();
-                }
-
-                activity.currentRingtone = RingtoneManager.getRingtone(getContext(), notification);
-
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                   AudioAttributes aa = new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build();
-                   activity.currentRingtone.setAudioAttributes(aa);
-                }
-
-                activity.currentRingtone.play();
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
@@ -114,11 +113,23 @@ public class MainActivity extends BridgeActivity {
 
         @PluginMethod
         public void stopAlarm(PluginCall call) {
-            MainActivity activity = (MainActivity) getActivity();
-            if (activity.currentRingtone != null && activity.currentRingtone.isPlaying()) {
-                activity.currentRingtone.stop();
+            try {
+                // Stop any legacy ringtone (if playAlarm was called directly before)
+                MainActivity activity = (MainActivity) getActivity();
+                if (activity != null && activity.currentRingtone != null && activity.currentRingtone.isPlaying()) {
+                    activity.currentRingtone.stop();
+                    activity.currentRingtone = null;
+                }
+                
+                // Always stop the vibrator — this covers both startVibration and vibrateSimple calls
+                Vibrator v = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null) {
+                    v.cancel();
+                }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
             }
-            call.resolve();
         }
 
         @PluginMethod
@@ -184,6 +195,31 @@ public class MainActivity extends BridgeActivity {
                 com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
                 ret.put("distanceKm", (double) dist);
                 call.resolve(ret);
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void updateWidgetStats(PluginCall call) {
+            try {
+                Context context = getContext();
+                Intent intent = new Intent(context, SpeedometerWidget.class);
+                intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
+
+                intent.putExtra("speed", call.getInt("speed", 0));
+                intent.putExtra("range", call.getString("range", "0.0 KM"));
+                intent.putExtra("fuelPercent", call.getInt("fuelPercent", 0));
+                intent.putExtra("litersLeft", call.getString("litersLeft", "0.0 L"));
+                intent.putExtra("emptyAt", call.getString("emptyAt", "EMPTY"));
+                intent.putExtra("oilLeft", call.getString("oilLeft", "OIL: 0 KM"));
+                intent.putExtra("isDanger", call.getBoolean("isDanger", false));
+                intent.putExtra("isWarning", call.getBoolean("isWarning", false));
+                intent.putExtra("accentColor", call.getString("accentColor", "#00f0ff"));
+
+                context.sendBroadcast(intent);
+
+                call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }

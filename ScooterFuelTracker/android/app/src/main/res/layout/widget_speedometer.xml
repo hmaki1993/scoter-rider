@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <!-- TOP ROW -->
+    <LinearLayout
+        android:id="@+id/top_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_alignParentTop="true">
+        
+        <!-- OIL PILL -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_oil_pill_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            
+            <ImageView
+                android:id="@+id/widget_oil_dot"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:src="@drawable/widget_oil_dot" />
+                
+            <TextView
+                android:id="@+id/widget_oil_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="OIL: 0 KM"
+                android:textColor="#FFFFFF"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- GPS DOT -->
+        <ImageView
+            android:id="@+id/widget_gps_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:src="@drawable/widget_gps_dot" />
+    </LinearLayout>
+
+    <!-- CENTER ROW (SPEED GAUGE) -->
+    <ImageView
+        android:id="@+id/widget_gauge_img"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_centerInParent="true"
+        android:scaleType="fitCenter" />
+
+    <!-- BOTTOM ROW -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_alignParentBottom="true">
+        
+        <TextView
+            android:id="@+id/widget_range_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="85.4 KM"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp">
+            
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#1AFFFFFF" />
+                
+            <ImageView
+                android:id="@+id/widget_fuel_progress_fill"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/widget_progress_clip" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            
+            <TextView
+                android:id="@+id/widget_fuel_left_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2.1 L"
+                android:textColor="#99FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/widget_empty_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EMPTY: 1024 KM"
+                android:textColor="#99FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>

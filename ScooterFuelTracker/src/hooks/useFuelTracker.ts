@@ -14,6 +14,9 @@ export interface FuelSettings {
   accentColor: string;
   alertTone: string; // Now stores the tone name or index
   customTones: { name: string; data: string }[];
+  isLightMode: boolean;
+  oilChangeInterval: number;
+  lastOilChangeOdo: number;
 }
 
 export interface UserProfile {
@@ -51,22 +54,31 @@ const DEFAULT_SETTINGS: FuelSettings = {
   language: 'en',
   accentColor: '#326144',
   alertTone: 'Digital',
-  customTones: []
+  customTones: [],
+  isLightMode: false,
+  oilChangeInterval: 1000,
+  lastOilChangeOdo: 0
 };
 
 // ── Global Audio Singleton for overlap prevention ───────────────────────────
 let globalAudioCtx: AudioContext | null = null;
 let globalActiveAudio: HTMLAudioElement | null = null;
+let globalToneInterval: any = null;
 
 // ── Audio Engine (Web Audio API) ───────────────────────────────────────────
 export const playTone = (
   type: string, 
   customTones: { name: string; data: string }[] = [],
   audioCtxRef?: React.MutableRefObject<AudioContext | null>,
-  activeAudioRef?: React.MutableRefObject<HTMLAudioElement | null>
+  activeAudioRef?: React.MutableRefObject<HTMLAudioElement | null>,
+  isLoop: boolean = false
 ) => {
   try {
     // ── 1. Cleanup any existing audio ──
+    if (globalToneInterval) {
+      clearInterval(globalToneInterval);
+      globalToneInterval = null;
+    }
     if (globalAudioCtx) {
       globalAudioCtx.close().catch(() => {});
       globalAudioCtx = null;
@@ -92,8 +104,20 @@ export const playTone = (
     if (custom) {
       const audio = new Audio(custom.data);
       audio.volume = 0.5;
+      audio.loop = false;
       globalActiveAudio = audio;
       if (activeAudioRef) activeAudioRef.current = audio;
+      
+      let playCount = 0;
+      audio.onended = () => {
+         playCount++;
+         if (isLoop && playCount < 3) {
+            audio.play().catch(()=>{});
+         } else {
+            stopTone();
+         }
+      };
+      
       audio.play().catch(e => console.warn('Custom audio playback failed', e));
       return;
     }
@@ -106,53 +130,72 @@ export const playTone = (
     globalAudioCtx = ctx;
     if (audioCtxRef) audioCtxRef.current = ctx;
 
-    const now = ctx.currentTime;
-    
-    const playBeep = (freq: number, startTime: number, duration: number, vol = 0.1, wave: 'sine'|'square'|'sawtooth'|'triangle' = 'sine') => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = wave;
-      osc.frequency.setValueAtTime(freq, startTime);
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + duration);
-    };
+    let sequenceCount = 0;
+    const playSequence = () => {
+      if (!globalAudioCtx) return;
+      const now = globalAudioCtx.currentTime;
+      
+      const playBeep = (freq: number, startTime: number, duration: number, vol = 0.1, wave: 'sine'|'square'|'sawtooth'|'triangle' = 'sine') => {
+        const osc = globalAudioCtx!.createOscillator();
+        const gain = globalAudioCtx!.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+        osc.connect(gain);
+        gain.connect(globalAudioCtx!.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
 
-    switch(type) {
-      case 'Radar':
-        playBeep(880, now, 0.5, 0.15);
-        playBeep(440, now + 0.5, 0.5, 0.1);
-        break;
-      case 'Cyber':
-        playBeep(1200, now, 0.1, 0.1, 'square');
-        playBeep(800, now + 0.15, 0.1, 0.1, 'square');
-        playBeep(1600, now + 0.3, 0.2, 0.1, 'square');
-        break;
-      case 'Alarm':
-        for(let i=0; i<3; i++) {
-          playBeep(500, now + i*0.4, 0.2, 0.2, 'sawtooth');
-          playBeep(800, now + i*0.4 + 0.2, 0.2, 0.2, 'sawtooth');
-        }
-        break;
-      default: // 'Digital'
-        playBeep(2000, now, 0.05);
-        playBeep(2500, now + 0.1, 0.05);
-    }
-    
-    setTimeout(() => {
-      if (audioCtxRef?.current === ctx) {
-        ctx.close().catch(() => {});
-        if (audioCtxRef) audioCtxRef.current = null;
+      switch(type) {
+        case 'Radar':
+          playBeep(880, now, 0.5, 0.15);
+          playBeep(440, now + 0.5, 0.5, 0.1);
+          break;
+        case 'Cyber':
+          playBeep(1200, now, 0.1, 0.1, 'square');
+          playBeep(800, now + 0.15, 0.1, 0.1, 'square');
+          playBeep(1600, now + 0.3, 0.2, 0.1, 'square');
+          break;
+        case 'Alarm':
+          for(let i=0; i<3; i++) {
+            playBeep(500, now + i*0.4, 0.2, 0.2, 'sawtooth');
+            playBeep(800, now + i*0.4 + 0.2, 0.2, 0.2, 'sawtooth');
+          }
+          break;
+        default: // 'Digital'
+          playBeep(2000, now, 0.05);
+          playBeep(2500, now + 0.1, 0.05);
       }
-    }, 2500);
-  } catch(e) { console.error('Audio failed', e); }
+      
+      sequenceCount++;
+      if (sequenceCount >= 3) { // Stop after 3 times!
+         stopTone();
+      }
+    };
+    
+    playSequence();
+    
+    if (isLoop) {
+      globalToneInterval = setInterval(playSequence, 2000);
+    } else {
+      setTimeout(() => {
+        if (audioCtxRef?.current === ctx) {
+          ctx.close().catch(() => {});
+          if (audioCtxRef) audioCtxRef.current = null;
+        }
+      }, 2500);
+    }
+  } catch(err) { console.error('Audio failed', err); }
 };
 
 export const stopTone = () => {
+  if (globalToneInterval) {
+    clearInterval(globalToneInterval);
+    globalToneInterval = null;
+  }
   if (globalAudioCtx) {
     globalAudioCtx.close().catch(() => {});
     globalAudioCtx = null;
@@ -162,6 +205,13 @@ export const stopTone = () => {
     globalActiveAudio.src = "";
     globalActiveAudio = null;
   }
+  
+  // ── FIX: Ensure native vibration and legacy alarms are stopped everywhere ──
+  try {
+    import('@capacitor/core').then(({ registerPlugin }) => {
+      registerPlugin<any>('AlarmPlugin').stopAlarm().catch(() => {});
+    });
+  } catch (e) { /* ignore */ }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,7 +228,15 @@ export const useFuelTracker = () => {
   });
   const [settings, setSettings] = useState<FuelSettings>(() => {
     const saved = localStorage.getItem('fuel_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_SETTINGS, ...parsed };
+      } catch (e) {
+        return DEFAULT_SETTINGS;
+      }
+    }
+    return DEFAULT_SETTINGS;
   });
   const [fuelState, setFuelState] = useState<FuelState>(() => {
     const saved = localStorage.getItem('fuel_state');
@@ -232,19 +290,35 @@ export const useFuelTracker = () => {
             actions: [{
               id: 'silence',
               title: (translations[lang] as any)?.stopNotif || 'Stop',
-              foreground: false,
+              // foreground: true ensures the action always shows on the notification
+              foreground: true,
             }]
           }]
         });
 
+        // ── Channel Strategy ──────────────────────────────────────────────────
+        // Android LOCKS channel settings after first creation.
+        const channelId = `fuel_alert_v5_high_priority`; // NEW channel ID guarantees android sets high importance
+        
+        // Delete old channels to prevent Android from reusing stale settings
+        try {
+          const existing = await LocalNotifications.listChannels();
+          for (const ch of existing.channels || []) {
+            if (ch.id.startsWith('fuel_') && ch.id !== channelId) {
+              await LocalNotifications.deleteChannel({ id: ch.id });
+            }
+          }
+        } catch { /* ignore — some builds don't support deleteChannel */ }
+
         await LocalNotifications.createChannel({
-          id: 'fuel_alerts_v2',
-          name: 'Fuel Alerts',
+          id: channelId,
+          name: 'Fuel Tracker Alerts',
           description: 'Critical fuel reminders',
-          importance: 5,
-          visibility: 1,
-          sound: undefined, // Set to undefined to avoid default system beep/strange sound
-          vibration: true
+          importance: 5,      // IMPORTANCE_MAX → Heads-Up guaranteed
+          visibility: 1,      // VISIBILITY_PUBLIC (shows on lock screen)
+          vibration: false,   // We handle vibration natively via AlarmPlugin
+          lights: true,
+          lightColor: '#FF3366',
         });
 
         const listener = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
@@ -262,33 +336,30 @@ export const useFuelTracker = () => {
         console.warn('[FuelTracker] Notification setup failed:', e);
       }
     })();
-  }, []);
+  }, [settings.alertTone, settings.language]);
 
   // ── Audio Warning ─────────────────────────────────────────────────────────
   const playWarningSound = (isAlarm = false) => {
     if (!settings.enableAlerts || isMuted) return;
     try {
       if (isAlarm) {
-        // Full Alarm sequence: We rely on JS playTone for chosen sound
-        // and haptics for vibration. We remove AlarmPlugin.playAlarm to avoid double sounds.
-        
-        // Play the chosen tone from settings
-        playTone(settings.alertTone || 'Digital', settings.customTones, audioCtxRef, activeAudioRef);
-        
-        // Strong vibrate using Haptics and Fallback
-        import('@capacitor/haptics').then(({ Haptics }) => {
-          let count = 0;
-          const vibInterval = setInterval(() => {
-            Haptics.vibrate();
-            count++;
-            if (count > 5) clearInterval(vibInterval);
-          }, 800);
-        }).catch(() => {
-          if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300, 500, 800, 200, 800, 200, 800]);
+        // ── FIX: Play the USER-SELECTED tone via JS engine instead of Android's default system alarm.
+        // Then start native vibration separately via AlarmPlugin.startVibration().
+        // This ensures the correct tone plays AND vibration can be independently stopped.
+        playTone(settingsRef.current.alertTone || 'Digital', settingsRef.current.customTones, audioCtxRef, activeAudioRef, true);
+
+        import('@capacitor/core').then(({ registerPlugin }) => {
+          registerPlugin<any>('AlarmPlugin').startVibration().catch(() => {
+            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500, 400, 200, 400]);
+          });
         });
+        
+        // ── STRICT FAILSAFE: Stop whatever audio is playing exactly when vibration finishes (2.5 seconds)
+        setTimeout(() => stopTone(), 2500);
+        
       } else {
-        // Soft pre-warning
-        playTone('Digital'); // Always soft for subtle pre-warning
+        // Soft pre-warning (single short beep + gentle buzz)
+        playTone('Digital');
         import('@capacitor/haptics').then(({ Haptics }) => Haptics.vibrate()).catch(() => {
           if (navigator.vibrate) navigator.vibrate(200);
         });
@@ -565,10 +636,13 @@ export const useFuelTracker = () => {
     }
 
     // ── GPS Health Monitor ────────────────────────────────────────────────
+    let failCount = 0;
     const monitorId = setInterval(async () => {
       try {
-        await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+        await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+        failCount = 0; // Success! Reset counter
       } catch {
+        failCount++;
         // GPS unavailable — notify user
         try {
           const { LocalNotifications } = await import('@capacitor/local-notifications');
@@ -578,11 +652,11 @@ export const useFuelTracker = () => {
               title: (translations[lang] as any)?.gpsOffTitle,
               body: (translations[lang] as any)?.gpsOffBody,
               id: 9999,
-              schedule: { at: new Date(Date.now() + 500) },
-              channelId: 'fuel_alerts_v2',
+              schedule: { at: new Date(Date.now() + 200) },
+              channelId: `fuel_v3_${settings.alertTone || 'Default'}`,
               attachments: [],
               extra: null,
-            }]
+            } as any]
           });
         } catch { /* noop */ }
       }
@@ -748,11 +822,10 @@ export const useFuelTracker = () => {
                 body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
                   ? (translations[lang] as any).lowFuelAlertBody(display) 
                   : display,
-                id: 8888, // Constant ID to REPLACE the previous notification
-                schedule: { at: new Date() }, // Immediate Heads-up Drop-down
+                id: Math.floor(Math.random() * 100000) + 1, // Random ID ensures Android pops it as new Heads-up
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
-                channelId: 'fuel_alerts_v2',
-              }]
+                channelId: `fuel_alert_v5_high_priority`,
+              } as any]
             }).catch(console.warn);
           });
 
@@ -794,6 +867,9 @@ export const useFuelTracker = () => {
     setLogs(prev => isEdit ? prev.map((l, i) => i === 0 ? newLog : l) : [newLog, ...prev]);
     setFuelState({ estimatedFuelLiters: newFuel, lastOdo: odo, totalGpsDistance: 0 });
     lastNotifiedStepRef.current = 999;
+    
+    // ── FIX: Stop vibration upon refueling ──
+    stopTone();
     setIsMuted(false);
   };
 
@@ -860,6 +936,32 @@ export const useFuelTracker = () => {
   const isWarning = rangeRemainingKm <= settings.warningThreshold;
   const isDanger = rangeRemainingKm <= 10;
   const fuelPercentage = Math.min(100, Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100));
+  const kmSinceOilChange = Math.max(0, fuelState.lastOdo - settings.lastOilChangeOdo);
+  const kmUntilNextOilChange = Math.max(0, settings.oilChangeInterval - kmSinceOilChange);
+
+  const recordOilChange = (odoValue: number) => {
+    setSettings(prev => ({ ...prev, lastOilChangeOdo: odoValue }));
+  };
+
+  // ── Sync Live Stats with Native Widget ────────────────────────────────────
+  useEffect(() => {
+    if (!isAndroidPlatform()) return;
+    try {
+      import('@capacitor/core').then(({ registerPlugin }) => {
+        registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+          speed: Math.round(currentSpeed || 0),
+          range: `${rangeRemainingKm.toFixed(1)} KM`,
+          fuelPercent: Math.round(fuelPercentage),
+          litersLeft: `${fuelState.estimatedFuelLiters.toFixed(1)} L`,
+          emptyAt: `EMPTY: ${runOutOdo.toFixed(1)} KM`,
+          oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)} KM`,
+          isWarning,
+          isDanger,
+          accentColor: settings.accentColor
+        }).catch(() => {});
+      });
+    } catch (e) { /* ignore */ }
+  }, [currentSpeed, rangeRemainingKm, fuelPercentage, runOutOdo, kmUntilNextOilChange, fuelState.estimatedFuelLiters, isWarning, isDanger, settings.accentColor]);
 
   return {
     fuelState, settings, userProfile, logs,
@@ -867,6 +969,7 @@ export const useFuelTracker = () => {
     isTracking, isStarting, isMuted, currentSpeed,
     trackingError, clearTrackingError: () => setTrackingError(null),
     gpsUpdateCount, lastGpsTime,
+    kmSinceOilChange, kmUntilNextOilChange, recordOilChange,
     setSettings, addRefuel, updateCurrentOdo, updateUserProfile,
     startTracking, stopTracking, setIsMuted, playWarningSound,
     resetData, requestAllPermissions, setCurrentSpeed,

@@ -17,8 +17,8 @@ export const translations = {
     tankLevel: 'مستوى التانك',
     
     // Actions
-    startRide: 'يلا بينا 🛵',
-    refuel: 'فول التانك ⛽',
+    startRide: 'يلا بينا',
+    refuel: 'فول التانك',
     sync: 'مزامنة داتا',
     
     // Settings
@@ -35,6 +35,9 @@ export const translations = {
     tankCapacity: 'سعة التانك (لتر)',
     fuelPrice: 'سعر لتر البنزين (جنيه)',
     warningThreshold: 'نبهني عند (كم)',
+    uiMode: 'واجهة التطبيق',
+    lightMode: 'وضع فاتح ☀️',
+    darkMode: 'وضع ليلي 🌙',
     notifications: 'تنبيهات بالصوت والهز',
     autoTracking: 'بدء التتبع تلقائياً',
     dangerZone: 'منطقة الخطر (للمطورين)',
@@ -112,6 +115,15 @@ export const translations = {
     gpsRequired: 'لازم تشغل الـ GPS عشان السرعة تتحسب',
     starting: 'جاري...',
     openSettings: '📍 افتح الإعدادات',
+    oilChange: 'غيار الزيت 🛢️',
+    oilLife: 'عمر الزيت',
+    oilChangeInterval: 'تغيير الزيت كل (كم)',
+    kmRemainingOil: (km: string) => `باقي ${km} كم على الزيت`,
+    lastOilChangeOdo: 'عداد آخر غيار زيت',
+    resetOilLife: 'تم تغيير الزيت (تصفير)',
+    oilChangeAlertTitle: 'ميعاد غيار الزيت! ⚠️',
+    oilChangeAlertBody: 'وصلت للمسافة المطلوبة لغيار الزيت، غيره في أقرب وقت عشان تحافظ على الموتور. 🛵',
+    maintenance: 'قسم الصيانة 🛠️',
   },
   en: {
     // Header
@@ -132,8 +144,8 @@ export const translations = {
     tankLevel: 'Tank Level',
     
     // Actions
-    startRide: 'Start Ride 🛵',
-    refuel: 'Add Fuel ⛽',
+    startRide: 'Start Ride',
+    refuel: 'Add Fuel',
     sync: 'Sync Data',
     
     // Settings
@@ -150,6 +162,9 @@ export const translations = {
     tankCapacity: 'Tank Capacity (Liters)',
     fuelPrice: 'Fuel Price (EGP/L)',
     warningThreshold: 'Alert Threshold (km)',
+    uiMode: 'UI MODE',
+    lightMode: 'LIGHT MODE ☀️',
+    darkMode: 'DARK MODE 🌙',
     notifications: 'Voice & Vibrate Alerts',
     autoTracking: 'Auto-start Tracking',
     dangerZone: 'Danger Zone (Dev)',
@@ -227,5 +242,14 @@ export const translations = {
     gpsRequired: 'GPS tracking required for speedometer.',
     starting: 'Starting...',
     openSettings: '📍 Open Settings',
+    oilChange: 'Oil Change 🛢️',
+    oilLife: 'Oil Life',
+    oilChangeInterval: 'Oil Change Interval (km)',
+    kmRemainingOil: (km: string) => `${km} km left for oil`,
+    lastOilChangeOdo: 'Last Oil Change Odo',
+    resetOilLife: 'Oil Changed (Reset)',
+    oilChangeAlertTitle: 'Oil Change Due! ⚠️',
+    oilChangeAlertBody: 'You have reached the distance for an oil change. Change it soon to protect your engine. 🛵',
+    maintenance: 'Maintenance 🛠️',
   }
 };
