@@ -1567,7 +1567,7 @@ const PhotoZoomModal = ({ photoUrl, photoPosition, tracker, onClose }: { photoUr
           onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
           onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          ✕
+          <X size={18} />
         </button>
       </div>
     </div>
@@ -1590,8 +1590,13 @@ const WidgetMiniSettingsCard = ({ tracker, onClose }: { tracker: any, onClose: (
         borderRadius: '24px',
         textAlign: 'center'
       }}>
-        <div style={{ fontSize: '13px', fontWeight: '950', color: '#fff', letterSpacing: '3px', marginBottom: '24px', textTransform: 'uppercase', opacity: 0.8 }}>
-          WIDGET DESIGNER
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+          <div style={{ fontSize: '11px', fontWeight: '950', color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', opacity: 0.8 }}>
+            WIDGET DESIGNER
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.5, cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
         </div>
 
         {/* Color Sped-Dial */}
