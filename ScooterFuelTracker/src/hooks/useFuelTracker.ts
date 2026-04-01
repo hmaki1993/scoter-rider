@@ -303,10 +303,10 @@ export const useFuelTracker = () => {
           }]
         });
 
-        // ── Channel Strategy ──────────────────────────────────────────────────
-        // Android LOCKS channel settings after first creation.
-        const channelId = `fuel_alert_v5_high_priority`; // NEW channel ID guarantees android sets high importance
-        
+        // ── Channel Strategy ────────────────────────────────────────────────────
+        // IMPORTANT: Use a SILENT channel (sound: null) so the notification drops down
+        // IMMEDIATELY during our alarm without or OS sound conflict/delay!
+        const channelId = `fuel_alert_v10_silent`;
         // Delete old channels to prevent Android from reusing stale settings
         try {
           const existing = await LocalNotifications.listChannels();
@@ -319,14 +319,15 @@ export const useFuelTracker = () => {
 
         await LocalNotifications.createChannel({
           id: channelId,
-          name: 'Fuel Tracker Alerts',
-          description: 'Critical fuel reminders',
-          importance: 5,      // IMPORTANCE_MAX → Heads-Up guaranteed
-          visibility: 1,      // VISIBILITY_PUBLIC (shows on lock screen)
-          vibration: false,   // We handle vibration natively via AlarmPlugin
+          name: 'Fuel Alerts (Silent)',
+          description: 'Heads-up alert - audio handled natively by app',
+          importance: 5,      // IMPORTANCE_MAX → Heads-Up delivery
+          visibility: 1,      // VISIBILITY_PUBLIC
+          vibration: false,   // Handle vibration natively
           lights: true,
           lightColor: '#FF3366',
-        });
+          sound: null as any, // EXPLICITLY NULL → truly silent OS channel
+        } as any);
 
         const listener = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
           if (action.actionId === 'silence') {
@@ -837,7 +838,7 @@ export const useFuelTracker = () => {
                 id: Math.floor(Math.random() * 100000) + 1,
                 schedule: { at: new Date(Date.now() + 300), allowWhileIdle: true },
                 actionTypeId: 'FUEL_ALARM_ACTIONS',
-                channelId: `fuel_alert_v5_high_priority`,
+                channelId: `fuel_alert_v10_silent`,
               } as any]
             }).catch(console.warn);
           });

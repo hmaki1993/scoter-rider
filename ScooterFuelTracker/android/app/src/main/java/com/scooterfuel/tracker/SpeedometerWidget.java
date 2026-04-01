@@ -27,7 +27,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.top_row, pendingIntent);
 
-        // Default values (shown before app connects)
+        // Default values
         int speed = 0;
         String range = "-- KM";
         int fuelPercent = 0;
@@ -49,68 +49,101 @@ public class SpeedometerWidget extends AppWidgetProvider {
             }
         }
 
-        // ── Build Canvas Speedometer Bitmap ──────────────────────────────────
-        // 540×300px bitmap: top half is the gauge arc, bottom area is the speed number
+        // ── Drawing the Speedometer (Matching App Style) ──────────────────────
+        // Bitmap size: 540x300. Arc centered at bottom center of the drawable area.
         Bitmap bitmap = Bitmap.createBitmap(540, 300, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
 
-        // Arc geometry: center at (270, 10), radius 230 → draws a half-circle
-        float arcCx = 270f;
-        float arcCy = 10f;
-        float radius = 230f;
-        RectF rect = new RectF(arcCx - radius, arcCy - radius, arcCx + radius, arcCy + radius);
+        float cx = 270f;
+        float cy = 250f; // Shift down to make room for ticks/labels
+        float radius = 180f;
+        RectF rect = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
 
-        // 1. Background track (dim white)
-        Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bgPaint.setStyle(Paint.Style.STROKE);
-        bgPaint.setStrokeWidth(22f);
-        bgPaint.setStrokeCap(Paint.Cap.ROUND);
-        bgPaint.setColor(Color.parseColor("#22FFFFFF"));
-        canvas.drawArc(rect, 180, 180, false, bgPaint);
-
-        // 2. Foreground neon arc (speed progress)
         int activeColor = speed > 80 ? Color.parseColor("#ff3366") : themeColor;
-        Paint fgPaint = new Paint(bgPaint);
-        fgPaint.setColor(activeColor);
-        float progressAngle = (Math.min(speed, 120) / 120f) * 180f;
-        canvas.drawArc(rect, 180, progressAngle, false, fgPaint);
 
-        // 3. Needle
+        // 1. Background Arc (Dim)
+        Paint arcPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        arcPaint.setStyle(Paint.Style.STROKE);
+        arcPaint.setStrokeWidth(12f);
+        arcPaint.setStrokeCap(Paint.Cap.ROUND);
+        arcPaint.setColor(Color.parseColor("#1AFFFFFF"));
+        canvas.drawArc(rect, 180, 180, false, arcPaint);
+
+        // 2. Speed Progress Arc (Neon)
+        arcPaint.setColor(activeColor);
+        arcPaint.setShadowLayer(15f, 0, 0, activeColor);
+        float sweepAngle = (Math.min(speed, 120) / 120f) * 180f;
+        canvas.drawArc(rect, 180, sweepAngle, false, arcPaint);
+        arcPaint.clearShadowLayer();
+
+        // 3. Ticks & Numbers (Replicating App logic)
+        Paint tickPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tickPaint.setColor(Color.parseColor("#80FFFFFF"));
+        tickPaint.setStrokeWidth(2f);
+        
+        Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        labelPaint.setColor(Color.parseColor("#99FFFFFF"));
+        labelPaint.setTextSize(18f);
+        labelPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        labelPaint.setTextAlign(Paint.Align.CENTER);
+
+        int[] values = {0, 20, 40, 60, 80, 100, 120};
+        for (int v : values) {
+            float angle = (v / 120f) * 180f - 180f;
+            double rad = Math.toRadians(angle);
+            
+            // Tick lines
+            float x1 = cx + (radius - 15f) * (float)Math.cos(rad);
+            float y1 = cy + (radius - 15f) * (float)Math.sin(rad);
+            float x2 = cx + (radius + 5f) * (float)Math.cos(rad);
+            float y2 = cy + (radius + 5f) * (float)Math.sin(rad);
+            canvas.drawLine(x1, y1, x2, y2, tickPaint);
+            
+            // Labels
+            float tx = cx + (radius + 30f) * (float)Math.cos(rad);
+            float ty = cy + (radius + 30f) * (float)Math.sin(rad);
+            // Adjust label Y slightly for bottom alignment
+            canvas.drawText(String.valueOf(v), tx, ty + 6f, labelPaint);
+        }
+
+        // 4. Center Digital Speed
+        Paint speedTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        speedTextPaint.setColor(Color.WHITE);
+        speedTextPaint.setTextSize(86f);
+        speedTextPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        speedTextPaint.setTextAlign(Paint.Align.CENTER);
+        speedTextPaint.setShadowLayer(10f, 0, 0, activeColor);
+        canvas.drawText(String.valueOf(speed), cx, cy - 20f, speedTextPaint);
+        
+        speedTextPaint.clearShadowLayer();
+        speedTextPaint.setTextSize(20f);
+        speedTextPaint.setColor(Color.parseColor("#80FFFFFF"));
+        speedTextPaint.setFakeBoldText(true);
+        canvas.drawText("KM/H", cx, cy + 15f, speedTextPaint);
+
+        // 5. Needle
         Paint needlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         needlePaint.setColor(activeColor);
-        needlePaint.setStrokeWidth(8f);
+        needlePaint.setStrokeWidth(6f);
         needlePaint.setStrokeCap(Paint.Cap.ROUND);
-        double needleRad = Math.toRadians(180 + progressAngle);
-        float needleLen = radius - 20f;
-        float needleX = arcCx + (float)(needleLen * Math.cos(needleRad));
-        float needleY = arcCy + (float)(needleLen * Math.sin(needleRad));
-        canvas.drawLine(arcCx, arcCy, needleX, needleY, needlePaint);
+        needlePaint.setShadowLayer(5f, 0, 0, activeColor);
+        
+        double needleRad = Math.toRadians(180f + sweepAngle);
+        float nx = cx + (radius - 10f) * (float)Math.cos(needleRad);
+        float ny = cy + (radius - 10f) * (float)Math.sin(needleRad);
+        canvas.drawLine(cx, cy - 10f, nx, ny, needlePaint);
+        
         needlePaint.setStyle(Paint.Style.FILL);
-        canvas.drawCircle(arcCx, arcCy, 10f, needlePaint);
+        canvas.drawCircle(cx, cy - 10f, 8f, needlePaint);
 
-        // 4. Speed number & KM/H label (drawn in lower center)
-        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setColor(Color.WHITE);
-        textPaint.setTextSize(96f);
-        textPaint.setShadowLayer(8f, 0, 0, 0x4400F0FF);
-        canvas.drawText(String.valueOf(speed), arcCx, 210f, textPaint);
-        textPaint.clearShadowLayer();
-        textPaint.setTextSize(22f);
-        textPaint.setColor(Color.parseColor("#80FFFFFF"));
-        canvas.drawText("KM/H", arcCx, 246f, textPaint);
-
-        // Apply bitmap to ImageView
+        // Apply bitmap
         views.setImageViewBitmap(R.id.widget_gauge_img, bitmap);
 
-        // ── Update all text & info views ─────────────────────────────────────
+        // Update other views
         views.setTextViewText(R.id.widget_range_text, range);
         views.setTextViewText(R.id.widget_fuel_left_text, litersLeft);
         views.setTextViewText(R.id.widget_empty_text, emptyAt);
         views.setTextViewText(R.id.widget_oil_text, oilLeft);
-
-        // Fuel bar fill level (0-10000 range for ImageView level)
         views.setInt(R.id.widget_fuel_progress_fill, "setImageLevel", Math.min(fuelPercent * 100, 10000));
         views.setInt(R.id.widget_fuel_progress_fill, "setColorFilter", activeColor);
         views.setInt(R.id.widget_oil_dot, "setColorFilter", activeColor);
