@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker, playTone, stopTone } from './hooks/useFuelTracker';
-import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Music, Fuel, Trash2 } from 'lucide-react';
+import { MapPin, AlertTriangle, Settings, Droplets, Bell, BellOff, User, Camera, Smartphone, Music, Fuel, Trash2, X } from 'lucide-react';
 import { translations } from './translations';
 import { App as CapApp } from '@capacitor/app';
 import gsap from 'gsap';
@@ -100,15 +100,19 @@ function App() {
         const { registerPlugin } = await import('@capacitor/core');
         const alarmPlugin = registerPlugin<any>('AlarmPlugin');
         const res = await alarmPlugin.getWidgetAction();
+        
+        console.log('[App] Checking widget action...', res);
+        
         if (res && res.action === 'open_settings') {
-          console.log('[App] Widget action received: open_settings');
-          setShowWidgetMiniSettings(true); // Open the mini settings instead of full
+          console.log('[App] Widget action received: open_settings -> Triggering Card');
+          setTimeout(() => setShowWidgetMiniSettings(true), 500); 
         }
       } catch (e) {
         console.warn('[App] Widget action check failed:', e);
       }
     };
 
+    // Auto-check on load and when app returns to foreground
     handleWidgetAction();
     let stateListener: any = null;
     CapApp.addListener('appStateChange', (state: any) => {
@@ -713,10 +717,12 @@ function App() {
       )}
 
       {showWidgetMiniSettings && (
-        <WidgetMiniSettingsCard
-          tracker={tracker}
-          onClose={() => setShowWidgetMiniSettings(false)}
-        />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(30px)' }}>
+          <WidgetMiniSettingsCard 
+            tracker={tracker} 
+            onClose={() => setShowWidgetMiniSettings(false)} 
+          />
+        </div>
       )}
 
     </div>
@@ -1460,8 +1466,9 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
           )}
         </div>
 
+        </div>
+
       </div>
-    </div>
   );
 }
 

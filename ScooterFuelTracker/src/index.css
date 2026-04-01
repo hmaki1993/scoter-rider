@@ -422,16 +422,18 @@ input[type=number] {
 
 /* --- Widget Mini Settings Customization --- */
 .widget-settings-card {
-  background: rgba(255, 255, 255, 0.04) !important;
-  backdrop-filter: blur(25px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(25px) saturate(200%) !important;
-  border: 1px solid rgba(255, 255, 254, 0.12) !important;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6) !important;
-  animation: mini-scale-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  background: rgba(10, 10, 15, 0.45) !important; /* Semi-transparent dark glass */
+  backdrop-filter: blur(35px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(35px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9) !important;
+  animation: mini-flow-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+  position: relative;
+  z-index: 100;
 }
 
-@keyframes mini-scale-up {
-  from { opacity: 0; transform: scale(0.85) translateY(20px); }
+@keyframes mini-flow-up {
+  from { opacity: 0; transform: scale(0.9) translateY(40px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 

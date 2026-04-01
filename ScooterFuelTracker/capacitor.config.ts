@@ -5,7 +5,17 @@ const config: CapacitorConfig = {
   appName: 'Fuel Tracker',
   webDir: 'dist',
   android: {
-    useLegacyBridge: true
+    useLegacyBridge: true,
+    allowMixedContent: true
+  },
+  plugins: {
+    LocalNotifications: {
+      smallIcon: "ic_launcher", 
+      iconColor: "#488AFF"
+    },
+    SplashScreen: {
+      launchShowDuration: 1000
+    }
   }
 };
 

@@ -14,31 +14,29 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.widget.RemoteViews;
 
-import com.scooterfuel.tracker.R;
-
 public class SpeedometerWidget extends AppWidgetProvider {
 
     public static final String ACTION_UPDATE_STATS = "com.scooterfuel.tracker.ACTION_UPDATE_STATS";
 
-    static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Intent intent) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_speedometer);
+    static void updateAppWidget(android.content.Context context, android.appwidget.AppWidgetManager appWidgetManager, int appWidgetId, android.content.Intent intent) {
+        android.widget.RemoteViews views = new android.widget.RemoteViews(context.getPackageName(), com.scooterfuel.tracker.R.layout.widget_speedometer);
 
         // Click on widget -> Open App
-        Intent mainIntent = new Intent(context, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, mainIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.top_row, pendingIntent);
+        android.content.Intent mainIntent = new android.content.Intent(context, MainActivity.class);
+        android.app.PendingIntent pendingIntent = android.app.PendingIntent.getActivity(context, 0, mainIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.top_row, pendingIntent);
 
         // Settings Button -> Open App + Extra Instruction
-        Intent configIntent = new Intent(context, MainActivity.class);
+        android.content.Intent configIntent = new android.content.Intent(context, MainActivity.class);
         configIntent.putExtra("widget_action", "open_settings");
-        configIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent configPendingIntent = PendingIntent.getActivity(context, appWidgetId + 1000, configIntent, 
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.widget_btn_settings, configPendingIntent);
+        configIntent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        android.app.PendingIntent configPendingIntent = android.app.PendingIntent.getActivity(context, appWidgetId + 1000, configIntent, 
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.widget_btn_settings, configPendingIntent);
 
         // Default values from SharedPreferences (Cached Stats)
-        android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+        android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", android.content.Context.MODE_PRIVATE);
         
         int speed = 0;
         String range = prefs.getString("latest_range", "-- KM");
@@ -48,8 +46,8 @@ public class SpeedometerWidget extends AppWidgetProvider {
         String oilLeft = prefs.getString("latest_oilLeft", "OIL: -- KM");
         String accentColorStr = prefs.getString("latest_accentColor", "#00f0ff");
         int opacity = prefs.getInt("latest_opacity", 100);
-        int themeColor = Color.parseColor("#00f0ff");
-        try { themeColor = Color.parseColor(accentColorStr); } catch (Exception ignored) {}
+        int themeColor = android.graphics.Color.parseColor("#00f0ff");
+        try { themeColor = android.graphics.Color.parseColor(accentColorStr); } catch (Exception ignored) {}
 
         // Override with Live Intent data if it's a broadcast
         if (intent != null && ACTION_UPDATE_STATS.equals(intent.getAction())) {
@@ -61,29 +59,29 @@ public class SpeedometerWidget extends AppWidgetProvider {
             oilLeft = intent.getStringExtra("oilLeft") != null ? intent.getStringExtra("oilLeft") : oilLeft;
             String intentAccent = intent.getStringExtra("accentColor");
             if (intentAccent != null && !intentAccent.isEmpty()) {
-                try { themeColor = Color.parseColor(intentAccent); } catch (Exception ignored) {}
+                try { themeColor = android.graphics.Color.parseColor(intentAccent); } catch (Exception ignored) {}
             }
             opacity = intent.getIntExtra("opacity", opacity);
         }
 
         // ── Drawing the Speedometer (Matching App Style) ──────────────────────
         // Bitmap size: 540x300. Arc centered at bottom center of the drawable area.
-        Bitmap bitmap = Bitmap.createBitmap(540, 300, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(540, 300, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
 
         float cx = 270f;
         float cy = 220f; // Shifted UP to prevent overlap with bottom text data
         float radius = 180f;
-        RectF rect = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
+        android.graphics.RectF rect = new android.graphics.RectF(cx - radius, cy - radius, cx + radius, cy + radius);
 
-        int activeColor = speed > 80 ? Color.parseColor("#ff3366") : themeColor;
+        int activeColor = speed > 80 ? android.graphics.Color.parseColor("#ff3366") : themeColor;
 
         // 1. Background Arc (Dim)
-        Paint arcPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        arcPaint.setStyle(Paint.Style.STROKE);
+        android.graphics.Paint arcPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        arcPaint.setStyle(android.graphics.Paint.Style.STROKE);
         arcPaint.setStrokeWidth(12f);
-        arcPaint.setStrokeCap(Paint.Cap.ROUND);
-        arcPaint.setColor(Color.parseColor("#1AFFFFFF"));
+        arcPaint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+        arcPaint.setColor(android.graphics.Color.parseColor("#1AFFFFFF"));
         canvas.drawArc(rect, 180, 180, false, arcPaint);
 
         // 2. Speed Progress Arc (Neon)
@@ -94,15 +92,15 @@ public class SpeedometerWidget extends AppWidgetProvider {
         arcPaint.clearShadowLayer();
 
         // 3. Ticks & Numbers (Replicating App logic)
-        Paint tickPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        tickPaint.setColor(Color.parseColor("#80FFFFFF"));
+        android.graphics.Paint tickPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        tickPaint.setColor(android.graphics.Color.parseColor("#80FFFFFF"));
         tickPaint.setStrokeWidth(2f);
         
-        Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        labelPaint.setColor(Color.parseColor("#99FFFFFF"));
+        android.graphics.Paint labelPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        labelPaint.setColor(android.graphics.Color.parseColor("#99FFFFFF"));
         labelPaint.setTextSize(18f);
-        labelPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        labelPaint.setTextAlign(Paint.Align.CENTER);
+        labelPaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+        labelPaint.setTextAlign(android.graphics.Paint.Align.CENTER);
 
         int[] values = {0, 20, 40, 60, 80, 100, 120};
         for (int v : values) {
@@ -124,25 +122,25 @@ public class SpeedometerWidget extends AppWidgetProvider {
         }
 
         // 4. Center Digital Speed
-        Paint speedTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        speedTextPaint.setColor(Color.WHITE);
+        android.graphics.Paint speedTextPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        speedTextPaint.setColor(android.graphics.Color.WHITE);
         speedTextPaint.setTextSize(86f);
-        speedTextPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        speedTextPaint.setTextAlign(Paint.Align.CENTER);
+        speedTextPaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+        speedTextPaint.setTextAlign(android.graphics.Paint.Align.CENTER);
         speedTextPaint.setShadowLayer(10f, 0, 0, activeColor);
         canvas.drawText(String.valueOf(speed), cx, cy - 20f, speedTextPaint);
         
         speedTextPaint.clearShadowLayer();
         speedTextPaint.setTextSize(20f);
-        speedTextPaint.setColor(Color.parseColor("#80FFFFFF"));
+        speedTextPaint.setColor(android.graphics.Color.parseColor("#80FFFFFF"));
         speedTextPaint.setFakeBoldText(true);
         canvas.drawText("KM/H", cx, cy + 15f, speedTextPaint);
 
         // 5. Needle
-        Paint needlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        android.graphics.Paint needlePaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         needlePaint.setColor(activeColor);
         needlePaint.setStrokeWidth(6f);
-        needlePaint.setStrokeCap(Paint.Cap.ROUND);
+        needlePaint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
         needlePaint.setShadowLayer(5f, 0, 0, activeColor);
         
         double needleRad = Math.toRadians(180f + sweepAngle);
@@ -150,41 +148,41 @@ public class SpeedometerWidget extends AppWidgetProvider {
         float ny = cy + (radius - 10f) * (float)Math.sin(needleRad);
         canvas.drawLine(cx, cy - 10f, nx, ny, needlePaint);
         
-        needlePaint.setStyle(Paint.Style.FILL);
+        needlePaint.setStyle(android.graphics.Paint.Style.FILL);
         canvas.drawCircle(cx, cy - 10f, 8f, needlePaint);
 
         // Apply background opacity (0-255)
         int alpha = (int) (opacity * 2.55f);
-        views.setInt(R.id.widget_bg_image, "setImageAlpha", alpha);
+        views.setInt(com.scooterfuel.tracker.R.id.widget_bg_image, "setImageAlpha", alpha);
 
         // Apply bitmap
-        views.setImageViewBitmap(R.id.widget_gauge_img, bitmap);
+        views.setImageViewBitmap(com.scooterfuel.tracker.R.id.widget_gauge_img, bitmap);
 
         // Update other views
-        views.setTextViewText(R.id.widget_range_text, range);
-        views.setTextViewText(R.id.widget_fuel_left_text, litersLeft);
-        views.setTextViewText(R.id.widget_empty_text, emptyAt);
-        views.setTextViewText(R.id.widget_oil_text, oilLeft);
-        views.setInt(R.id.widget_fuel_progress_fill, "setImageLevel", Math.min(fuelPercent * 100, 10000));
-        views.setInt(R.id.widget_fuel_progress_fill, "setColorFilter", activeColor);
-        views.setInt(R.id.widget_oil_dot, "setColorFilter", activeColor);
+        views.setTextViewText(com.scooterfuel.tracker.R.id.widget_range_text, range);
+        views.setTextViewText(com.scooterfuel.tracker.R.id.widget_fuel_left_text, litersLeft);
+        views.setTextViewText(com.scooterfuel.tracker.R.id.widget_empty_text, emptyAt);
+        views.setTextViewText(com.scooterfuel.tracker.R.id.widget_oil_text, oilLeft);
+        views.setInt(com.scooterfuel.tracker.R.id.widget_fuel_progress_fill, "setImageLevel", Math.min(fuelPercent * 100, 10000));
+        views.setInt(com.scooterfuel.tracker.R.id.widget_fuel_progress_fill, "setColorFilter", activeColor);
+        views.setInt(com.scooterfuel.tracker.R.id.widget_oil_dot, "setColorFilter", activeColor);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
     @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+    public void onUpdate(android.content.Context context, android.appwidget.AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId, null);
         }
     }
 
     @Override
-    public void onReceive(Context context, Intent intent) {
+    public void onReceive(android.content.Context context, android.content.Intent intent) {
         super.onReceive(context, intent);
         if (ACTION_UPDATE_STATS.equals(intent.getAction())) {
-            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-            ComponentName thisWidget = new ComponentName(context, SpeedometerWidget.class);
+            android.appwidget.AppWidgetManager appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context);
+            android.content.ComponentName thisWidget = new android.content.ComponentName(context, SpeedometerWidget.class);
             int[] appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget);
             for (int appWidgetId : appWidgetIds) {
                 updateAppWidget(context, appWidgetManager, appWidgetId, intent);
