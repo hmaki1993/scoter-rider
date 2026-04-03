@@ -566,8 +566,8 @@ export const useFuelTracker = () => {
             setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
 
             // ── PROFESSIONAL FILTERING ─────────────────────────────────────────
-            const MIN_TRACKING_SPEED = 15; // km/h (Filter Walking/Running)
-            const MAX_GPS_ACCURACY = 20;   // meters (Filter Jitter)
+            const MIN_TRACKING_SPEED = 12; // km/h (Lowered from 15 to catch slow traffic movement)
+            const MAX_GPS_ACCURACY = 30;   // meters (Increased from 20 to improve continuity)
 
             // Ignore jumpy/poor GPS signals (> 30m accuracy)
             if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
@@ -644,35 +644,10 @@ export const useFuelTracker = () => {
     } catch(e) {
       console.warn('[FuelTracker] Native bg tracking failed to start', e);
     }
-
-    // ── GPS Health Monitor ────────────────────────────────────────────────
-    let failCount = 0;
-    const monitorId = setInterval(async () => {
-      try {
-        await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
-        failCount = 0; // Success! Reset counter
-      } catch {
-        failCount++;
-        // GPS unavailable — notify user
-        try {
-          const { LocalNotifications } = await import('@capacitor/local-notifications');
-          const lang = (settings.language in translations) ? settings.language : 'ar';
-          await LocalNotifications.schedule({
-            notifications: [{
-              title: (translations[lang] as any)?.gpsOffTitle,
-              body: (translations[lang] as any)?.gpsOffBody,
-              id: 9999,
-              schedule: { at: new Date(Date.now() + 200) },
-              channelId: `fuel_alert_v14_premium`,
-              attachments: [],
-              extra: null,
-              priority: 2,
-            } as any]
-          });
-        } catch { /* noop */ }
-      }
-    }, 30000);
-    (window as any).__gpsMonitorId = monitorId;
+    // NOTE: GPS Health Monitor removed — it was calling getCurrentPosition() every 30s
+    // while watchPosition() was already active, causing Android to kill the WebView
+    // due to concurrent GPS request conflicts. The watchPosition error callback handles
+    // GPS loss detection instead.
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -705,10 +680,7 @@ export const useFuelTracker = () => {
     lastPositionRef.current = null;
     releaseWakeLock();
 
-    if ((window as any).__gpsMonitorId) {
-      clearInterval((window as any).__gpsMonitorId);
-      (window as any).__gpsMonitorId = null;
-    }
+    // (GPS health monitor interval was removed — no cleanup needed)
   };
 
 
