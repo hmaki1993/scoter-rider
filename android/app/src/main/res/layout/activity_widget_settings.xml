@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/dialog_bg">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Widget Settings"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-medium"
+            android:textSize="22sp" />
+        <TextView
+            android:id="@+id/btn_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="SAVE"
+            android:textColor="#00f0ff"
+            android:fontFamily="sans-serif-medium"
+            android:textSize="16sp"
+            android:padding="12dp"
+            android:background="?android:attr/selectableItemBackground" />
+    </RelativeLayout>
+
+    <!-- Accent Color -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Accent Color"
+        android:textColor="#FFFFFF"
+        android:fontFamily="sans-serif-condensed"
+        android:textSize="18sp"
+        android:layout_marginBottom="12dp" />
+
+    <RadioGroup
+        android:id="@+id/rg_colors"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="24dp">
+        <RadioButton android:id="@+id/rb_color_cyan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" Cyan Elite" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#00f0ff" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_color_red" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" Sport Red" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#ff3366" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_color_green" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" Eco Green" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#00ffaa" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_color_yellow" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" Warning Yellow" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#f0ff00" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_color_purple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" Royal Purple" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#b200ff" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_color_orange" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" Blaze Orange" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#ff6600" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+    </RadioGroup>
+
+    <!-- Transparency -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Transparency level"
+        android:textColor="#FFFFFF"
+        android:fontFamily="sans-serif-condensed"
+        android:textSize="18sp"
+        android:layout_marginBottom="12dp" />
+
+    <RadioGroup
+        android:id="@+id/rg_opacity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <RadioButton android:id="@+id/rb_op_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" 0% (Solid Black)" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#FFFFFF" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_op_20" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" 20%" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#FFFFFF" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_op_40" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" 40%" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#FFFFFF" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_op_60" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" 60%" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#FFFFFF" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_op_80" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" 80%" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#FFFFFF" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+        <RadioButton android:id="@+id/rb_op_100" android:layout_width="match_parent" android:layout_height="wrap_content" android:text=" 100% (Glass Theme)" android:textColor="#CCCCCC" android:fontFamily="sans-serif-condensed" android:button="@drawable/radio_mosmat_selector" android:buttonTint="#FFFFFF" android:textSize="14sp" android:paddingStart="12dp" android:layout_marginBottom="12dp" android:background="?android:attr/selectableItemBackground" />
+    </RadioGroup>
+
+</LinearLayout>

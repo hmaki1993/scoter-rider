@@ -13,12 +13,20 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity
+            android:name=".WidgetSettingsActivity"
+            android:theme="@style/WidgetSettingsTheme"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:exported="true" />
 
         <service
             android:name=".BackgroundTrackingService"
@@ -48,6 +56,14 @@
                 <action android:name="com.scooterfuel.tracker.ACTION_UPDATE_STATS" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />
+        </receiver>
+
+        <receiver android:name=".AlarmActionReceiver" android:exported="false" />
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
         </receiver>
     </application>
 

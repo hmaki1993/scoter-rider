@@ -25,15 +25,15 @@ public class SpeedometerWidget extends AppWidgetProvider {
         android.content.Intent mainIntent = new android.content.Intent(context, MainActivity.class);
         android.app.PendingIntent pendingIntent = android.app.PendingIntent.getActivity(context, 0, mainIntent,
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.top_row, pendingIntent);
+        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.widget_root, pendingIntent);
 
-        // Settings Button -> Open App + Extra Instruction
-        android.content.Intent configIntent = new android.content.Intent(context, MainActivity.class);
-        configIntent.putExtra("widget_action", "open_settings");
+        // Settings Button -> Open Native Widget Settings Dialog
+        android.content.Intent configIntent = new android.content.Intent(context, WidgetSettingsActivity.class);
+        configIntent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         configIntent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
         android.app.PendingIntent configPendingIntent = android.app.PendingIntent.getActivity(context, appWidgetId + 1000, configIntent, 
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-        // Note: widget_btn_settings removed - top_row tap handles open_settings action
+        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.widget_btn_settings, configPendingIntent);
 
         // Default values from SharedPreferences (Cached Stats)
         android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", android.content.Context.MODE_PRIVATE);
@@ -46,8 +46,28 @@ public class SpeedometerWidget extends AppWidgetProvider {
         String oilLeft = prefs.getString("latest_oilLeft", "OIL: --");
         String tripText = prefs.getString("latest_trip", "TRIP: --");
         String budgetText = prefs.getString("latest_budget", "-- EGP");
-        String accentColorStr = prefs.getString("latest_accentColor", "#00f0ff");
-        int opacity = prefs.getInt("latest_opacity", 100);
+        String odoText = prefs.getString("latest_odo", "");
+        
+        // Fallback: read ODO directly from Capacitor's stored fuel_state JSON
+        if (odoText.isEmpty() || odoText.equals("ODO: --") || odoText.equals("ODO: 0")) {
+            try {
+                android.content.SharedPreferences capPrefs = context.getSharedPreferences("CapacitorStorage", android.content.Context.MODE_PRIVATE);
+                String fuelStateJson = capPrefs.getString("fuel_state", null);
+                if (fuelStateJson != null) {
+                    org.json.JSONObject fuelState = new org.json.JSONObject(fuelStateJson);
+                    double lastOdo = fuelState.optDouble("lastOdo", 0);
+                    if (lastOdo > 0) {
+                        odoText = String.format("ODO: %.0f", lastOdo);
+                        // Also save so next time it's ready immediately
+                        prefs.edit().putString("latest_odo", odoText).apply();
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        if (odoText.isEmpty()) odoText = "ODO: --";
+        
+        String accentColorStr = WidgetStore.getColor(context);
+        int opacity = WidgetStore.getOpacity(context);
         int themeColor = android.graphics.Color.parseColor("#00f0ff");
         try { themeColor = android.graphics.Color.parseColor(accentColorStr); } catch (Exception ignored) {}
 
@@ -61,6 +81,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
             oilLeft = intent.getStringExtra("oilLeft") != null ? intent.getStringExtra("oilLeft") : oilLeft;
             tripText = intent.getStringExtra("trip") != null ? intent.getStringExtra("trip") : tripText;
             budgetText = intent.getStringExtra("budget") != null ? intent.getStringExtra("budget") : budgetText;
+            odoText = intent.getStringExtra("odo") != null ? intent.getStringExtra("odo") : odoText;
             String intentAccent = intent.getStringExtra("accentColor");
             if (intentAccent != null && !intentAccent.isEmpty()) {
                 try { themeColor = android.graphics.Color.parseColor(intentAccent); } catch (Exception ignored) {}
@@ -169,12 +190,14 @@ public class SpeedometerWidget extends AppWidgetProvider {
         views.setTextViewText(com.scooterfuel.tracker.R.id.widget_oil_text, oilLeft);
         views.setTextViewText(com.scooterfuel.tracker.R.id.widget_trip_text, tripText);
         views.setTextViewText(com.scooterfuel.tracker.R.id.widget_budget_text, budgetText);
+        views.setTextViewText(com.scooterfuel.tracker.R.id.widget_odo_text, odoText);
         
         views.setInt(com.scooterfuel.tracker.R.id.widget_fuel_progress_fill, "setImageLevel", Math.min(fuelPercent * 100, 10000));
         views.setInt(com.scooterfuel.tracker.R.id.widget_fuel_progress_fill, "setColorFilter", activeColor);
         views.setInt(com.scooterfuel.tracker.R.id.widget_oil_dot, "setColorFilter", activeColor);
         views.setInt(com.scooterfuel.tracker.R.id.widget_trip_dot, "setColorFilter", android.graphics.Color.parseColor("#00f0ff"));
         views.setInt(com.scooterfuel.tracker.R.id.widget_budget_dot, "setColorFilter", android.graphics.Color.parseColor("#f0ff00"));
+        views.setInt(com.scooterfuel.tracker.R.id.widget_odo_dot, "setColorFilter", android.graphics.Color.parseColor("#ffffff"));
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }

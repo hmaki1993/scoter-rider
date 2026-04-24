@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
 import { App } from '@capacitor/app';
 import { translations } from '../translations';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { registerPlugin } from '@capacitor/core';
 
 export interface FuelSettings {
@@ -50,7 +49,7 @@ export interface RefuelLog {
 
 const DEFAULT_SETTINGS: FuelSettings = {
   tankCapacity: 7,
-  avgConsumption: 21.4,
+  avgConsumption: 16.6,
   warningThreshold: 30,
   fuelPricePerLiter: 22.25,
   autoTrack: false,
@@ -139,9 +138,18 @@ export const playTone = (
 
     let sequenceCount = 0;
     const playSequence = () => {
-      if (!globalAudioCtx) return;
-      const now = globalAudioCtx.currentTime;
+      if (!globalAudioCtx || globalAudioCtx.state === 'closed') {
+        if (globalToneInterval) { clearInterval(globalToneInterval); globalToneInterval = null; }
+        return;
+      }
       
+      // ── AUTO-STOP after EXACTLY 3 rounds ──
+      if (sequenceCount >= 3) {
+        stopTone();
+        return;
+      }
+
+      const now = globalAudioCtx.currentTime;
       const playBeep = (freq: number, startTime: number, duration: number, vol = 0.1, wave: 'sine'|'square'|'sawtooth'|'triangle' = 'sine') => {
         const osc = globalAudioCtx!.createOscillator();
         const gain = globalAudioCtx!.createGain();
@@ -186,9 +194,9 @@ export const playTone = (
       globalToneInterval = setInterval(playSequence, 3000);
     } else {
       setTimeout(() => {
-        if (audioCtxRef?.current === ctx) {
+        if (globalAudioCtx === ctx) {
           ctx.close().catch(() => {});
-          if (audioCtxRef) audioCtxRef.current = null;
+          globalAudioCtx = null;
         }
       }, 2500);
     }
@@ -230,30 +238,94 @@ function isAndroidPlatform() {
 }
 
 export const useFuelTracker = () => {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('scooter_user_profile');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [settings, setSettings] = useState<FuelSettings>(() => {
-    const saved = localStorage.getItem('fuel_settings');
-    if (saved) {
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [settings, setSettings] = useState<FuelSettings>(DEFAULT_SETTINGS);
+  const [fuelState, setFuelState] = useState<FuelState>({ estimatedFuelLiters: 0, lastOdo: 0, totalGpsDistance: 0 });
+  const [logs, setLogs] = useState<RefuelLog[]>([]);
+
+  // ── Capacitor Preferences Migration & Load & Native Sync ────────────────────
+  useEffect(() => {
+    async function loadData() {
       try {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_SETTINGS, ...parsed };
+        const { Preferences } = await import('@capacitor/preferences');
+        const { registerPlugin } = await import('@capacitor/core');
+        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        
+        // Helper to load or migrate from localStorage
+        const getOrMigrate = async (key: string) => {
+          const { value } = await Preferences.get({ key });
+          if (value !== null) return value;
+          const old = localStorage.getItem(key);
+          if (old !== null) {
+            await Preferences.set({ key, value: old });
+            return old;
+          }
+          return null;
+        };
+
+        // 1. Fetch Basic Core Stats
+        const savedProfile = await getOrMigrate('scooter_user_profile');
+        if (savedProfile) setUserProfile(JSON.parse(savedProfile));
+
+        const savedState = await getOrMigrate('fuel_state');
+        if (savedState) setFuelState(JSON.parse(savedState));
+
+        const savedLogs = await getOrMigrate('fuel_logs');
+        if (savedLogs) setLogs(JSON.parse(savedLogs));
+
+        // 2. Fetch Native Widget Settings (Source of Truth for Look)
+        let nativeLook: any = null;
+        if (isAndroidPlatform()) {
+           try { nativeLook = await alarmPlugin.getWidgetSettings(); } catch {}
+        }
+
+        // 3. Merge Settings (Preferences vs Native)
+        // CRITICAL: Strip widgetAccentColor & widgetOpacity from saved prefs COMPLETELY.
+        // They are exclusively owned by WidgetStore (native file). Never read them from prefs.
+        const savedSettings = await getOrMigrate('fuel_settings');
+        let finalSettings = DEFAULT_SETTINGS;
+        if (savedSettings) {
+          try {
+            const parsed = JSON.parse(savedSettings);
+            // DELETE the color/opacity from the parsed prefs before merging
+            delete parsed.widgetAccentColor;
+            delete parsed.widgetOpacity;
+            finalSettings = { ...DEFAULT_SETTINGS, ...parsed };
+          } catch {}
+        }
+
+        // ALWAYS override with Native (WidgetStore file) — this is the only source of truth
+        if (nativeLook) {
+           finalSettings = {
+             ...finalSettings,
+             widgetAccentColor: nativeLook.accentColor || finalSettings.widgetAccentColor,
+             widgetOpacity: nativeLook.opacity !== undefined ? nativeLook.opacity : finalSettings.widgetOpacity
+           };
+        }
+        setHasSyncedFromNative(true); // Always allow sync — WidgetStore is reliable
+        setSettings(finalSettings);
+
+        // 4. Migrate Remaining State
+        await getOrMigrate('custom_trip_base');
+        await getOrMigrate('was_tracking');
+        await getOrMigrate('resume_tracking_on_gps');
+        const savedLastGps = await getOrMigrate('last_gps_position');
+        if (savedLastGps) {
+          try { lastPositionRef.current = JSON.parse(savedLastGps); } catch {}
+        }
+
+        // 5. Finalize
+        setIsDataLoaded(true);
+        if (!nativeLook && isAndroidPlatform()) setHasSyncedFromNative(true); // fallback
       } catch (e) {
-        return DEFAULT_SETTINGS;
+        console.error('Error loading preferences', e);
+        setIsDataLoaded(true); 
+        setHasSyncedFromNative(true);
       }
     }
-    return DEFAULT_SETTINGS;
-  });
-  const [fuelState, setFuelState] = useState<FuelState>(() => {
-    const saved = localStorage.getItem('fuel_state');
-    return saved ? JSON.parse(saved) : { estimatedFuelLiters: 0, lastOdo: 0, totalGpsDistance: 0 };
-  });
-  const [logs, setLogs] = useState<RefuelLog[]>(() => {
-    const saved = localStorage.getItem('fuel_logs');
-    return saved ? JSON.parse(saved) : [];
-  });
+    loadData();
+  }, []);
 
   const [isTracking, setIsTracking] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -262,25 +334,21 @@ export const useFuelTracker = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [gpsUpdateCount, setGpsUpdateCount] = useState(0);
   const [lastGpsTime, setLastGpsTime] = useState<string | null>(null);
+  const [hasSyncedFromNative, setHasSyncedFromNative] = useState(false);
   const lastPositionRef = useRef<any>(null);
   const watchId = useRef<string | null>(null);
   const wakeLock = useRef<any>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
-  const lastNotifiedStepRef = useRef<number>(999);
+
   const lastNotifiedKmRef = useRef<number>(999);
+  const isManuallyChanged = useRef(false);
 
   // ── settingsRef: always up-to-date inside GPS callbacks (fixes stale closure) ──
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
-  // ── Restore last GPS position from localStorage on mount ──────────────────
-  useEffect(() => {
-    const saved = localStorage.getItem('last_gps_position');
-    if (saved) {
-      try { lastPositionRef.current = JSON.parse(saved); } catch { /* ignore */ }
-    }
-  }, []);
+  // Initial native sync & state restoration moved to consolidated loadData
 
   // ── Register Notification Channel & Actions ──────────────────────────────
   useEffect(() => {
@@ -349,6 +417,12 @@ export const useFuelTracker = () => {
     })();
   }, [settings.language]);
 
+
+  // ── Bridge Alarm Control ────────────────────────────────────────────────
+  // NOTE: Listener is registered only on window (not document) to prevent duplicate firing.
+  // See also: useEffect below at line ~478 for the unified single listener.
+  // (Duplicate document listener removed — was causing double-stop calls)
+
   // ── Audio Warning ─────────────────────────────────────────────────────────
   const playWarningSound = (isAlarm = false) => {
     if (!settings.enableAlerts || isMuted) return;
@@ -389,6 +463,13 @@ export const useFuelTracker = () => {
   const releaseWakeLock = () => {
     if (wakeLock.current) { wakeLock.current.release(); wakeLock.current = null; }
   };
+
+  // ── Native Alarm Action Listener ──────────────────────────────────────────
+  useEffect(() => {
+    const handleStopEvent = () => stopTone();
+    window.addEventListener('stopFuelAlarmEvent', handleStopEvent);
+    return () => window.removeEventListener('stopFuelAlarmEvent', handleStopEvent);
+  }, []);
 
   // ── Haversine Distance ───────────────────────────────────────────────────
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -475,7 +556,9 @@ export const useFuelTracker = () => {
       if (silent && isAndroid) {
         const locPerm = await Geolocation.checkPermissions();
         if (locPerm.location !== 'granted') {
-          localStorage.setItem('was_tracking', 'false');
+          // Fix: Use Capacitor Preferences instead of localStorage (survives WebView restarts)
+          const { Preferences } = await import('@capacitor/preferences');
+          await Preferences.set({ key: 'was_tracking', value: 'false' });
           return;
         }
       }
@@ -490,13 +573,15 @@ export const useFuelTracker = () => {
     }
 
     // ── STEP 3: Initiate Tracking ────────────────────────────────────────
-    localStorage.setItem('was_tracking', 'true');
-    localStorage.removeItem('resume_tracking_on_gps');
+    // Fix: Use Capacitor Preferences for all persistent state (localStorage is wiped on Android WebView restart)
+    const { Preferences: TrackingPrefs } = await import('@capacitor/preferences');
+    await TrackingPrefs.set({ key: 'was_tracking', value: 'true' });
+    await TrackingPrefs.remove({ key: 'resume_tracking_on_gps' });
 
     // Restore last position if available
-    const savedPos = localStorage.getItem('last_gps_position');
-    if (savedPos && !lastPositionRef.current) {
-      try { lastPositionRef.current = JSON.parse(savedPos); } catch { /* ignore */ }
+    const savedPosRes = await TrackingPrefs.get({ key: 'last_gps_position' });
+    if (savedPosRes.value && !lastPositionRef.current) {
+      try { lastPositionRef.current = JSON.parse(savedPosRes.value); } catch { /* ignore */ }
     }
 
     setIsTracking(true);
@@ -529,29 +614,57 @@ export const useFuelTracker = () => {
             setGpsUpdateCount(prev => prev + 1);
             setLastGpsTime(new Date().toLocaleTimeString());
 
-            // ── Update Current Speed (Live & Accurate) ─────────────────────────
+            // ── PROFESSIONAL FILTERING ─────────────────────────────────────────
+            const MIN_TRACKING_SPEED = 6;  // Minimum speed to count distance
+            const MAX_GPS_ACCURACY = 50;   // Max acceptable GPS accuracy in meters
+
+            // 🐛 FIX Bug#2: Accuracy check FIRST — before any distance calculation
+            // If GPS signal is poor, update ref position (so we don't drift) but skip counting
+            if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
+              // Still advance the ref so we don't accumulate distance from stale point later
+              if (pos.coords) {
+                lastPositionRef.current = {
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                  timestamp: pos.timestamp ?? Date.now(),
+                  accuracy: pos.coords.accuracy
+                };
+              }
+              return;
+            }
+
+            // ── Calculate distance & time from last known position ──────────────
             const nativeSpeed = pos.coords?.speed;
             let currentKmh = 0;
-            
-            // 1. Calculate fallback speed from distance/time for better "live" response
             let calculatedKmh = 0;
+            let dist = 0;
+            let timeDiffMs = 0;
+
             if (lastPositionRef.current && pos.coords) {
-              const dist = calculateDistance(
+              // 🐛 FIX Bug#3: Validate timestamps before using them
+              const prevTimestamp = lastPositionRef.current.timestamp;
+              const currTimestamp = pos.timestamp ?? Date.now();
+              const isValidTimestamp = prevTimestamp > 0 && currTimestamp > prevTimestamp;
+
+              dist = calculateDistance(
                 lastPositionRef.current.latitude, lastPositionRef.current.longitude,
                 pos.coords.latitude, pos.coords.longitude
               );
-              const timeDiffMs = Math.max(1, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
-              // Filter logic: ignore time diffs > 30s as they might be app resumes
-              if (timeDiffMs < 30000) {
-                const hours = timeDiffMs / (1000 * 60 * 60);
-                calculatedKmh = dist / hours;
+
+              if (isValidTimestamp) {
+                timeDiffMs = Math.max(1, currTimestamp - prevTimestamp);
+                // Only calculate speed if time gap is reasonable (< 60 seconds)
+                if (timeDiffMs < 60000) {
+                  const hours = timeDiffMs / (1000 * 60 * 60);
+                  calculatedKmh = dist / hours;
+                }
               }
             }
 
-            // 2. Use the most responsive speed value (Trust native more, use calculated as backup)
+            // ── Use the most responsive speed value ─────────────────────────────
             if (nativeSpeed !== null && nativeSpeed !== undefined) {
               const nativeKmh = nativeSpeed * 3.6;
-              // If native speed is very low (< 3km/h), ignore high "calculated" speeds which are likely GPS jitter
+              // Stability filter: ignore high "calculated" speeds when native speed is low
               if (nativeKmh < 3 && calculatedKmh > 10) {
                 currentKmh = nativeKmh;
               } else {
@@ -561,41 +674,37 @@ export const useFuelTracker = () => {
               currentKmh = calculatedKmh;
             }
 
-            // 3. Smooth and update UI
+            // ── Update UI speed display ──────────────────────────────────────────
             const finalDisplaySpeed = Math.round(currentKmh);
             setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
 
-            // ── PROFESSIONAL FILTERING ─────────────────────────────────────────
-            const MIN_TRACKING_SPEED = 12; // km/h (Lowered from 15 to catch slow traffic movement)
-            const MAX_GPS_ACCURACY = 30;   // meters (Increased from 20 to improve continuity)
+            // Dynamic Gap Threshold: Max allowed speed ~140km/h (approx 0.04 km/sec)
+            const maxAllowedDist = Math.max(0.15, (timeDiffMs / 1000) * 0.04);
 
-            // Ignore jumpy/poor GPS signals (> 30m accuracy)
-            if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
-              console.warn(`[FuelTracker] Weak GPS Signal: Accuracy=${pos.coords.accuracy}m. Ignoring movement.`);
-              return;
-            }
-
-            // ── Persist latest position so it survives app kill ───────────────
+            // ── Persist latest position ──────────────────────────────────────────
             const posToSave = {
               latitude: pos.coords?.latitude,
               longitude: pos.coords?.longitude,
               timestamp: pos.timestamp ?? Date.now(),
               accuracy: pos.coords?.accuracy
             };
-            localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
+            // Fire-and-forget async save — doesn't block the GPS callback
+            import('@capacitor/preferences').then(({ Preferences }) =>
+              Preferences.set({ key: 'last_gps_position', value: JSON.stringify(posToSave) })
+            ).catch(() => {});
 
             setFuelState(prev => {
               if (lastPositionRef.current && pos.coords) {
-                const dist = calculateDistance(
-                  lastPositionRef.current.latitude, lastPositionRef.current.longitude,
-                  pos.coords.latitude, pos.coords.longitude
-                );
-                
-                // Effective movement must be > 5 meters to prevent jitter
-                if (dist > 0.005) {
-                  // ONLY track mileage if effective speed is above threshold (Filter Walking)
+
+                if (dist >= maxAllowedDist) {
+                  // 🚫 Teleport/GPS jump — skip, don't advance ref
+                  return prev;
+                }
+
+                if (dist > 0.004) {
                   if (currentKmh >= MIN_TRACKING_SPEED) {
-                    const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
+                    // ✅ Moving fast enough — count distance & advance ref
+                    const consumed = dist / (settingsRef.current.avgConsumption || 16.6);
                     lastPositionRef.current = posToSave;
                     return {
                       ...prev,
@@ -603,10 +712,18 @@ export const useFuelTracker = () => {
                       lastOdo: prev.lastOdo + dist,
                       totalGpsDistance: prev.totalGpsDistance + dist,
                     };
+                  } else {
+                    // 🐛 FIX Bug#1: Slow/idle — skip distance but ADVANCE ref
+                    lastPositionRef.current = posToSave;
+                    return prev;
                   }
+                } else {
+                  // Jitter < 4m — advance ref silently
+                  lastPositionRef.current = posToSave;
+                  return prev;
                 }
-                return prev;
               }
+              // First GPS fix
               lastPositionRef.current = posToSave;
               return prev;
             });
@@ -630,7 +747,10 @@ export const useFuelTracker = () => {
       });
       setIsTracking(false);
       setIsStarting(false);
-      localStorage.setItem('was_tracking', 'false');
+      // Fix: Use Preferences instead of localStorage
+      import('@capacitor/preferences').then(({ Preferences }) =>
+        Preferences.set({ key: 'was_tracking', value: 'false' })
+      ).catch(() => {});
       return;
     }
 
@@ -654,9 +774,11 @@ export const useFuelTracker = () => {
   // stopTracking
   // ═══════════════════════════════════════════════════════════════════════════
   const stopTracking = async () => {
-    localStorage.setItem('was_tracking', 'false');
+    // Fix: Use Capacitor Preferences instead of localStorage
+    const { Preferences: StopPrefs } = await import('@capacitor/preferences');
+    await StopPrefs.set({ key: 'was_tracking', value: 'false' });
     // Clear saved position when user explicitly stops tracking
-    localStorage.removeItem('last_gps_position');
+    await StopPrefs.remove({ key: 'last_gps_position' });
 
     if (watchId.current !== null) {
       try {
@@ -691,7 +813,10 @@ export const useFuelTracker = () => {
     let appStateListener: any = null;
 
     const init = async () => {
-      const wasTracking = localStorage.getItem('was_tracking') === 'true';
+      // Fix: Read from Capacitor Preferences (consistent with how we write)
+      const { Preferences: InitPrefs } = await import('@capacitor/preferences');
+      const wasTrackingRes = await InitPrefs.get({ key: 'was_tracking' });
+      const wasTracking = wasTrackingRes.value === 'true';
 
       // 1. Recover accumulated distance if app was killed while tracking
       if (wasTracking) {
@@ -720,8 +845,12 @@ export const useFuelTracker = () => {
 
       appStateListener = await App.addListener('appStateChange', async (state) => {
         if (state.isActive) {
-          const stillTracking = localStorage.getItem('was_tracking') === 'true';
-          const resumeAfterGps = localStorage.getItem('resume_tracking_on_gps') === 'true';
+          const { Preferences } = await import('@capacitor/preferences');
+          const stillTrackingRes = await Preferences.get({ key: 'was_tracking' });
+          const resumeAfterGpsRes = await Preferences.get({ key: 'resume_tracking_on_gps' });
+          
+          const stillTracking = stillTrackingRes.value === 'true';
+          const resumeAfterGps = resumeAfterGpsRes.value === 'true';
 
           // 2. Recover distance if app was merely suspended/swiped away
           if (stillTracking) {
@@ -758,7 +887,7 @@ export const useFuelTracker = () => {
           if (resumeAfterGps) {
             // User returned from GPS settings — try starting tracking again
             console.log('[FuelTracker] Returned from GPS settings — retrying tracking...');
-            localStorage.removeItem('resume_tracking_on_gps');
+            await Preferences.remove({ key: 'resume_tracking_on_gps' });
             setTimeout(() => startTracking(false), 800);
           } else if (stillTracking && watchId.current === null) {
             // Watcher was killed by OS — restart silently
@@ -773,11 +902,37 @@ export const useFuelTracker = () => {
     return () => { appStateListener?.remove(); };
   }, []);
 
-  // ── Persist state ─────────────────────────────────────────────────────────
-  useEffect(() => { localStorage.setItem('scooter_user_profile', JSON.stringify(userProfile)); }, [userProfile]);
-  useEffect(() => { localStorage.setItem('fuel_settings', JSON.stringify(settings)); }, [settings]);
-  useEffect(() => { localStorage.setItem('fuel_state', JSON.stringify(fuelState)); }, [fuelState]);
-  useEffect(() => { localStorage.setItem('fuel_logs', JSON.stringify(logs)); }, [logs]);
+  // ── Persistence to Capacitor Preferences ──────────────────────────────────
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    import('@capacitor/preferences').then(({ Preferences }) => {
+      Preferences.set({ key: 'scooter_user_profile', value: JSON.stringify(userProfile) });
+    });
+  }, [userProfile, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    import('@capacitor/preferences').then(({ Preferences }) => {
+      // CRITICAL: NEVER save widgetAccentColor or widgetOpacity to Preferences.
+      // They are exclusively owned by WidgetStore (native file) to prevent reversion.
+      const { widgetAccentColor, widgetOpacity, ...settingsToSave } = settings;
+      Preferences.set({ key: 'fuel_settings', value: JSON.stringify(settingsToSave) });
+    });
+  }, [settings, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    import('@capacitor/preferences').then(({ Preferences }) => {
+      Preferences.set({ key: 'fuel_state', value: JSON.stringify(fuelState) });
+    });
+  }, [fuelState, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    import('@capacitor/preferences').then(({ Preferences }) => {
+      Preferences.set({ key: 'fuel_logs', value: JSON.stringify(logs) });
+    });
+  }, [logs, isDataLoaded]);
 
   // ── Low-Fuel Alerts ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -794,20 +949,14 @@ export const useFuelTracker = () => {
           const lang = (settings.language in translations) ? settings.language : 'ar';
           const display = currentKmFloor.toString();
           
-          // ── STEP 1: DROP NOTIFICATION FIRST (Pre-imported, High Importance) ──
-          LocalNotifications.schedule({
-            notifications: [{
-              title: (translations[lang] as any)?.lowFuelAlertTitle,
-              body: typeof (translations[lang] as any)?.lowFuelAlertBody === 'function' 
-                ? (translations[lang] as any).lowFuelAlertBody(display) 
-                : display,
-              id: Math.floor(Math.random() * 100000) + 1,
-              schedule: { at: new Date(), allowWhileIdle: true },
-              actionTypeId: 'FUEL_ALARM_ACTIONS',
-              channelId: `fuel_alert_v14_premium`,
-              importance: 5, 
-              priority: 2,
-            } as any]
+          // ── STEP 1: DROP NOTIFICATION FIRST (100% Native, High Importance) ──
+          const title = (translations[lang] as any)?.lowFuelAlertTitle || "⚠️ Fuel Alert";
+          const bodyFunc = (translations[lang] as any)?.lowFuelAlertBody;
+          const body = typeof bodyFunc === 'function' ? bodyFunc(display) : display;
+
+          registerPlugin<any>('AlarmPlugin').showFuelPopup({
+            title: title,
+            body: body
           }).catch(console.warn);
 
           // ── STEP 2: Trigger Alarm Sound/Vibration Immediately ──
@@ -848,7 +997,38 @@ export const useFuelTracker = () => {
 
     setLogs(prev => isEdit ? prev.map((l, i) => i === 0 ? newLog : l) : [newLog, ...prev]);
     setFuelState({ estimatedFuelLiters: newFuel, lastOdo: odo, totalGpsDistance: 0 });
-    lastNotifiedStepRef.current = 999;
+    lastNotifiedKmRef.current = 999;
+    
+    // ── Auto-Calculate Consumption Average ──────────────────────────────────
+    // Only calculate if we have a previous "Full Tank" and the CURRENT is "Full Tank"
+    if (!isEdit && isFullTank) {
+      // Find the most recent "Full Tank" in logs
+      const prevFullLog = logs.find(l => l.isFullTank);
+      if (prevFullLog) {
+        const distanceSinceFull = odo - prevFullLog.odo;
+        if (distanceSinceFull > 10) { // Safety: Need at least 10km to be accurate
+          // Sum up all liters added BETWEEN the previous full tank and BEFORE this one
+          let litersUsed = 0;
+          for (const log of logs) {
+            if (log.id === prevFullLog.id) break;
+            litersUsed += log.litersAdded;
+          }
+          // Plus the liters we just added to get it back to FULL
+          litersUsed += liters;
+
+          if (litersUsed > 0) {
+            const actualAvg = distanceSinceFull / litersUsed;
+            console.log(`[FuelTracker] Actual Avg Calculated: ${actualAvg.toFixed(2)} km/L`);
+            
+            // If the difference is significant (>3%), update settings automatically
+            const diff = Math.abs(actualAvg - settings.avgConsumption);
+            if (diff > 0.5) {
+              setSettings(prev => ({ ...prev, avgConsumption: Number(actualAvg.toFixed(1)) }));
+            }
+          }
+        }
+      }
+    }
     
     // ── FIX: Stop vibration upon refueling ──
     stopTone();
@@ -908,17 +1088,19 @@ export const useFuelTracker = () => {
     setSettings(DEFAULT_SETTINGS);
     setUserProfile(null);
     setIsMuted(false);
-    localStorage.clear();
+    import('@capacitor/preferences').then(({ Preferences }) => {
+      Preferences.clear();
+    });
     setTimeout(() => { window.location.reload(); }, 300);
   };
 
   // ── Derived UI values ─────────────────────────────────────────────────────
   const rangeRemainingKm = Math.max(0, fuelState.estimatedFuelLiters * settings.avgConsumption);
-  const runOutOdo = fuelState.lastOdo + rangeRemainingKm;
+  const runOutOdo = (fuelState.lastOdo || 0) + rangeRemainingKm;
   const isWarning = rangeRemainingKm <= settings.warningThreshold;
   const isDanger = rangeRemainingKm <= 10;
   const fuelPercentage = Math.min(100, Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100));
-  const kmSinceOilChange = Math.max(0, fuelState.lastOdo - settings.lastOilChangeOdo);
+  const kmSinceOilChange = Math.max(0, (fuelState.lastOdo || 0) - (settings.lastOilChangeOdo || 0));
   const kmUntilNextOilChange = Math.max(0, settings.oilChangeInterval - kmSinceOilChange);
 
   const recordOilChange = (odoValue: number) => {
@@ -926,13 +1108,32 @@ export const useFuelTracker = () => {
   };
 
   // ── Sync Live Stats with Native Widget ────────────────────────────────────
+  const isFirstRender = useRef(true);
+  const prevSettingsRef = useRef<FuelSettings | null>(null);
+  
   useEffect(() => {
-    if (!isAndroidPlatform()) return;
+    if (!isAndroidPlatform() || !hasSyncedFromNative || !isDataLoaded) return;
     
-    const updateWidget = () => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevSettingsRef.current = settings;
+    }
+    
+    // Accurately detect if the color/opacity changed compared to last sync
+    const isSettingsChange = settings.widgetAccentColor !== prevSettingsRef.current?.widgetAccentColor || 
+                             settings.widgetOpacity !== prevSettingsRef.current?.widgetOpacity;
+                             
+    // If it's pure telemetry updating, we do NOT want to overwrite the colors! 
+    // We only send colors if they actually changed manually inside the React app.
+    const shouldSendColors = isSettingsChange && isManuallyChanged.current;
+
+    prevSettingsRef.current = settings; // Update after check
+    isManuallyChanged.current = false;  // Reset manual flag
+
+    const updateWidget = async () => {
       try {
-        // Calculate Trip & Budget logic matching App.tsx
-        const tripValue = Math.max(0, fuelState.lastOdo - (Number(localStorage.getItem('custom_trip_base')) || logs[0]?.odo || 0));
+        const tripBaseRes = await (await import('@capacitor/preferences')).Preferences.get({ key: 'custom_trip_base' });
+        const tripValue = Math.max(0, (fuelState.lastOdo || 0) - (Number(tripBaseRes.value) || logs[0]?.odo || 0));
         const lastLog = logs[0];
         const pricePerLiter = settings.fuelPricePerLiter || 14.5;
         const pricePaid = (lastLog?.pricePaid && lastLog.pricePaid > 0) ? lastLog.pricePaid : (lastLog?.litersAdded ?? 0) * pricePerLiter;
@@ -940,7 +1141,7 @@ export const useFuelTracker = () => {
         const consumedSinceRefuel = Math.max(0, litersAtRefuel - fuelState.estimatedFuelLiters);
         const budgetRemaining = Math.max(0, pricePaid - (consumedSinceRefuel * pricePerLiter));
 
-        registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+        const payload: any = {
           speed: Math.round(currentSpeed || 0),
           range: `${rangeRemainingKm.toFixed(1)} KM`,
           fuelPercent: Math.round(fuelPercentage),
@@ -949,20 +1150,27 @@ export const useFuelTracker = () => {
           oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)}`,
           trip: `TRIP: ${tripValue.toFixed(1)}`,
           budget: `${budgetRemaining.toFixed(0)} EGP`,
+          odo: `ODO: ${(fuelState.lastOdo || 0).toFixed(0)}`,
           
-          // Raw data for background service continuity
           fuelLitersRaw: fuelState.estimatedFuelLiters,
           oilLeftRaw: kmUntilNextOilChange,
           tripRaw: tripValue,
+          odoRaw: fuelState.lastOdo || 0,
           consumptionRate: settings.avgConsumption,
           tankCapacity: settings.tankCapacity,
           fuelPrice: settings.fuelPricePerLiter,
-
+          warningThreshold: settings.warningThreshold,
           isWarning,
-          isDanger,
-          accentColor: settings.widgetAccentColor,
-          opacity: settings.widgetOpacity
-        }).catch(() => {});
+          isDanger
+        };
+
+        // Decoupling: Only overwrite look if explicitly changed from inside React
+        if (shouldSendColors) {
+          payload.accentColor = settings.widgetAccentColor;
+          payload.opacity = settings.widgetOpacity;
+        }
+
+        registerPlugin<any>('AlarmPlugin').updateWidgetStats(payload).catch(() => {});
       } catch (e) { /* ignore */ }
     };
 
@@ -970,11 +1178,11 @@ export const useFuelTracker = () => {
     updateWidget();
 
     // Debounced update for settings changes
-    const timer = setTimeout(updateWidget, 150);
+    const timer = setTimeout(updateWidget, 250);
     return () => clearTimeout(timer);
   }, [
     currentSpeed, rangeRemainingKm, fuelPercentage, runOutOdo, 
-    kmUntilNextOilChange, fuelState.estimatedFuelLiters, 
+    kmUntilNextOilChange, fuelState.estimatedFuelLiters, fuelState.lastOdo,
     isWarning, isDanger, settings.widgetAccentColor, settings.widgetOpacity,
     logs, settings.fuelPricePerLiter, settings.avgConsumption, settings.tankCapacity
   ]);
@@ -986,9 +1194,14 @@ export const useFuelTracker = () => {
     trackingError, clearTrackingError: () => setTrackingError(null),
     gpsUpdateCount, lastGpsTime,
     kmSinceOilChange, kmUntilNextOilChange, recordOilChange,
-    setSettings, addRefuel, updateCurrentOdo, updateUserProfile,
+    setSettings, 
+    setWidgetSettings: (newSettings: Partial<FuelSettings>) => {
+      isManuallyChanged.current = true;
+      setSettings(prev => ({ ...prev, ...newSettings }));
+    },
+    addRefuel, updateCurrentOdo, updateUserProfile,
     startTracking, stopTracking, setIsMuted, playWarningSound,
     resetData, requestAllPermissions, setCurrentSpeed,
-    audioCtxRef, activeAudioRef
+    audioCtxRef, activeAudioRef, isDataLoaded
   };
 };

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Darker transparent black (80% opacity) with rounded corners -->
+    <solid android:color="#CC000000" />
+    <corners android:radius="24dp" />
+</shape>

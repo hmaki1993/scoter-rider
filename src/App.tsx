@@ -58,10 +58,17 @@ function App() {
   const [showWidgetMiniSettings, setShowWidgetMiniSettings] = useState(false);
   const [showPhotoZoom, setShowPhotoZoom] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{ version: string, url: string, notes: string } | null>(null);
-  const [tripBase, setTripBase] = useState<number | null>(() => {
-    const saved = localStorage.getItem('custom_trip_base');
-    return saved ? Number(saved) : null;
-  });
+  const [tripBase, setTripBase] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (tracker.isDataLoaded) {
+      import('@capacitor/preferences').then(({ Preferences }) => {
+        Preferences.get({ key: 'custom_trip_base' }).then(res => {
+          if (res.value) setTripBase(Number(res.value));
+        });
+      });
+    }
+  }, [tracker.isDataLoaded]);
 
   const appRef = useRef<HTMLDivElement>(null);
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void, isDanger?: boolean}>({ isOpen: false, message: '', onConfirm: () => {} });
@@ -80,7 +87,7 @@ function App() {
     // --- Update Check Logic ---
     const checkForUpdate = async () => {
       try {
-        const CURRENT_VERSION = '1.3.4';
+        const CURRENT_VERSION = '1.3.7';
         const UPDATE_URL = `https://scoter-rider.vercel.app/version.json?t=${new Date().getTime()}`;
 
         const response = await fetch(UPDATE_URL, { cache: 'no-store' });
@@ -133,6 +140,35 @@ function App() {
       if (stateListener) stateListener.remove();
     };
   }, []);
+
+  if (!tracker.isDataLoaded) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        width: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: '#050505',
+        color: '#00f0ff'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid rgba(0, 240, 255, 0.1)',
+          borderTop: '3px solid #00f0ff',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '20px'
+        }} />
+        <div style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '4px', opacity: 0.6 }}>LOADING SYSTEM</div>
+        <style>{`
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container" ref={appRef} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ padding: '24px 24px 8px 24px', width: '100%', maxWidth: '480px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -405,7 +441,10 @@ function App() {
                 isOpen: true,
                 message: tracker.settings.language === 'ar' ? 'هل تريد تصفير عداد الرحلة يدوياً (Trip Reset)؟' : 'Reset Trip meter manually?',
                 onConfirm: () => {
-                  localStorage.setItem('custom_trip_base', String(tracker.fuelState.lastOdo));
+                  // Fix: Use Capacitor Preferences instead of localStorage (survives Android WebView restarts)
+                  import('@capacitor/preferences').then(({ Preferences }) =>
+                    Preferences.set({ key: 'custom_trip_base', value: String(tracker.fuelState.lastOdo) })
+                  ).catch(() => {});
                   setTripBase(tracker.fuelState.lastOdo);
                 },
                 isDanger: false
@@ -1167,6 +1206,20 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
     onClose();
   };
 
+  const price = tracker.settings.fuelPricePerLiter || 22.25;
+  const tankCap = tracker.settings.tankCapacity || 7.0;
+  const currentFuel = tracker.fuelState.estimatedFuelLiters || 0;
+  const avg = tracker.settings.avgConsumption || 16.6;
+  
+  let predictedLiters = currentFuel;
+  if (inputValue) {
+    const added = inputMode === 'currency' ? Number(inputValue) / price : Number(inputValue);
+    predictedLiters = Math.min(tankCap, currentFuel + added);
+  } else if (isFullTank) {
+    predictedLiters = tankCap;
+  }
+  const predictedRange = predictedLiters * avg;
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '32px 24px', animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)', boxShadow: tracker.settings.isLightMode ? '0 20px 60px rgba(0,0,0,0.1)' : '0 20px 60px rgba(0,0,0,0.4)' }}>
@@ -1209,6 +1262,22 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
               <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: isFullTank ? '24px' : '4px', transition: 'all 0.3s' }} />
             </div>
           </div>
+          <div style={{
+            marginTop: '8px', 
+            padding: '12px', 
+            background: 'rgba(0, 240, 255, 0.05)', 
+            borderRadius: '12px', 
+            border: '1px solid rgba(0, 240, 255, 0.1)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800', marginBottom: '4px' }}>
+              {tracker.settings.language === 'ar' ? 'المسافة بعد التفويلة' : 'Predicted Range After Refuel'}
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--accent-color)' }}>
+              {predictedRange.toFixed(1)} <span style={{ fontSize: '12px', fontWeight: '800', opacity: 0.7 }}>KM</span>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'center' }}>
             <button type="button" onClick={onClose} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)', fontWeight: '600', padding: '10px 20px', fontSize: '13px', borderRadius: '10px' }}>{t('cancel')}</button>
             <button type="submit" style={{ background: 'var(--accent-secondary)', color: '#fff', border: 'none', fontWeight: '900', padding: '10px 24px', fontSize: '13px', borderRadius: '12px', boxShadow: '0 8px 25px rgba(255, 94, 0, 0.25)' }}>{t('save')}</button>
@@ -1236,8 +1305,6 @@ function SettingsModal({ tracker, onClose, setConfirmDialog }: { tracker: any, o
   const [cap, setCap] = useState((tracker.settings.tankCapacity || 7.5).toString());
   const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.5).toString());
   const [threshold, setThreshold] = useState((tracker.settings.warningThreshold || 15).toString());
-  const [wColor, setWColor] = useState(tracker.settings.widgetAccentColor || '#00f0ff');
-  const [wOpacity, setWOpacity] = useState(tracker.settings.widgetOpacity ?? 100);
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [toneDropOpen, setToneDropOpen] = useState(false);
@@ -1265,9 +1332,7 @@ function SettingsModal({ tracker, onClose, setConfirmDialog }: { tracker: any, o
       tankCapacity: Number(cap), 
       fuelPricePerLiter: Number(price), 
       warningThreshold: Number(threshold),
-      isLightMode: tracker.settings.isLightMode,
-      widgetAccentColor: wColor,
-      widgetOpacity: wOpacity
+      isLightMode: tracker.settings.isLightMode
     });
     onClose();
   };
@@ -1393,36 +1458,7 @@ function SettingsModal({ tracker, onClose, setConfirmDialog }: { tracker: any, o
           </div>
         </div>
 
-        {/* Section 4.1: WIDGET STYLING */}
-        <div style={{ marginBottom: '24px', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '14px' }}>
-          <label className="fusion-label" style={{ marginBottom: '10px', display: 'block', fontSize: '10px', color: 'var(--accent-secondary)' }}>
-            {tracker.settings.language === 'ar' ? 'تصميم الـ WIDGET' : 'WIDGET STYLING'}
-          </label>
-          
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>{tracker.settings.language === 'ar' ? 'الشفافية' : 'Opacity'}</span>
-              <span style={{ fontSize: '10px', fontWeight: '900', color: 'var(--accent-color)' }}>{wOpacity}%</span>
-            </div>
-            <input 
-              type="range" min="0" max="100" value={wOpacity} 
-              onChange={e => setWOpacity(Number(e.target.value))} 
-              style={{ width: '100%', accentColor: 'var(--accent-secondary)' }} 
-            />
-          </div>
 
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            {[...THEME_COLORS, { name: 'CyanNeon', hex: '#00f0ff', secondary: '#00f0ff' }].map((c, idx) => (
-              <div key={idx} onClick={() => setWColor(c.hex)} style={{ 
-                width: '24px', height: '24px', borderRadius: '50%', background: c.hex, 
-                border: wColor === c.hex ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer', transform: wColor === c.hex ? 'scale(1.15)' : 'scale(1)',
-                boxShadow: wColor === c.hex ? `0 0 10px ${c.hex}88` : 'none',
-                transition: 'all 0.15s'
-              }} />
-            ))}
-          </div>
-        </div>
 
         {/* Section 5: NOTIFICATION TONE */}
         <div style={{ marginBottom: '40px' }}>
@@ -1759,8 +1795,7 @@ const WidgetMiniSettingsCard = ({ tracker, onClose }: { tracker: any, onClose: (
             <button
               key={c}
               onClick={() => {
-                tracker.setSettings({ ...tracker.settings, widgetAccentColor: c });
-                tracker.updateWidgetStats({ ...tracker.fuelState, ...tracker.settings, widgetAccentColor: c });
+                tracker.setWidgetSettings({ widgetAccentColor: c });
               }}
               className={`color-dot-btn ${tracker.settings.widgetAccentColor === c ? 'active' : ''}`}
               style={{
@@ -1784,8 +1819,7 @@ const WidgetMiniSettingsCard = ({ tracker, onClose }: { tracker: any, onClose: (
             value={tracker.settings.widgetOpacity}
             onChange={(e) => {
               const val = parseInt(e.target.value);
-              tracker.setSettings({ ...tracker.settings, widgetOpacity: val });
-              tracker.updateWidgetStats({ ...tracker.fuelState, ...tracker.settings, widgetOpacity: val });
+              tracker.setWidgetSettings({ widgetOpacity: val });
             }}
             style={{ 
               width: '100%', 

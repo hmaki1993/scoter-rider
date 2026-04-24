@@ -11,7 +11,8 @@ const config: CapacitorConfig = {
   plugins: {
     LocalNotifications: {
       smallIcon: "ic_launcher", 
-      iconColor: "#488AFF"
+      iconColor: "#488AFF",
+      presentationOptions: ["badge", "sound", "alert"]
     },
     SplashScreen: {
       launchShowDuration: 1000

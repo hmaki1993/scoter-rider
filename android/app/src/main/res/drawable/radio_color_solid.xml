@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Checked State: Solid bright circle -->
+    <item android:state_checked="true">
+        <layer-list>
+            <item android:top="2dp" android:bottom="2dp" android:left="2dp" android:right="2dp">
+                <shape android:shape="oval">
+                    <solid android:color="#FFFFFFFF" />
+                    <!-- Thin stroke acting as an outer highlight -->
+                    <stroke android:width="2dp" android:color="#FFFFFFFF" />
+                </shape>
+            </item>
+            <!-- A tiny white inner highlight, or we leave it perfectly solid -->
+        </layer-list>
+    </item>
+    
+    <!-- Unchecked State: Solid dim circle -->
+    <item>
+        <layer-list>
+            <item android:top="6dp" android:bottom="6dp" android:left="6dp" android:right="6dp">
+                <shape android:shape="oval">
+                    <!-- Fully solid but smaller -->
+                    <solid android:color="#FFFFFFFF" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>
