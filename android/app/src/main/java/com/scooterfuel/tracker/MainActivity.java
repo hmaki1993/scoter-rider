@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Vibrator;
 import android.os.VibrationEffect;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.provider.Settings;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.annotation.CapacitorPlugin;
@@ -56,7 +57,7 @@ public class MainActivity extends BridgeActivity {
         public void getWidgetAction(PluginCall call) {
             com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
             ret.put("action", pendingWidgetAction);
-            pendingWidgetAction = null; // Clear after reading once
+            pendingWidgetAction = null; // Clear after use
             call.resolve(ret);
         }
         @PluginMethod
@@ -219,6 +220,47 @@ public class MainActivity extends BridgeActivity {
                         v.vibrate(pattern, -1, audioAttrs);
                     }
                 }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void syncStateToNative(PluginCall call) {
+            try {
+                SharedPreferences prefs = getContext().getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = prefs.edit();
+
+                if (call.hasOption("trip")) {
+                    float trip = call.getFloat("trip").floatValue();
+                    editor.putFloat("latest_trip_raw", trip);
+                    editor.putString("latest_trip", String.format("TRIP: %.1f", trip));
+                }
+                if (call.hasOption("fuelLiters")) {
+                    float liters = call.getFloat("fuelLiters").floatValue();
+                    editor.putFloat("latest_fuelLiters_raw", liters);
+                    editor.putString("latest_litersLeft", String.format("%.1f L", liters));
+                }
+                if (call.hasOption("odo")) {
+                    float odo = call.getFloat("odo").floatValue();
+                    editor.putFloat("latest_odo_raw", odo);
+                    editor.putString("latest_odo", String.format("ODO: %.0f", odo));
+                }
+                if (call.hasOption("range")) {
+                    editor.putString("latest_range", call.getString("range"));
+                }
+                if (call.hasOption("fuelPercent")) {
+                    editor.putInt("latest_fuelPercent", call.getInt("fuelPercent"));
+                }
+
+                editor.apply();
+
+                // Trigger an immediate widget update broadcast
+                Intent intent = new Intent(getContext(), SpeedometerWidget.class);
+                intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
+                getContext().sendBroadcast(intent);
+
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());

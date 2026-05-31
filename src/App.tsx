@@ -1033,7 +1033,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
 
           <label className="fusion-label" style={{ marginBottom: '6px', fontSize: '9px' }}>{t('vehicleType') || 'Vehicle'}</label>
           <div className="fusion-input-group">
-            <Settings size={18} color="var(--accent-color)" opacity={0.5} />
+            <i className="fi fi-rr-scooter" style={{ fontSize: '18px', color: 'var(--accent-color)', opacity: 0.5, lineHeight: 1 }}></i>
             <input required type="text" className="fusion-input" value={vehicleType}
               onChange={e => setVehicleType(e.target.value.toUpperCase())}
               autoCapitalize="characters" spellCheck="false" />
@@ -1394,7 +1394,7 @@ function SettingsModal({ tracker, onClose, setConfirmDialog }: { tracker: any, o
               <input type="tel" className="fusion-input" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="Phone Number" style={{ background: 'transparent', color: 'var(--text-primary)', fontWeight: '700' }} />
             </div>
             <div className="fusion-input-group" style={{ background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--glass-border)', borderRadius: 0, padding: '16px 0' }}>
-              <Settings size={18} color="#ff9800" opacity={0.6} />
+              <i className="fi fi-rr-scooter" style={{ fontSize: '18px', color: '#ff9800', opacity: 0.6, lineHeight: 1 }}></i>
               <input className="fusion-input" value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle Type" style={{ background: 'transparent', color: 'var(--text-primary)', fontWeight: '700' }} />
             </div>
           </div>

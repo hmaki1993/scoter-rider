@@ -41,6 +41,7 @@ npx cap sync
 # 5. Build Native APK (Debug)
 Write-Host "--- Step 5: Generating New APK ---" -ForegroundColor Cyan
 Set-Location "android"
+./gradlew --stop
 ./gradlew assembleDebug
 Set-Location ".."
 
