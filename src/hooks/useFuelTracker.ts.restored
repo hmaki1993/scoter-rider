@@ -318,7 +318,7 @@ export const useFuelTracker = () => {
           visibility: 1,      // VISIBILITY_PUBLIC
           vibration: true,    // Essential for Peek
           lights: true,
-          lightColor: '#dc2626',
+          lightColor: '#FF3366',
           sound: 'default',   // Use system default to guarantee peek/Heads-up
         } as any);
 
@@ -529,10 +529,11 @@ export const useFuelTracker = () => {
             setGpsUpdateCount(prev => prev + 1);
             setLastGpsTime(new Date().toLocaleTimeString());
 
-            // ── PROFESSIONAL FILTERING FOR HIGH ACCURACY ───────────────────────
-            const MAX_GPS_ACCURACY = 15;    // meters (tighter filter to avoid drift)
-            const MIN_DISTANCE_KM = 0.015;  // 15 meters minimum to accumulate (fixes zig-zag overestimation)
-            const MAX_TIME_DIFF_MS = 60000; // ignore readings >60s apart to avoid teleporting
+            // ── PROFESSIONAL FILTERING ─────────────────────────────────────────
+            const MIN_TRACKING_SPEED = 18;  // km/h — filters walking & GPS drift noise
+            const MIN_DIST_KM = 0.008;      // 8 meters minimum to count (filters jitter)
+            const MAX_GPS_ACCURACY = 30;    // meters
+            const MAX_TIME_DIFF_MS = 30000; // ignore readings >30s apart (app resume)
 
             // Ignore jumpy/poor GPS signals
             if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
@@ -540,72 +541,56 @@ export const useFuelTracker = () => {
               return;
             }
 
-            // ── Update UI speed ──
+            // ── Calculate distance and speed synchronously (NOT inside setState) ──
             const nativeSpeed = pos.coords?.speed;
             let currentKmh = 0;
-            if (nativeSpeed !== null && nativeSpeed !== undefined && nativeSpeed >= 0) {
-              currentKmh = nativeSpeed * 3.6;
-            } else if (lastPositionRef.current) {
-              const uiDist = calculateDistance(
-                lastPositionRef.current.latitude, lastPositionRef.current.longitude,
-                pos.coords.latitude, pos.coords.longitude
-              );
-              const uiTime = Math.max(1000, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
-              currentKmh = uiDist / (uiTime / 3600000);
-            }
-            // Filter out micro speeds when practically stopped
-            setCurrentSpeed(Math.round(currentKmh >= 3 ? currentKmh : 0));
+            let gpsDistKm = 0;
 
-            // ── Distance Accumulation (Smoothed) ──
             if (lastPositionRef.current && pos.coords) {
-              const gpsDistKm = calculateDistance(
+              gpsDistKm = calculateDistance(
                 lastPositionRef.current.latitude, lastPositionRef.current.longitude,
                 pos.coords.latitude, pos.coords.longitude
               );
 
-              // Only accumulate if we moved at least MIN_DISTANCE_KM (15 meters)
-              if (gpsDistKm >= MIN_DISTANCE_KM) {
-                 const timeDiffMs = Math.max(1000, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
-                 const calcSpeedKmh = gpsDistKm / (timeDiffMs / 3600000);
-                 
-                 // If the jump is realistic (under 120 km/h) and not a huge time gap teleport
-                 if (calcSpeedKmh <= 120 && timeDiffMs < MAX_TIME_DIFF_MS) {
-                   const consumed = gpsDistKm / (settingsRef.current.avgConsumption || 21.4);
-                   setFuelState(prev => ({
-                     ...prev,
-                     estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-                     lastOdo: prev.lastOdo + gpsDistKm,
-                     totalGpsDistance: prev.totalGpsDistance + gpsDistKm,
-                   }));
-                   
-                   // Update the reference point ONLY when we accumulate distance
-                   lastPositionRef.current = {
-                     latitude: pos.coords.latitude,
-                     longitude: pos.coords.longitude,
-                     timestamp: pos.timestamp ?? Date.now(),
-                     accuracy: pos.coords.accuracy
-                   };
-                   localStorage.setItem('last_gps_position', JSON.stringify(lastPositionRef.current));
-                 } else if (timeDiffMs >= MAX_TIME_DIFF_MS) {
-                   // If it was a long pause, just reset the anchor point without adding distance
-                   lastPositionRef.current = {
-                     latitude: pos.coords.latitude,
-                     longitude: pos.coords.longitude,
-                     timestamp: pos.timestamp ?? Date.now(),
-                     accuracy: pos.coords.accuracy
-                   };
-                 }
+              const timeDiffMs = Math.max(2000, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
+              if (timeDiffMs < MAX_TIME_DIFF_MS) {
+                const hours = timeDiffMs / (1000 * 60 * 60);
+                currentKmh = gpsDistKm / hours;
               }
-            } else if (pos.coords) {
-               // First valid point, just set the anchor
-               lastPositionRef.current = {
-                 latitude: pos.coords.latitude,
-                 longitude: pos.coords.longitude,
-                 timestamp: pos.timestamp ?? Date.now(),
-                 accuracy: pos.coords.accuracy
-               };
-               localStorage.setItem('last_gps_position', JSON.stringify(lastPositionRef.current));
             }
+
+            // Speed: use the more conservative value (Math.min) to prevent noise boosting
+            if (nativeSpeed !== null && nativeSpeed !== undefined && nativeSpeed >= 0) {
+              const nativeKmh = nativeSpeed * 3.6;
+              if (currentKmh > 0) {
+                currentKmh = Math.min(nativeKmh, currentKmh);
+              } else {
+                currentKmh = nativeKmh;
+              }
+            }
+
+            // ── Update UI speed ──
+            setCurrentSpeed(Math.round(currentKmh > 0 ? currentKmh : 0));
+
+            // ── Count distance only if real movement (min dist + min speed) ──
+            if (gpsDistKm > MIN_DIST_KM && currentKmh >= MIN_TRACKING_SPEED) {
+              const consumed = gpsDistKm / (settingsRef.current.avgConsumption || 21.4);
+              setFuelState(prev => ({
+                ...prev,
+                estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
+                lastOdo: prev.lastOdo + gpsDistKm,
+                totalGpsDistance: prev.totalGpsDistance + gpsDistKm,
+              }));
+            }
+
+            // ── Persist latest position (always update ref) ──
+            lastPositionRef.current = {
+              latitude: pos.coords?.latitude,
+              longitude: pos.coords?.longitude,
+              timestamp: pos.timestamp ?? Date.now(),
+              accuracy: pos.coords?.accuracy
+            };
+            localStorage.setItem('last_gps_position', JSON.stringify(lastPositionRef.current));
           } catch (callbackErr: any) {
             console.error('[FuelTracker] CRASH AVERTED in watchPosition callback:', callbackErr);
             setTrackingError({ message: 'App Logic Error: ' + String(callbackErr) });
@@ -994,7 +979,9 @@ export const useFuelTracker = () => {
     logs, settings.fuelPricePerLiter, settings.avgConsumption, settings.tankCapacity
   ]);
 
-
+  const removeRefuel = (id: string) => {
+    setLogs(prev => prev.filter(l => l.id !== id));
+  };
 
   return {
     fuelState, settings, userProfile, logs,

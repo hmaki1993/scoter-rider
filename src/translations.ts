@@ -123,7 +123,7 @@ export const translations = {
     resetOilLife: 'تم تغيير الزيت (تصفير)',
     oilChangeAlertTitle: 'ميعاد غيار الزيت! ⚠️',
     oilChangeAlertBody: 'وصلت للمسافة المطلوبة لغيار الزيت، غيره في أقرب وقت عشان تحافظ على الموتور. 🛵',
-    maintenance: 'قسم الصيانة 🛠️',
+    maintenance: 'قسم الصيانة',
   },
   en: {
     // Header
@@ -250,6 +250,6 @@ export const translations = {
     resetOilLife: 'Oil Changed (Reset)',
     oilChangeAlertTitle: 'Oil Change Due! ⚠️',
     oilChangeAlertBody: 'You have reached the distance for an oil change. Change it soon to protect your engine. 🛵',
-    maintenance: 'Maintenance 🛠️',
+    maintenance: 'Maintenance',
   }
 };

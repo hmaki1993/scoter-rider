@@ -142,8 +142,7 @@ public class BackgroundTrackingService extends Service {
         }
     }
 
-    private static final float MIN_SPEED_KMH = 6.0f; // Golden Zone: Catch slow traffic, ignore walking
-    private static final float MAX_ACCURACY_METERS = 50.0f; // Increased from 50 to improve continuity in urban areas
+    private static final float MAX_ACCURACY_METERS = 15.0f; // Tighter filter to avoid drift
 
     private final LocationListener locationListener = new LocationListener() {
         @Override
@@ -155,39 +154,19 @@ public class BackgroundTrackingService extends Service {
                 }
 
                 if (lastLocation != null) {
-                    // --- 1. Dynamic Gap Recovery & Jitter Filter ---
                     float distanceMeters = lastLocation.distanceTo(location);
                     float currentSpeedKmh = 0.0f;
-                    long timeDeltaMs = location.getTime() - lastLocation.getTime();
+                    long timeDeltaMs = Math.max(1000, location.getTime() - lastLocation.getTime());
                     
+                    // 1. UI Speed Calculation
                     if (location.hasSpeed()) {
                         currentSpeedKmh = location.getSpeed() * 3.6f;
                     } else {
-                        if (timeDeltaMs > 0 && timeDeltaMs < 60000) { // Limit gap recovery to 60 seconds
-                            float hours = timeDeltaMs / (1000.0f * 60.0f * 60.0f);
-                            currentSpeedKmh = (distanceMeters / 1000.0f) / hours;
-                        }
+                        float hours = timeDeltaMs / (1000.0f * 60.0f * 60.0f);
+                        currentSpeedKmh = (distanceMeters / 1000.0f) / hours;
                     }
 
-                    // Protect against speed spikes from GPS jitter when stationary
-                    if (location.hasSpeed() && location.getSpeed() * 3.6f < 3.0f && currentSpeedKmh > 10.0f) {
-                        currentSpeedKmh = location.getSpeed() * 3.6f;
-                    }
-
-                    // Dynamic threshold: Allow ~140km/h max travel during gaps (40m/s)
-                    float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 40.0f);
-
-                    if (distanceMeters > 4.0f && distanceMeters < maxAllowedDistance) {
-                        if (currentSpeedKmh >= MIN_SPEED_KMH) {
-                            float distKm = (distanceMeters / 1000.0f);
-                            accumulatedDistanceKm += distKm;
-                            
-                            // --- LIVE BACKGROUND NATIVE UPDATES ---
-                            updateNativeStats(distKm);
-                        }
-                    }
-
-                    int currentSpeedInt = Math.round(currentSpeedKmh);
+                    int currentSpeedInt = Math.round(currentSpeedKmh >= 3.0f ? currentSpeedKmh : 0);
                     long now = System.currentTimeMillis();
                     
                     // Only broadcast if speed changed OR if 5 seconds passed (to sync other stats)
@@ -196,8 +175,30 @@ public class BackgroundTrackingService extends Service {
                         lastBroadcastedSpeed = currentSpeedInt;
                         lastBroadcastTime = now;
                     }
+
+                    // --- 2. Distance Accumulation (Smoothed) ---
+                    // Only accumulate if we moved at least 15 meters to prevent micro-jitter zig-zags
+                    if (distanceMeters >= 15.0f) {
+                        // Dynamic threshold: Allow ~120km/h max travel during gaps (33m/s)
+                        float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 33.3f);
+                        
+                        if (distanceMeters < maxAllowedDistance && timeDeltaMs < 60000) {
+                            float distKm = (distanceMeters / 1000.0f);
+                            accumulatedDistanceKm += distKm;
+                            
+                            // --- LIVE BACKGROUND NATIVE UPDATES ---
+                            updateNativeStats(distKm);
+                            
+                            // Anchor point is only updated when we register valid movement
+                            lastLocation = location;
+                        } else if (timeDeltaMs >= 60000) {
+                            // If it's a huge time gap (teleport), just reset anchor
+                            lastLocation = location;
+                        }
+                    }
+                } else {
+                    lastLocation = location;
                 }
-                lastLocation = location;
             } catch (Exception e) {
                 android.util.Log.e("FuelTracker", "Crash prevented in location update", e);
             }
