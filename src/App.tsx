@@ -1122,7 +1122,6 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
               outline: 'none',
               letterSpacing: '1px'
             }}
-            autoFocus
           />
           <span style={{ fontSize: '12px', fontWeight: '800', color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.6)' : 'var(--text-secondary)', letterSpacing: '1px' }}>KM</span>
         </div>
@@ -1318,7 +1317,6 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 placeholder="0.0"
-                autoFocus
               />
               <div style={{ display: 'flex', background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '2px', border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'var(--glass-border)'}` }}>
                 <button
@@ -1621,10 +1619,25 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
             <img src="/paint.png" alt="theme" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
             <label className="fusion-label" style={{ margin: 0, color: 'var(--accent-secondary)', fontWeight: '700' }}>{t('appTheme')}</label>
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', justifyContent: 'center' }}>
-            {THEME_COLORS.map(c => (
-              <div key={c.name} onClick={() => tracker.setSettings({ ...tracker.settings, accentColor: c.hex })} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`, border: tracker.settings.accentColor === c.hex ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.2s', transform: tracker.settings.accentColor === c.hex ? 'scale(1.1)' : 'scale(1)', boxShadow: 'none' }} />
-            ))}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'nowrap', justifyContent: 'center', padding: '4px 0' }}>
+            {THEME_COLORS.map(c => {
+              const isSelected = tracker.settings.accentColor === c.hex;
+              const isBrightColor = c.hex === '#ffcc00' || c.hex === '#5ac8fa'; // Gold and Cyan are very light/bright
+              return (
+                <div
+                  key={c.name}
+                  onClick={() => tracker.setSettings({ ...tracker.settings, accentColor: c.hex })}
+                  className={`theme-dot-btn ${isSelected ? 'active' : ''}`}
+                  style={{
+                    background: c.secondary === c.hex ? c.hex : `linear-gradient(135deg, ${c.hex}, ${c.secondary})`
+                  }}
+                >
+                  {isSelected && (
+                    <div className={`theme-dot-indicator ${isBrightColor ? 'dark-dot' : ''}`} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -2004,19 +2017,27 @@ const WidgetMiniSettingsCard = ({ tracker, onClose }: { tracker: any, onClose: (
 
         {/* Color Sped-Dial */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', justifyContent: 'center', marginBottom: '32px' }}>
-          {colors.map(c => (
-            <button
-              key={c}
-              onClick={() => {
-                tracker.setWidgetSettings({ widgetAccentColor: c });
-              }}
-              className={`color-dot-btn ${tracker.settings.widgetAccentColor === c ? 'active' : ''}`}
-              style={{
-                background: c,
-                color: c // for currentColor shadow
-              }}
-            />
-          ))}
+          {colors.map(c => {
+            const isSelected = tracker.settings.widgetAccentColor === c;
+            const isBrightColor = c === '#ffffff' || c === '#ffcc00' || c === '#00ff64' || c === '#00f0ff';
+            return (
+              <button
+                key={c}
+                onClick={() => {
+                  tracker.setWidgetSettings({ widgetAccentColor: c });
+                }}
+                className={`color-dot-btn ${isSelected ? 'active' : ''}`}
+                style={{
+                  background: c,
+                  color: c // for currentColor shadow
+                }}
+              >
+                {isSelected && (
+                  <div className={`theme-dot-indicator ${isBrightColor ? 'dark-dot' : ''}`} />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Opacity Slider */}

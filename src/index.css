@@ -709,15 +709,99 @@ svg.tactile-icon {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid transparent;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(255,255,255,0.2);
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-dot-btn:active {
+  transform: scale(0.85) !important;
+}
+
+.color-dot-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .color-dot-btn.active {
-  border-color: #fff;
   transform: scale(1.2);
-  box-shadow: none;
+  border: 3px solid #ffffff;
+  box-shadow: 0 6px 12px rgba(255, 255, 255, 0.25);
+}
+
+.app-light .color-dot-btn {
+  border: 2px solid rgba(0,0,0,0.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.app-light .color-dot-btn.active {
+  border: 3px solid #000000;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Theme Selection Dots --- */
+.theme-dot-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  border: 2.5px solid rgba(255, 255, 255, 0.25);
+}
+
+.theme-dot-btn:active {
+  transform: scale(0.85) !important;
+}
+
+.theme-dot-btn:hover {
+  transform: scale(1.12);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.25);
+}
+
+.theme-dot-btn.active {
+  transform: scale(1.18);
+}
+
+.app-light .theme-dot-btn {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+  border: 2.5px solid rgba(0, 0, 0, 0.12);
+}
+
+.app-light .theme-dot-btn.active {
+  border: 3px solid #000000;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+}
+
+.app-dark .theme-dot-btn.active {
+  border: 3px solid #ffffff;
+  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.15);
+}
+
+.theme-dot-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  animation: dot-pop-in 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.theme-dot-indicator.dark-dot {
+  background: #000000;
+}
+
+@keyframes dot-pop-in {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 /* --- Uniform Premium Bottom Nav Buttons --- */
