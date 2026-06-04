@@ -875,3 +875,121 @@ svg.tactile-icon {
   mask-position: center;
   flex-shrink: 0;
 }
+
+/* --- Modal Dialog Buttons (Fixed Contrast & Hover) --- */
+.confirm-modal-btn {
+  padding: 10px 24px;
+  flex: 1;
+  border-radius: 12px;
+  font-weight: 900;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  outline: none;
+}
+
+.confirm-modal-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.confirm-modal-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* NO / Cancel Button */
+.confirm-btn-no {
+  background: rgba(255, 59, 48, 0.08) !important;
+  border: 1px solid rgba(255, 59, 48, 0.25) !important;
+  color: #ff3b30 !important;
+  box-shadow: 0 4px 10px rgba(255, 59, 48, 0.05) !important;
+}
+
+.app-dark .confirm-btn-no {
+  background: rgba(255, 59, 48, 0.15) !important;
+  border-color: rgba(255, 59, 48, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.confirm-btn-no:hover {
+  background: rgba(255, 59, 48, 0.12) !important;
+  box-shadow: 0 6px 14px rgba(255, 59, 48, 0.1) !important;
+}
+
+/* YES / Confirm Button */
+.confirm-btn-yes {
+  background: linear-gradient(135deg, #326144, #48845e) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(50, 97, 68, 0.25) !important;
+}
+
+.confirm-btn-yes.danger-confirm {
+  background: linear-gradient(135deg, #ff3b30, #c62828) !important;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.25) !important;
+}
+
+.confirm-btn-yes:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 16px rgba(50, 97, 68, 0.35) !important;
+}
+
+.confirm-btn-yes.danger-confirm:hover {
+  box-shadow: 0 6px 16px rgba(255, 59, 48, 0.35) !important;
+}
+
+/* --- Settings Modal Actions --- */
+.settings-modal-btn {
+  padding: 12px 30px;
+  min-width: 120px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-modal-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.settings-modal-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.settings-btn-cancel {
+  background: transparent !important;
+  border: 2.5px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+}
+
+.settings-btn-cancel:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.app-dark .settings-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.settings-btn-save {
+  background: transparent !important;
+  border: 2.5px solid var(--accent-secondary) !important;
+  color: var(--accent-secondary) !important;
+  box-shadow: none !important;
+}
+
+.settings-btn-save:hover {
+  background: rgba(255, 94, 0, 0.08) !important;
+}

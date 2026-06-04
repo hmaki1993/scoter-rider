@@ -1644,24 +1644,16 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
 
         {/* Premium Action Buttons - Cancel & Save */}
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '24px', marginBottom: '16px' }}>
-          <button className="raised-btn" style={{ 
-            padding: '12px 30px', minWidth: '120px', borderRadius: '14px', 
-            background: 'transparent', border: '2.5px solid var(--glass-border)', 
-            color: 'var(--text-primary)', fontWeight: '800', fontSize: '13px', 
-            textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer',
-            fontFamily: "'Rajdhani', sans-serif",
-            boxShadow: 'none'
-          }} onClick={onClose}>
+          <button 
+            className="settings-modal-btn settings-btn-cancel" 
+            onClick={onClose}
+          >
             {t('cancel')}
           </button>
-          <button className="raised-btn" style={{ 
-            padding: '12px 30px', minWidth: '120px', borderRadius: '14px', 
-            background: 'transparent', border: '2.5px solid var(--accent-secondary)', 
-            color: 'var(--accent-secondary)', fontWeight: '800', fontSize: '13px', 
-            textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer',
-            fontFamily: "'Rajdhani', sans-serif",
-            boxShadow: 'none'
-          }} onClick={handleSave}>
+          <button 
+            className="settings-modal-btn settings-btn-save" 
+            onClick={handleSave}
+          >
             {t('save')}
           </button>
         </div>
@@ -1873,47 +1865,13 @@ const ConfirmModal = ({ isOpen, message, onConfirm, onCancel, isDanger, tracker 
         <div style={{ display: 'flex', gap: '12px', marginTop: '4px', justifyContent: 'center' }}>
           <button 
             onClick={onCancel} 
-            className="raised-btn" 
-            style={{ 
-              padding: '10px 24px', 
-              flex: 1,
-              borderRadius: '12px', 
-              background: isLight ? 'rgba(255, 59, 48, 0.08)' : 'rgba(255, 59, 48, 0.12)', 
-              border: '1px solid rgba(255, 59, 48, 0.25)', 
-              color: '#ff3b30', 
-              fontWeight: '900', 
-              fontSize: '13px', 
-              cursor: 'pointer', 
-              fontFamily: "'Rajdhani', sans-serif", 
-              transition: 'all 0.2s', 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.5px',
-              boxShadow: 'none' 
-            }}
+            className="confirm-modal-btn confirm-btn-no"
           >
             {tracker.settings.language === 'ar' ? 'لا' : 'NO'}
           </button>
           <button 
             onClick={onConfirm} 
-            className="raised-btn" 
-            style={{ 
-              padding: '10px 24px', 
-              flex: 1,
-              borderRadius: '12px', 
-              background: isDanger 
-                ? 'linear-gradient(135deg, #ff3b30, #c62828)' 
-                : 'linear-gradient(135deg, #326144, #48845e)', 
-              border: 'none', 
-              color: '#ffffff', 
-              fontWeight: '900', 
-              fontSize: '13px', 
-              cursor: 'pointer', 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.5px',
-              boxShadow: isDanger ? '0 4px 12px rgba(255, 59, 48, 0.25)' : '0 4px 12px rgba(50, 97, 68, 0.25)',
-              fontFamily: "'Rajdhani', sans-serif", 
-              transition: 'all 0.2s'
-            }}
+            className={`confirm-modal-btn confirm-btn-yes ${isDanger ? 'danger-confirm' : ''}`}
           >
             {tracker.settings.language === 'ar' ? 'نعم' : 'YES'}
           </button>
