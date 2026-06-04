@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { MapPin, AlertTriangle, Droplets, User, Camera, Smartphone, Fuel, Sun, Moon } from 'lucide-react';
+import { MapPin, AlertTriangle, Droplets, User, Camera, Smartphone, Fuel, Sun, Moon, Navigation } from 'lucide-react';
 import cancelPng from './assets/cancel.png';
 import titleTagPng from './assets/title-tag.png';
 import { translations } from './translations';
@@ -429,55 +429,87 @@ function App() {
           </div>
         </div>
 
-
         {/* Start Tracking Prompt (Centered small) */}
         {!tracker.isTracking && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%', marginTop: '16px' }}>
             <div
-              className="raised-btn"
+              className="glass-panel"
               style={{
-                padding: '24px 28px',
+                padding: '28px 24px',
                 width: '100%',
                 maxWidth: '340px',
                 margin: '0 auto',
-                background: tracker.settings.isLightMode ? 'linear-gradient(180deg, #f5f5f7 0%, #e8e8ed 100%)' : 'rgba(255,255,255,0.14)',
-                border: tracker.settings.isLightMode ? 'none' : '1px solid rgba(255,255,255,0.22)',
+                background: tracker.settings.isLightMode 
+                  ? 'rgba(255, 255, 255, 0.85)' 
+                  : 'rgba(30, 30, 40, 0.65)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'}`,
+                borderTop: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.15)'}`,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '16px',
+                gap: '20px',
                 alignItems: 'center',
                 textAlign: 'center',
-                borderRadius: '20px',
+                borderRadius: '24px',
                 cursor: 'default',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                boxShadow: tracker.settings.isLightMode 
+                  ? '0 12px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6)' 
+                  : '0 16px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)'
               }}
             >
+              {/* Pulse Icon container */}
+              <div style={{
+                position: 'relative',
+                width: '52px',
+                height: '52px',
+                borderRadius: '50%',
+                background: tracker.settings.isLightMode ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255,255,255,0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'}`
+              }}>
+                {/* Pulsing ring */}
+                <div 
+                  className="gps-pulse-ring" 
+                  style={{
+                    position: 'absolute',
+                    inset: '-4px',
+                    borderRadius: '50%',
+                    border: '2px dashed var(--accent-color)',
+                    opacity: 0.4,
+                    animation: 'spin 12s linear infinite'
+                  }} 
+                />
+                <MapPin size={24} style={{ color: 'var(--accent-color)' }} strokeWidth={2} />
+              </div>
+
               <div style={{ 
-                fontSize: '13.5px', 
+                fontSize: '14px', 
                 fontWeight: '700', 
-                color: tracker.settings.isLightMode ? 'rgba(0, 0, 0, 0.8)' : 'var(--text-secondary)', 
-                lineHeight: '1.5',
-                fontFamily: "'Rajdhani', sans-serif"
+                color: 'var(--text-primary)', 
+                lineHeight: '1.6',
+                fontFamily: "'Rajdhani', sans-serif",
+                maxWidth: '260px'
               }}>
                 {tracker.isStarting ? t('activatingGps') : t('gpsRequired')}
               </div>
+
               <button
                 className="raised-btn"
                 disabled={tracker.isStarting}
                 style={{
-                  width: '180px',
-                  height: '42px',
-                  borderRadius: '10px',
+                  width: '190px',
+                  height: '46px',
+                  borderRadius: '14px',
                   background: tracker.isStarting 
-                    ? 'rgba(255, 255, 255, 0.08)' 
-                    : tracker.settings.isLightMode
-                      ? 'linear-gradient(180deg, #f5f5f7 0%, #e8e8ed 100%)'
-                      : 'rgba(255,255,255,0.14)',
-                  border: tracker.settings.isLightMode 
-                    ? 'none' 
-                    : '1px solid rgba(255,255,255,0.22)',
-                  color: 'var(--text-primary)',
-                  fontWeight: '950',
+                    ? 'rgba(0, 0, 0, 0.1)' 
+                    : 'linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontWeight: '900',
                   fontSize: '13px',
                   textTransform: 'uppercase',
                   letterSpacing: '1.5px',
@@ -487,7 +519,10 @@ function App() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
+                  gap: '10px',
+                  boxShadow: tracker.isStarting 
+                    ? 'none' 
+                    : '0 6px 20px rgba(var(--accent-rgb), 0.35)',
                   transition: 'all 0.4s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                 }}
                 onClick={() => { tracker.clearTrackingError(); tracker.startTracking(false); }}
@@ -506,8 +541,8 @@ function App() {
                   <>
                     <span style={{
                       display: 'inline-block',
-                      width: '12px', height: '12px',
-                      border: '2px solid var(--text-primary)',
+                      width: '14px', height: '14px',
+                      border: '2px solid #ffffff',
                       borderTopColor: 'transparent',
                       borderRadius: '50%',
                       animation: 'spin 0.8s linear infinite',
@@ -517,7 +552,7 @@ function App() {
                   </>
                 ) : (
                   <>
-                    <MapPin size={18} style={{ color: 'var(--accent-color)' }} strokeWidth={2.5} />
+                    <Navigation size={18} style={{ color: '#ffffff' }} strokeWidth={2.5} />
                     {t('startRide')}
                   </>
                 )}
