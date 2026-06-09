@@ -934,7 +934,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
       {/* ── HERO HEADER ── */}
       <div style={{
         background: accentColor,
-        padding: '52px 24px 28px',
+        padding: '28px 24px 22px',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
@@ -952,23 +952,23 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         <div
           onClick={handlePhotoClick}
           style={{
-            width:'88px', height:'88px', borderRadius:'50%',
+            width:'72px', height:'72px', borderRadius:'50%',
             background:'rgba(0,0,0,0.25)',
             border:'3px solid rgba(255,255,255,0.9)',
             display:'flex', alignItems:'center', justifyContent:'center',
-            margin:'0 auto 16px', cursor:'pointer', overflow:'hidden',
+            margin:'0 auto 12px', cursor:'pointer', overflow:'hidden',
             position:'relative', zIndex:1,
           }}
         >
           {photo
             ? <img src={photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-            : <User size={38} color="#fff" strokeWidth={1.5} />
+            : <User size={30} color="#fff" strokeWidth={1.5} />
           }
         </div>
 
         <h1 style={{
-          margin:'0 0 6px', position:'relative', zIndex:1,
-          fontSize:'26px', fontWeight:900,
+          margin:'0 0 4px', position:'relative', zIndex:1,
+          fontSize:'21px', fontWeight:900,
           fontFamily:"'Orbitron', sans-serif",
           color:'#ffffff',
           letterSpacing:'1.5px', textTransform:'uppercase',
@@ -977,7 +977,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
           {t('welcomeRider')} 🛵
         </h1>
         <p style={{
-          fontSize:'13px', color:'rgba(255,255,255,0.82)',
+          fontSize:'12px', color:'rgba(255,255,255,0.82)',
           margin:0, fontWeight:600, position:'relative', zIndex:1,
         }}>
           {t('setupProfile')}
