@@ -1058,11 +1058,11 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
                 type="number" step="0.5" value={fuelPrice}
                 onChange={e=>setFuelPrice(e.target.value)}
                 style={{ flex:1, background:'none', border:'none', outline:'none',
-                         fontSize:'22px', fontWeight:900,
+                         fontSize:'28px', fontWeight:900,
                          fontFamily:"'Orbitron', sans-serif",
                          color:accentColor, width:'100%' }}
               />
-              <span style={{ fontSize:'11px', fontWeight:700, color:labelClr }}>EGP</span>
+              <span style={{ fontSize:'13px', fontWeight:800, color:labelClr }}>EGP</span>
             </div>
           </div>
 
@@ -1080,11 +1080,11 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
                 onChange={e=>setOdoReading(e.target.value)}
                 placeholder="0"
                 style={{ flex:1, background:'none', border:'none', outline:'none',
-                         fontSize:'22px', fontWeight:900,
+                         fontSize:'28px', fontWeight:900,
                          fontFamily:"'Orbitron', sans-serif",
                          color:textClr, width:'100%' }}
               />
-              <span style={{ fontSize:'11px', fontWeight:700, color:labelClr }}>KM</span>
+              <span style={{ fontSize:'13px', fontWeight:800, color:labelClr }}>KM</span>
             </div>
           </div>
         </div>
