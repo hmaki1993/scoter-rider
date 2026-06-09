@@ -756,6 +756,7 @@ function App() {
       {!tracker.userProfile && (
         <OnboardingModal
           tracker={tracker}
+          setTripBase={setTripBase}
           onComplete={(profile) => {
             tracker.updateUserProfile(profile);
             setTimeout(() => tracker.requestAllPermissions(), 800);
@@ -811,7 +812,7 @@ function App() {
 }
 
 // Onboarding Modal Component
-const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (profile: any) => void }) => {
+const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, onComplete: (profile: any) => void, setTripBase: (v: number) => void }) => {
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const [name, setName] = useState('');
@@ -861,7 +862,13 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
     });
     if (odoReading && Number(odoReading) > 0) {
       setTimeout(() => {
-        tracker.updateCurrentOdo(Number(odoReading));
+        const val = Number(odoReading);
+        tracker.updateCurrentOdo(val);
+        import('@capacitor/preferences').then(({ Preferences }) =>
+          Preferences.set({ key: 'custom_trip_base', value: String(val) })
+        ).catch(() => {});
+        localStorage.setItem('custom_trip_base', String(val));
+        setTripBase(val);
       }, 500);
     }
     // Auto-start tracking after setup
