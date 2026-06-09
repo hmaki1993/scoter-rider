@@ -476,138 +476,105 @@ function App() {
             </div>
           )}
 
-          {!tracker.isTracking && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', alignItems: 'center', justifyContent: 'center', textAlign: 'center', flex: 1 }}>
-              <div style={{
-                position: 'relative',
-                width: '80px',
-                height: '80px',
+          {/* GPS activating / waiting state */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center', textAlign: 'center', flex: 1 }}>
+            <div style={{
+              position: 'relative',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: `2px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.12)'}`
+            }}>
+              <div className="gps-pulse-ring" style={{
+                position: 'absolute',
+                inset: '-6px',
                 borderRadius: '50%',
-                background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+                border: '2px dashed var(--accent-color)',
+                opacity: 0.8,
+                animation: 'spin 12s linear infinite'
+              }} />
+              <MapPin size={32} style={{ color: 'var(--accent-color)' }} strokeWidth={2} />
+            </div>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.6)' : 'var(--text-secondary)',
+              fontFamily: "'Rajdhani', sans-serif",
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+            }}>
+              {tracker.isStarting ? t('activatingGps') : t('gpsRequired')}
+            </div>
+            {tracker.isStarting && (
+              <span style={{
+                display: 'inline-block',
+                width: '18px', height: '18px',
+                border: '2px solid var(--accent-color)',
+                borderTopColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite'
+              }} />
+            )}
+            {tracker.trackingError && (
+              <div className="glass-panel" style={{
+                width: '100%',
+                maxWidth: '340px',
+                padding: '16px 20px',
+                borderRadius: '10px',
+                background: tracker.settings.isLightMode ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.08)',
+                border: '1px solid var(--danger-color)',
+                animation: 'fadeIn 0.3s ease',
                 display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
                 alignItems: 'center',
-                justifyContent: 'center',
-                border: `2px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.12)'}`
+                textAlign: 'center',
               }}>
-                <div className="gps-pulse-ring" style={{
-                  position: 'absolute',
-                  inset: '-6px',
-                  borderRadius: '50%',
-                  border: '2px dashed var(--accent-color)',
-                  opacity: 0.8,
-                  animation: 'spin 12s linear infinite'
-                }} />
-                <MapPin size={32} style={{ color: 'var(--accent-color)' }} strokeWidth={2} />
-              </div>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: 700,
-                color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.7)' : 'var(--text-secondary)',
-                fontFamily: "'Rajdhani', sans-serif",
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap'
-              }}>
-                {tracker.isStarting ? t('activatingGps') : t('gpsRequired')}
-              </div>
-              <button
-                disabled={tracker.isStarting}
-                style={{
-                  width: '200px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  background: tracker.isStarting
-                    ? (tracker.settings.isLightMode ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')
-                    : 'var(--accent-color)',
-                  border: `2px solid ${tracker.isStarting ? 'transparent' : 'var(--accent-color)'}`,
-                  color: tracker.isStarting
-                    ? (tracker.settings.isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)')
-                    : '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '14px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '3px',
-                  fontFamily: "'Orbitron', sans-serif",
-                  cursor: tracker.isStarting ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  transition: 'all 0.2s ease'
-                }}
-                onClick={() => { tracker.clearTrackingError(); tracker.startTracking(false); }}
-                onMouseDown={(e) => { if (!tracker.isStarting) gsap.to(e.currentTarget, { scale: 0.95, duration: 0.1 }); }}
-                onMouseUp={(e) => { if (!tracker.isStarting) gsap.to(e.currentTarget, { scale: 1, duration: 0.3, ease: 'back.out(2)' }); }}
-              >
-                {tracker.isStarting ? (
-                  <>
-                    <span style={{
-                      display: 'inline-block',
-                      width: '14px',
-                      height: '14px',
-                      border: '2px solid currentColor',
-                      borderTopColor: 'transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 0.8s linear infinite'
-                    }} />
-                    {t('starting')}
-                  </>
-                ) : (
-                  <>
-                    <Bike size={18} style={{ color: 'inherit' }} strokeWidth={2.5} />
-                    {t('startRide')}
-                  </>
-                )}
-              </button>
-              {tracker.trackingError && (
-                <div className="glass-panel" style={{
-                  width: '100%',
-                  maxWidth: '340px',
-                  padding: '16px 20px',
-                  borderRadius: '10px',
-                  background: tracker.settings.isLightMode ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.08)',
-                  border: '1px solid var(--danger-color)',
-                  animation: 'fadeIn 0.3s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  boxShadow: tracker.settings.isLightMode
-                    ? '0 6px 14px rgba(220, 38, 38, 0.05), inset 0 1px 0 rgba(255,255,255,0.6)'
-                    : '0 5px 0 rgba(220, 38, 38, 0.2), 0 6px 14px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
-                }}>
-                  <div style={{ fontSize: '13.5px', color: 'var(--danger-color)', fontWeight: 750, lineHeight: 1.5, fontFamily: "'Rajdhani', sans-serif" }}>
-                    {tracker.trackingError.message}
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    {tracker.trackingError.action === 'openGPS' && (
-                      <button
-                        className="raised-btn"
-                        style={{
-                          fontSize: '11px',
-                          padding: '8px 16px',
-                          borderRadius: '10px',
-                          color: '#ffffff',
-                          border: 'none',
-                          background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
-                          fontWeight: 850,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                          cursor: 'pointer',
-                          boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
-                        }}
-                        onClick={() => {
-                          import('@capacitor/core').then(({ registerPlugin }) => {
-                            registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
-                          });
-                        }}
-                      >
-                        {t('openSettings')}
-                      </button>
-                    )}
+                <div style={{ fontSize: '13.5px', color: 'var(--danger-color)', fontWeight: 750, lineHeight: 1.5, fontFamily: "'Rajdhani', sans-serif" }}>
+                  {tracker.trackingError.message}
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {tracker.trackingError.action === 'openGPS' && (
                     <button
                       className="raised-btn"
+                      style={{
+                        fontSize: '11px', padding: '8px 16px', borderRadius: '10px',
+                        color: '#ffffff', border: 'none',
+                        background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
+                        fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.5px',
+                        cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+                      }}
+                      onClick={() => {
+                        import('@capacitor/core').then(({ registerPlugin }) => {
+                          registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
+                        });
+                      }}
+                    >
+                      {t('openSettings')}
+                    </button>
+                  )}
+                  <button
+                    className="raised-btn"
+                    style={{
+                      fontSize: '11px', padding: '8px 16px', borderRadius: '10px',
+                      color: 'var(--text-primary)',
+                      border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
+                      background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
+                      fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer'
+                    }}
+                    onClick={() => tracker.clearTrackingError()}
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
                       style={{
                         fontSize: '11px',
                         padding: '8px 16px',
@@ -917,6 +884,10 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         tracker.updateCurrentOdo(Number(odoReading));
       }, 500);
     }
+    // Auto-start tracking after setup
+    setTimeout(() => {
+      tracker.startTracking(false);
+    }, 600);
   };
 
   /* ─── colour helpers ─── */
