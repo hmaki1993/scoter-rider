@@ -980,9 +980,9 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
                       borderRadius:'14px', padding:'0',
                       overflow:'hidden' }}>
-          <div style={{ padding:'8px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <User size={13} color={accentColor} strokeWidth={2.5} />
-            <span style={{ fontSize:'11px', fontWeight:800, color:accentColor,
+          <div style={{ padding:'10px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <User size={16} color={accentColor} strokeWidth={2.5} />
+            <span style={{ fontSize:'10px', fontWeight:700, color:accentColor,
                            textTransform:'uppercase', letterSpacing:'1px' }}>
               {t('riderName')}
             </span>
@@ -992,7 +992,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
             onChange={e=>{ const v=e.target.value; setName(v.charAt(0).toUpperCase()+v.slice(1)); }}
             placeholder="Ahmed…"
             style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'6px 16px 12px', fontSize:inputFs, fontWeight:700,
+                     padding:'4px 16px 14px', fontSize:'20px', fontWeight:800,
                      fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
           />
         </div>
@@ -1000,9 +1000,9 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         {/* Phone */}
         <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
                       borderRadius:'14px', overflow:'hidden' }}>
-          <div style={{ padding:'8px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <Smartphone size={13} color={accentColor} strokeWidth={2.5} />
-            <span style={{ fontSize:'11px', fontWeight:800, color:accentColor,
+          <div style={{ padding:'10px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <Smartphone size={16} color={accentColor} strokeWidth={2.5} />
+            <span style={{ fontSize:'10px', fontWeight:700, color:accentColor,
                            textTransform:'uppercase', letterSpacing:'1px' }}>
               {t('phoneNumber')}
             </span>
@@ -1012,7 +1012,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
             onChange={e=>setPhone(e.target.value.replace(/\D/g,''))}
             placeholder="01XXXXXXXXX"
             style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'6px 16px 12px', fontSize:inputFs, fontWeight:700,
+                     padding:'4px 16px 14px', fontSize:'20px', fontWeight:800,
                      fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
           />
         </div>
@@ -1020,14 +1020,14 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
         {/* Vehicle */}
         <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
                       borderRadius:'14px', overflow:'hidden' }}>
-          <div style={{ padding:'8px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <div style={{ width:'13px', height:'13px', flexShrink:0,
+          <div style={{ padding:'10px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <div style={{ width:'16px', height:'16px', flexShrink:0,
                           background:accentColor,
                           WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
                           WebkitMaskSize:'contain', maskSize:'contain',
                           WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
                           WebkitMaskPosition:'center', maskPosition:'center' }} />
-            <span style={{ fontSize:'11px', fontWeight:800, color:accentColor,
+            <span style={{ fontSize:'10px', fontWeight:700, color:accentColor,
                            textTransform:'uppercase', letterSpacing:'1px' }}>
               {t('vehicleType')}
             </span>
@@ -1037,7 +1037,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
             onChange={e=>setVehicleType(e.target.value.toUpperCase())}
             placeholder="SCOOTER / MOTORCYCLE"
             style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'6px 16px 12px', fontSize:inputFs, fontWeight:700,
+                     padding:'4px 16px 14px', fontSize:'20px', fontWeight:800,
                      fontFamily:"'Rajdhani', sans-serif", color:textClr,
                      textTransform:'uppercase', boxSizing:'border-box' }}
           />
