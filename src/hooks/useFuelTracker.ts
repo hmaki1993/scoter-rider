@@ -353,7 +353,7 @@ export const useFuelTracker = () => {
       baseFuel = fuelState.estimatedFuelLiters;
     }
 
-    const newFuel = Math.min(settings.tankCapacity, baseFuel + liters);
+    const newFuel = baseFuel + liters;
     const newLog: RefuelLog = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
@@ -416,7 +416,7 @@ export const useFuelTracker = () => {
       return { 
         ...prev, 
         lastOdo: odo, 
-        estimatedFuelLiters: Math.max(0, Math.min(settings.tankCapacity, prev.estimatedFuelLiters - fuelAdjustment))
+        estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - fuelAdjustment)
       };
     });
   };
@@ -488,7 +488,7 @@ export const useFuelTracker = () => {
   const runOutOdo = fuelState.lastOdo + rangeRemainingKm;
   const isWarning = rangeRemainingKm <= settings.warningThreshold;
   const isDanger = rangeRemainingKm <= 10;
-  const fuelPercentage = Math.min(100, Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100));
+  const fuelPercentage = Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100);
   const kmSinceOilChange = Math.max(0, fuelState.lastOdo - settings.lastOilChangeOdo);
   const kmUntilNextOilChange = Math.max(0, settings.oilChangeInterval - kmSinceOilChange);
 

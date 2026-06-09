@@ -494,7 +494,7 @@ function App() {
                 <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden', marginBottom: '8px' }}>
                   <div style={{
                     height: '100%',
-                    width: `${tracker.fuelPercentage}%`,
+                    width: `${Math.min(100, tracker.fuelPercentage)}%`,
                     background: tracker.isDanger
                       ? 'var(--danger-color)'
                       : tracker.isWarning
@@ -516,11 +516,11 @@ function App() {
                   </div>
                   <div style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 700, fontFamily: "'Rajdhani', sans-serif" }}>
                     <span>
-                      {lang === 'ar' ? 'متبقي' : 'Remaining'}{' '}
+                      ≈{' '}
                       <span style={{ color: 'var(--accent-secondary)', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", fontSize: '15px' }}>
-                        {tracker.rangeRemainingKm.toFixed(1)}
+                        {Math.max(0, tracker.fuelState.estimatedFuelLiters * (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(0)}
                       </span>{' '}
-                      {t('kmRemaining')}
+                      {lang === 'ar' ? 'جنيه بنزين' : 'EGP fuel'}
                     </span>
                   </div>
                 </div>
@@ -713,7 +713,7 @@ function App() {
       )}
 
       {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} setConfirmDialog={setConfirmDialog} />}
-      {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
+      {showSync && <SyncOdoModal tracker={tracker} tripBase={tripBase} setTripBase={setTripBase} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} setConfirmDialog={setConfirmDialog} />}
 
 
@@ -1325,7 +1325,7 @@ const TripAdjustModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker:
   );
 };
 
-const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void }) => {
+const SyncOdoModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker: any, tripBase: number | null, setTripBase: (v: number) => void, onClose: () => void }) => {
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const [odo, setOdo] = useState(tracker.fuelState.lastOdo.toFixed(1));
@@ -1333,7 +1333,21 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
   const handleSync = () => {
     const val = Number(odo);
     if (!isNaN(val) && val > 0) {
+      const oldOdo = tracker.fuelState.lastOdo;
+      
       tracker.updateCurrentOdo(val);
+      
+      // Only set tripBase on FIRST TIME setup (when ODO was 0 or tripBase not set)
+      // so trip starts at 0. On subsequent syncs, leave tripBase alone
+      // so the driven distance (with GPS off) gets added to the trip.
+      if (oldOdo === 0 || tripBase === null) {
+        setTripBase(val);
+        import('@capacitor/preferences').then(({ Preferences }) =>
+          Preferences.set({ key: 'custom_trip_base', value: String(val) })
+        ).catch(() => {});
+        localStorage.setItem('custom_trip_base', String(val));
+      }
+      
       onClose();
     }
   };

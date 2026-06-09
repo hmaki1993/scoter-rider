@@ -380,7 +380,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           }
 
           // ── Track if we're standing still ──
-          if (currentKmh < 5) {
+          if (currentKmh < 3) {
             stillCountRef.current++;
           } else {
             stillCountRef.current = 0;
@@ -433,12 +433,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 };
                 lastBearingRef.current = null;
               }
-              // ── GUARD 3: Minimum distance 12m to count ──
-              // ── GUARD 4: Must be moving ≥ 8 km/h (scooter speed minimum, avoids walking) ──
+              // ── GUARD 3: Minimum distance 8m to count ──
+              // ── GUARD 4: Must be moving ≥ 6 km/h (scooter speed minimum, avoids walking ~3-5 km/h) ──
               // ── GUARD 5: Must not be in a "still" streak ──
               else if (
-                dist > 0.012 &&            // at least 12m moved
-                currentKmh >= 8 &&          // avoids counting when walking on foot
+                dist > 0.008 &&            // at least 8m moved
+                currentKmh >= 6 &&          // avoids counting when walking on foot
                 stillCountRef.current < 3   // not standing still for multiple readings
               ) {
                 // ── GUARD 6: Bearing consistency check ──
