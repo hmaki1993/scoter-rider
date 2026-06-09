@@ -412,13 +412,6 @@ public class MainActivity extends BridgeActivity {
                 
                 editor.commit(); // Durable synchronous write
 
-                // If React explicitly sent colors (manual in-app change), save them to WidgetStore
-                if (call.getData().has("accentColor")) {
-                    String newColor = call.getString("accentColor", "#00f0ff");
-                    int newOpacity = call.getData().has("opacity") ? call.getInt("opacity", 100) : WidgetStore.getOpacity(context);
-                    WidgetStore.saveDesign(context, newColor, newOpacity);
-                }
-
                 Intent intent = new Intent(context, SpeedometerWidget.class);
                 intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
 
@@ -434,6 +427,40 @@ public class MainActivity extends BridgeActivity {
                 intent.putExtra("trip", trip);
                 intent.putExtra("budget", budget);
                 intent.putExtra("odoText", odo);
+
+                context.sendBroadcast(intent);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void updateWidgetDesign(PluginCall call) {
+            try {
+                Context context = getContext();
+                if (call.getData().has("accentColor")) {
+                    String newColor = call.getString("accentColor", "#00f0ff");
+                    int newOpacity = call.getData().has("opacity") ? call.getInt("opacity", 100) : WidgetStore.getOpacity(context);
+                    WidgetStore.saveDesign(context, newColor, newOpacity);
+                }
+                
+                Intent intent = new Intent(context, SpeedometerWidget.class);
+                intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
+                
+                android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", android.content.Context.MODE_PRIVATE);
+                intent.putExtra("speed", 0);
+                intent.putExtra("range", prefs.getString("latest_range", "0.0 KM"));
+                intent.putExtra("fuelPercent", prefs.getInt("latest_fuelPercent", 0));
+                intent.putExtra("litersLeft", prefs.getString("latest_litersLeft", "0.0 L"));
+                intent.putExtra("emptyAt", prefs.getString("latest_emptyAt", "EMPTY"));
+                intent.putExtra("oilLeft", prefs.getString("latest_oilLeft", "OIL: 0"));
+                intent.putExtra("trip", prefs.getString("latest_trip", "TRIP: 0"));
+                intent.putExtra("budget", prefs.getString("latest_budget", "0 EGP"));
+                intent.putExtra("odoText", prefs.getString("latest_odo", "ODO: 0"));
+
+                intent.putExtra("accentColor", WidgetStore.getColor(context));
+                intent.putExtra("opacity", WidgetStore.getOpacity(context));
 
                 context.sendBroadcast(intent);
                 call.resolve();

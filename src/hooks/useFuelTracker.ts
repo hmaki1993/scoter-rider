@@ -245,6 +245,19 @@ export const useFuelTracker = () => {
             return merged;
           });
         }
+        
+        // --- Fetch TRUE native widget design state ---
+        if (isAndroidPlatform()) {
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const widgetStats = await alarmPlugin.getWidgetSettings();
+          if (widgetStats && widgetStats.accentColor) {
+            setSettings(prev => {
+              const merged = { ...prev, widgetAccentColor: widgetStats.accentColor, widgetOpacity: widgetStats.opacity };
+              localStorage.setItem('fuel_settings', JSON.stringify(merged));
+              return merged;
+            });
+          }
+        }
       } catch (e) { /* ignore */ }
 
       try {
@@ -469,7 +482,7 @@ export const useFuelTracker = () => {
       // Immediately push to native widget
       if (isAndroidPlatform()) {
         try {
-          registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+          registerPlugin<any>('AlarmPlugin').updateWidgetDesign({
             accentColor: updated.widgetAccentColor,
             opacity: updated.widgetOpacity
           }).catch(() => {});
@@ -511,9 +524,7 @@ export const useFuelTracker = () => {
           odo: `ODO: ${fuelState.lastOdo.toFixed(0)}`,
 
           isWarning,
-          isDanger,
-          accentColor: settings.widgetAccentColor,
-          opacity: settings.widgetOpacity
+          isDanger
         }).catch(() => {});
       } catch (e) { /* ignore */ }
     };
