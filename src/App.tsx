@@ -1468,7 +1468,12 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
   const [odo, setOdo] = useState(
     tracker.fuelState.lastOdo === 0 ? '' : tracker.fuelState.lastOdo.toFixed(1)
   );
-  const [inputValue, setInputValue] = useState('');
+
+  const currentPrice = tracker.settings.fuelPricePerLiter || 14.5;
+  const remainingEGP = Math.max(0, tracker.fuelState.estimatedFuelLiters * currentPrice);
+  const initialValue = remainingEGP > 0 ? remainingEGP.toFixed(1).replace(/\.0$/, '') : '';
+
+  const [inputValue, setInputValue] = useState(initialValue);
   const [inputMode, setInputMode] = useState<'currency' | 'liters'>('currency');
 
   const handleSubmit = (e: React.FormEvent) => {
