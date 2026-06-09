@@ -831,6 +831,10 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
   const pageBg   = isLightMode ? '#f0f2f5'          : '#111115';
   const labelClr = isLightMode ? '#7b7b8a'          : 'rgba(255,255,255,0.45)';
   const textClr  = isLightMode ? '#12121c'          : '#ffffff';
+  // Bright label color: for the default green theme (#326144) use a vivid green, otherwise use the accent itself
+  const brightLabel = accentColor === '#326144'
+    ? (isLightMode ? '#1a7a3a' : '#4ade80')
+    : accentColor;
 
   return (
     <div style={{ position:'fixed', inset:0, background:pageBg, zIndex:1000,
@@ -927,17 +931,21 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
       <form
         onSubmit={handleSubmit}
         style={{ flex:1, padding:'20px 18px 40px',
-                 display:'flex', flexDirection:'column', gap:'12px' }}
+                 display:'flex', flexDirection:'column', gap:'16px' }}
       >
 
         {/* Name */}
-        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+        <div style={{ background:cardBg,
+                      border:`1.5px solid ${cardBdr}`,
+                      borderLeft:`3px solid ${brightLabel}`,
                       borderRadius:'14px', padding:'0',
-                      overflow:'hidden' }}>
-          <div style={{ padding:'10px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <User size={16} color={accentColor} strokeWidth={2.5} />
-            <span style={{ fontSize:'10px', fontWeight:700, color:accentColor,
-                           textTransform:'uppercase', letterSpacing:'1px' }}>
+                      overflow:'hidden',
+                      boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
+          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'8px' }}>
+            <User size={16} color={brightLabel} strokeWidth={2.5} />
+            <span style={{ fontSize:'11px', fontWeight:800, color:brightLabel,
+                           textTransform:'uppercase', letterSpacing:'1.5px',
+                           fontFamily:"'Orbitron', sans-serif" }}>
               {t('riderName')}
             </span>
           </div>
@@ -946,18 +954,22 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
             onChange={e=>{ const v=e.target.value; setName(v.charAt(0).toUpperCase()+v.slice(1)); }}
             placeholder="Ahmed…"
             style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'4px 16px 14px', fontSize:'20px', fontWeight:800,
+                     padding:'6px 16px 14px', fontSize:'22px', fontWeight:800,
                      fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
           />
         </div>
 
         {/* Phone */}
-        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
-                      borderRadius:'14px', overflow:'hidden' }}>
-          <div style={{ padding:'10px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <Smartphone size={16} color={accentColor} strokeWidth={2.5} />
-            <span style={{ fontSize:'10px', fontWeight:700, color:accentColor,
-                           textTransform:'uppercase', letterSpacing:'1px' }}>
+        <div style={{ background:cardBg,
+                      border:`1.5px solid ${cardBdr}`,
+                      borderLeft:`3px solid ${brightLabel}`,
+                      borderRadius:'14px', overflow:'hidden',
+                      boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
+          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'8px' }}>
+            <Smartphone size={16} color={brightLabel} strokeWidth={2.5} />
+            <span style={{ fontSize:'11px', fontWeight:800, color:brightLabel,
+                           textTransform:'uppercase', letterSpacing:'1.5px',
+                           fontFamily:"'Orbitron', sans-serif" }}>
               {t('phoneNumber')}
             </span>
           </div>
@@ -966,23 +978,27 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
             onChange={e=>setPhone(e.target.value.replace(/\D/g,''))}
             placeholder="01XXXXXXXXX"
             style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'4px 16px 14px', fontSize:'20px', fontWeight:800,
+                     padding:'6px 16px 14px', fontSize:'22px', fontWeight:800,
                      fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
           />
         </div>
 
         {/* Vehicle */}
-        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
-                      borderRadius:'14px', overflow:'hidden' }}>
-          <div style={{ padding:'10px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+        <div style={{ background:cardBg,
+                      border:`1.5px solid ${cardBdr}`,
+                      borderLeft:`3px solid ${brightLabel}`,
+                      borderRadius:'14px', overflow:'hidden',
+                      boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
+          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'8px' }}>
             <div style={{ width:'16px', height:'16px', flexShrink:0,
-                          background:accentColor,
+                          background:brightLabel,
                           WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
                           WebkitMaskSize:'contain', maskSize:'contain',
                           WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
                           WebkitMaskPosition:'center', maskPosition:'center' }} />
-            <span style={{ fontSize:'10px', fontWeight:700, color:accentColor,
-                           textTransform:'uppercase', letterSpacing:'1px' }}>
+            <span style={{ fontSize:'11px', fontWeight:800, color:brightLabel,
+                           textTransform:'uppercase', letterSpacing:'1.5px',
+                           fontFamily:"'Orbitron', sans-serif" }}>
               {t('vehicleType')}
             </span>
           </div>
@@ -991,20 +1007,23 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
             onChange={e=>setVehicleType(e.target.value.toUpperCase())}
             placeholder="SCOOTER / MOTORCYCLE"
             style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'4px 16px 14px', fontSize:'20px', fontWeight:800,
+                     padding:'6px 16px 14px', fontSize:'22px', fontWeight:800,
                      fontFamily:"'Rajdhani', sans-serif", color:textClr,
                      textTransform:'uppercase', boxSizing:'border-box' }}
           />
         </div>
 
         {/* Fuel Price + Odo */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
           {/* Fuel Price */}
-          <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
-                        borderRadius:'14px', padding:'10px 14px' }}>
-            <span style={{ display:'block', fontSize:'11px', fontWeight:900,
-                           color:accentColor, textTransform:'uppercase', letterSpacing:'1px',
-                           marginBottom:'6px' }}>
+          <div style={{ background:cardBg,
+                        border:`1.5px solid ${cardBdr}`,
+                        borderLeft:`3px solid ${brightLabel}`,
+                        borderRadius:'14px', padding:'12px 14px',
+                        boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
+            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
+                           color:brightLabel, textTransform:'uppercase', letterSpacing:'1.5px',
+                           marginBottom:'8px', fontFamily:"'Orbitron', sans-serif" }}>
               {t('fuelPrice')}
             </span>
             <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
@@ -1014,18 +1033,21 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
                 style={{ flex:1, background:'none', border:'none', outline:'none',
                          fontSize:'28px', fontWeight:900,
                          fontFamily:"'Orbitron', sans-serif",
-                         color:accentColor, width:'100%' }}
+                         color:brightLabel, width:'100%' }}
               />
               <span style={{ fontSize:'13px', fontWeight:800, color:labelClr }}>EGP</span>
             </div>
           </div>
 
           {/* Odometer */}
-          <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
-                        borderRadius:'14px', padding:'10px 14px' }}>
-            <span style={{ display:'block', fontSize:'11px', fontWeight:900,
-                           color:accentColor, textTransform:'uppercase', letterSpacing:'1px',
-                           marginBottom:'6px' }}>
+          <div style={{ background:cardBg,
+                        border:`1.5px solid ${cardBdr}`,
+                        borderLeft:`3px solid ${brightLabel}`,
+                        borderRadius:'14px', padding:'12px 14px',
+                        boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
+            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
+                           color:brightLabel, textTransform:'uppercase', letterSpacing:'1.5px',
+                           marginBottom:'8px', fontFamily:"'Orbitron', sans-serif" }}>
               {t('odoReading')}
             </span>
             <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
@@ -1470,7 +1492,9 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
   );
 
   const currentPrice = tracker.settings.fuelPricePerLiter || 14.5;
-  const remainingEGP = Math.max(0, tracker.fuelState.estimatedFuelLiters * currentPrice);
+  // Store what's already in the tank so we only add the DIFFERENCE on submit
+  const [baseRemainingLiters] = useState(tracker.fuelState.estimatedFuelLiters);
+  const remainingEGP = Math.max(0, baseRemainingLiters * currentPrice);
   const initialValue = remainingEGP > 0 ? remainingEGP.toFixed(1).replace(/\.0$/, '') : '';
 
   const [inputValue, setInputValue] = useState(initialValue);
@@ -1500,18 +1524,25 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
     if (!odometerVal && odometerVal !== 0) return;
     const price = tracker.settings.fuelPricePerLiter || 14.5;
     
-    let liters: number;
-    let pricePaidEGP: number;
+    // Calculate total liters the input represents
+    let totalLiters: number;
     if (inputMode === 'currency') {
-      pricePaidEGP = Number(inputValue);
-      liters = pricePaidEGP / price;
+      totalLiters = Number(inputValue) / price;
     } else {
-      liters = Number(inputValue);
-      pricePaidEGP = Number((liters * price).toFixed(1));
+      totalLiters = Number(inputValue);
     }
     
-    if (!liters || liters <= 0) return;
-    tracker.addRefuel(odometerVal, liters, pricePaidEGP, false);
+    // Only add the DIFFERENCE (new fuel on top of what was already in tank)
+    const addedLiters = totalLiters - baseRemainingLiters;
+    
+    if (addedLiters < 0.01) {
+      // Nothing new added or value decreased → just close, don't double
+      onClose();
+      return;
+    }
+    
+    const addedEGP = Number((addedLiters * price).toFixed(1));
+    tracker.addRefuel(odometerVal, addedLiters, addedEGP, false);
     onClose();
   };
 
@@ -1721,27 +1752,34 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
           </div>
 
           {/* Conversions preview */}
-          {inputValue && Number(inputValue) > 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '10px 14px',
-              borderRadius: '12px',
-              background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
-            }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                {inputMode === 'currency' ? (
-                  <>
-                    = {Number((Number(inputValue) / (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(2))} L
-                  </>
-                ) : (
-                  <>
-                    = {Number((Number(inputValue) * (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(1))} EGP
-                  </>
+          {inputValue && Number(inputValue) > 0 && (() => {
+            const price = tracker.settings.fuelPricePerLiter || 14.5;
+            const val = Number(inputValue);
+            const totalL = inputMode === 'currency' ? val / price : val;
+            const addedL = totalL - baseRemainingLiters;
+            return (
+              <div style={{
+                textAlign: 'center',
+                padding: '10px 14px',
+                borderRadius: '12px',
+                background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
+              }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  {inputMode === 'currency' ? (
+                    <>= {totalL.toFixed(2)} L</>
+                  ) : (
+                    <>= {Number((val * price).toFixed(1))} EGP</>
+                  )}
+                </span>
+                {addedL > 0.01 && (
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-color)', marginLeft: '6px' }}>
+                    (+{addedL.toFixed(2)} L {tracker.settings.language === 'ar' ? 'جديد' : 'new'})
+                  </span>
                 )}
-              </span>
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
             <button

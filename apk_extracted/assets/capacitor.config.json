@@ -1,0 +1,23 @@
+{
+	"appId": "com.scooterfuel.tracker",
+	"appName": "Fuel Tracker",
+	"webDir": "dist",
+	"android": {
+		"useLegacyBridge": true,
+		"allowMixedContent": true
+	},
+	"plugins": {
+		"LocalNotifications": {
+			"smallIcon": "ic_launcher",
+			"iconColor": "#488AFF",
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		},
+		"SplashScreen": {
+			"launchShowDuration": 1000
+		}
+	}
+}

@@ -1,0 +1,1 @@
+import{c as e}from"./dist-BUducFrO.js";export{e as registerPlugin};
