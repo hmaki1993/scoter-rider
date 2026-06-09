@@ -934,16 +934,15 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
       {/* ── HERO HEADER ── */}
       <div style={{
         background: accentColor,
-        padding: '28px 24px 22px',
+        padding: '36px 24px 24px',
         textAlign: 'center',
         position: 'relative',
-        overflow: 'hidden',
       }}>
         {/* diagonal stripe pattern */}
         <div style={{
-          position:'absolute', inset:0, opacity:0.12,
+          position:'absolute', inset:0, opacity:0.12, overflow:'hidden',
           backgroundImage:'repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)',
-          backgroundSize:'14px 14px'
+          backgroundSize:'14px 14px', pointerEvents:'none'
         }} />
 
         <input type="file" accept="image/*" ref={fileInputRef} style={{ display:'none' }} onChange={handleFileChange} />
