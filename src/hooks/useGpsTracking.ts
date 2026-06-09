@@ -351,8 +351,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           setGpsUpdateCount(prev => prev + 1);
           setLastGpsTime(new Date().toLocaleTimeString());
 
-          // ── GUARD 1: Accuracy filter — reject readings worse than 20m ──
-          const MAX_GPS_ACCURACY = 20;
+          // ── GUARD 1: Accuracy filter — reject readings worse than 35m ──
+          const MAX_GPS_ACCURACY = 35;
           if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
             console.log('[GPS] Skipping low accuracy reading:', pos.coords.accuracy.toFixed(0) + 'm');
             return; // Don't even update lastPosition with bad data
@@ -433,12 +433,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 };
                 lastBearingRef.current = null;
               }
-              // ── GUARD 3: Minimum distance 25m to count ──
-              // ── GUARD 4: Must be moving ≥ 10 km/h (native speed) ──
+              // ── GUARD 3: Minimum distance 12m to count ──
+              // ── GUARD 4: Must be moving ≥ 8 km/h (scooter speed minimum, avoids walking) ──
               // ── GUARD 5: Must not be in a "still" streak ──
               else if (
-                dist > 0.025 &&            // at least 25m moved
-                currentKmh >= 10 &&         // must be genuinely moving (scooter minimum)
+                dist > 0.012 &&            // at least 12m moved
+                currentKmh >= 8 &&          // avoids counting when walking on foot
                 stillCountRef.current < 3   // not standing still for multiple readings
               ) {
                 // ── GUARD 6: Bearing consistency check ──

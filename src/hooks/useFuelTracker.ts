@@ -453,7 +453,7 @@ export const useFuelTracker = () => {
     }
   };
 
-  const resetData = () => {
+  const resetData = async () => {
     stopTracking();
     setLogs([]);
     setFuelState({ estimatedFuelLiters: 0, lastOdo: 0, totalGpsDistance: 0 });
@@ -461,7 +461,26 @@ export const useFuelTracker = () => {
     setUserProfile(null);
     setIsMuted(false);
     localStorage.clear();
-    setTimeout(() => { window.location.reload(); }, 300);
+    
+    // Clear Native Preferences
+    try {
+      const { Preferences } = await import('@capacitor/preferences');
+      await Preferences.clear();
+    } catch (e) { console.warn('Could not clear preferences', e); }
+    
+    // Clear Native Background Service / Widget Data
+    if (isAndroidPlatform()) {
+      try {
+        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        await alarmPlugin.syncStateToNative({
+          trip: 0, fuelLiters: 0, odo: 0, range: "0 KM", fuelPercent: 0
+        });
+        // You might also need to clear native distance
+        if (alarmPlugin.stopBackgroundTracking) await alarmPlugin.stopBackgroundTracking();
+      } catch (e) {}
+    }
+
+    // Removed window.location.reload() for a smooth React state reset
   };
 
   // ── Derived UI values ─────────────────────────────────────────────────────
