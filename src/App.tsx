@@ -992,15 +992,8 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
 
           {/* Text */}
           <div style={{ textAlign:'left' }}>
-            <p style={{
-              margin:'0 0 2px', fontSize:'11px',
-              color:'rgba(255,255,255,0.7)', fontWeight:700,
-              letterSpacing:'2px', textTransform:'uppercase'
-            }}>
-              {t('setupProfile')}
-            </p>
             <h1 style={{
-              margin:0, fontSize:'22px', fontWeight:900,
+              margin:'0 0 4px', fontSize:'22px', fontWeight:900,
               fontFamily:"'Orbitron', sans-serif",
               color:'#ffffff', letterSpacing:'0.5px',
               textTransform:'uppercase', lineHeight:1.1,
@@ -1009,10 +1002,11 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
               {t('welcomeRider')}
             </h1>
             <p style={{
-              margin:'6px 0 0', fontSize:'11px',
-              color:'rgba(255,255,255,0.65)', fontWeight:500,
+              margin:0, fontSize:'12px',
+              color:'rgba(255,255,255,0.72)', fontWeight:600,
+              letterSpacing:'0.5px'
             }}>
-              Tap avatar to add photo
+              {t('setupProfile')}
             </p>
           </div>
         </div>
