@@ -63,8 +63,10 @@ class KalmanFilter1D {
 
 interface GpsTrackingProps {
   settings: FuelSettings;
+  initialOdo: number;
   onDistanceUpdate: (dist: number, speedKmh: number) => void;
   onTrackingError: (error: { message: string, action?: 'openGPS' | 'openSettings' } | null) => void;
+  onTrackingStart?: () => void;
 }
 
 interface SavedPosition {
@@ -75,7 +77,7 @@ interface SavedPosition {
   bearing?: number;
 }
 
-export function useGpsTracking({ settings, onDistanceUpdate, onTrackingError }: GpsTrackingProps) {
+export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrackingError, onTrackingStart }: GpsTrackingProps) {
   const [isTracking, setIsTracking] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
@@ -94,7 +96,147 @@ export function useGpsTracking({ settings, onDistanceUpdate, onTrackingError }: 
   // Track consecutive still readings to avoid counting drift while stopped
   const stillCountRef = useRef(0);
 
+  const onDistanceUpdateRef = useRef(onDistanceUpdate);
+  const onTrackingErrorRef = useRef(onTrackingError);
+  const onTrackingStartRef = useRef(onTrackingStart);
+
+  useEffect(() => { onDistanceUpdateRef.current = onDistanceUpdate; }, [onDistanceUpdate]);
+  useEffect(() => { onTrackingErrorRef.current = onTrackingError; }, [onTrackingError]);
+  useEffect(() => { onTrackingStartRef.current = onTrackingStart; }, [onTrackingStart]);
+
   useEffect(() => { settingsRef.current = settings; }, [settings]);
+
+  useEffect(() => {
+    let appStateListener: any = null;
+    let isResuming = false;
+
+    const handleResume = async () => {
+      if (isResuming) return;
+      isResuming = true;
+
+      // CLEAR ANCHOR IMMEDIATELY so any pending JS GPS callback doesn't add background distance
+      lastPositionRef.current = null;
+      lastAcceptedRef.current = null;
+      import('@capacitor/preferences').then(({ Preferences }) => {
+        Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
+      });
+      localStorage.removeItem('last_gps_position');
+
+      try {
+        const { Preferences } = await import('@capacitor/preferences');
+        const wasTrackingRes = await Preferences.get({ key: 'was_tracking' });
+        const stillTracking = wasTrackingRes.value === 'true' || localStorage.getItem('was_tracking') === 'true';
+        
+        const resumeAfterGpsRes = await Preferences.get({ key: 'resume_tracking_on_gps' });
+        const resumeAfterGps = resumeAfterGpsRes.value === 'true' || localStorage.getItem('resume_tracking_on_gps') === 'true';
+
+        // 1. Recover native distance
+        if (stillTracking) {
+          try {
+            const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+            const res = await alarmPlugin.getNativeDistance();
+            if (res && res.distanceKm && res.distanceKm > 0) {
+              onDistanceUpdateRef.current(res.distanceKm, 0);
+            }
+          } catch (e) {
+            console.warn('[GpsTracking] Failed to get native distance:', e);
+          }
+        }
+
+        // 2. GPS status recovery check
+        try {
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const status = await alarmPlugin.checkGPS();
+          if (status && status.enabled) {
+            onTrackingErrorRef.current(null);
+          }
+        } catch (e) {}
+
+        if (resumeAfterGps) {
+          console.log('[GpsTracking] Returned from GPS settings — retrying tracking...');
+          import('@capacitor/preferences').then(({ Preferences }) => {
+            Preferences.remove({ key: 'resume_tracking_on_gps' }).catch(() => {});
+          });
+          localStorage.removeItem('resume_tracking_on_gps');
+          if (watchId.current !== null) {
+            try { Geolocation.clearWatch({ id: watchId.current }).catch(() => {}); } catch(e) {}
+            watchId.current = null;
+          }
+          setTimeout(() => startTracking(false), 800);
+        } else if (stillTracking) {
+          console.log('[GpsTracking] App resumed — resetting geolocation watcher');
+          if (watchId.current !== null) {
+            try { Geolocation.clearWatch({ id: watchId.current }).catch(() => {}); } catch(e) {}
+            watchId.current = null;
+          }
+          startTracking(true);
+        }
+      } finally {
+        setTimeout(() => { isResuming = false; }, 2000);
+      }
+    };
+
+    const init = async () => {
+      const { Preferences } = await import('@capacitor/preferences');
+      const wasTrackingRes = await Preferences.get({ key: 'was_tracking' });
+      const wasTracking = wasTrackingRes.value === 'true' || localStorage.getItem('was_tracking') === 'true';
+
+      lastPositionRef.current = null;
+      lastAcceptedRef.current = null;
+      await Preferences.remove({ key: 'last_gps_position' });
+      localStorage.removeItem('last_gps_position');
+
+      // Recover accumulated distance if app was killed while tracking
+      if (wasTracking) {
+        try {
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const res = await alarmPlugin.getNativeDistance();
+          if (res && res.distanceKm && res.distanceKm > 0) {
+            onDistanceUpdateRef.current(res.distanceKm, 0);
+          }
+        } catch (e) {}
+      }
+
+      if (wasTracking && !isTracking) {
+        await new Promise(r => setTimeout(r, 1500));
+        startTracking(true);
+      }
+
+      const { App } = await import('@capacitor/app');
+      appStateListener = await App.addListener('appStateChange', async (state) => {
+        if (state.isActive) {
+          await handleResume();
+        } else {
+          // Clear anchor on background
+          lastPositionRef.current = null;
+          lastAcceptedRef.current = null;
+          Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
+          localStorage.removeItem('last_gps_position');
+        }
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleResume();
+      } else {
+        lastPositionRef.current = null;
+        lastAcceptedRef.current = null;
+        import('@capacitor/preferences').then(({ Preferences }) => {
+          Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
+        });
+        localStorage.removeItem('last_gps_position');
+      }
+    };
+
+    init();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      appStateListener?.remove();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const requestWakeLock = async () => {
     if ('wakeLock' in navigator) {
@@ -154,11 +296,24 @@ export function useGpsTracking({ settings, onDistanceUpdate, onTrackingError }: 
     try {
       const { Preferences } = await import('@capacitor/preferences');
       await Preferences.set({ key: 'was_tracking', value: 'true' });
+      localStorage.setItem('was_tracking', 'true');
       
-      const savedPosRes = await Preferences.get({ key: 'last_gps_position' });
-      if (savedPosRes.value && !lastPositionRef.current) {
+      // Auto-set trip base on first tracking start (so trip counter works immediately)
+      const existingTripBase = localStorage.getItem('custom_trip_base');
+      if (!existingTripBase) {
+        localStorage.setItem('custom_trip_base', String(initialOdo));
+        Preferences.set({ key: 'custom_trip_base', value: String(initialOdo) }).catch(() => {});
+      }
+      onTrackingStartRef.current?.();
+
+      let savedPosVal = localStorage.getItem('last_gps_position');
+      if (!savedPosVal) {
+        const savedPosRes = await Preferences.get({ key: 'last_gps_position' });
+        savedPosVal = savedPosRes.value;
+      }
+      if (savedPosVal && !lastPositionRef.current) {
         try {
-          const parsed = JSON.parse(savedPosRes.value);
+          const parsed = JSON.parse(savedPosVal);
           lastPositionRef.current = parsed;
           lastAcceptedRef.current = parsed;
           // Initialize Kalman with saved position
@@ -326,6 +481,7 @@ export function useGpsTracking({ settings, onDistanceUpdate, onTrackingError }: 
           import('@capacitor/preferences').then(({ Preferences }) =>
             Preferences.set({ key: 'last_gps_position', value: JSON.stringify(posToSave) })
           ).catch(() => {});
+          localStorage.setItem('last_gps_position', JSON.stringify(posToSave));
         }
       );
       watchId.current = String(wId);
@@ -344,9 +500,13 @@ export function useGpsTracking({ settings, onDistanceUpdate, onTrackingError }: 
   };
 
   const stopTracking = async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    await Preferences.set({ key: 'was_tracking', value: 'false' });
-    await Preferences.remove({ key: 'last_gps_position' });
+    try {
+      const { Preferences } = await import('@capacitor/preferences');
+      await Preferences.set({ key: 'was_tracking', value: 'false' });
+      await Preferences.remove({ key: 'last_gps_position' });
+    } catch {}
+    localStorage.setItem('was_tracking', 'false');
+    localStorage.removeItem('last_gps_position');
 
     if (watchId.current !== null) {
       await Geolocation.clearWatch({ id: watchId.current }).catch(() => {});

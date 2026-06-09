@@ -170,7 +170,7 @@ export function useAudioAlerts() {
     playTone(tone || 'Digital', customTones, audioCtxRef, activeAudioRef, true);
 
     registerPlugin<any>('AlarmPlugin').startVibration().catch(() => {
-      if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500]);
+      if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800]);
     });
 
     setTimeout(() => stopTone(), 10000);

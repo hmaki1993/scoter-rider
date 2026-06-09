@@ -103,9 +103,14 @@ public class BackgroundTrackingService extends Service {
                 .addRemoteInput(remoteInput)
                 .build();
 
+        SharedPreferences prefsFg = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+        String langFg = prefsFg.getString("fuel_settings_language", "ar");
+        String fgTitle = langFg.equals("ar") ? "🛵 متتبع الوقود — نشط" : "🛵 Fuel Tracker — Active";
+        String fgBody  = langFg.equals("ar") ? "جارٍ رصد المشوار وحساب الوقود بدقة عالية." : "Monitoring your ride & calculating fuel consumption in real time.";
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Scooter Fuel Tracker")
-                .setContentText("Tracking distance in background...")
+                .setContentTitle(fgTitle)
+                .setContentText(fgBody)
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(pendingIntent)
                 .addAction(syncAction) // Add the "SYNC ODO" button with Input field
@@ -372,10 +377,10 @@ public class BackgroundTrackingService extends Service {
         SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
         String lang = prefs.getString("fuel_settings_language", "ar");
         
-        String title = lang.equals("ar") ? "⚠️ تنبيه الوقود" : "⚠️ Fuel Alert";
-        String body = lang.equals("ar") ? 
-            String.format("متبقي حوالي %d كم. يرجى التزود بالوقود لتجنب توقف المحرك.", kmRemaining) :
-            String.format("Approx %d KM left. Please refuel to prevent engine cutout.", kmRemaining);
+        String title = lang.equals("ar") ? "⛽ تحذير — الوقود على وشك النفاد" : "⛽ Critical Fuel Warning";
+        String body = lang.equals("ar") ?
+            String.format("متبقي تقريباً %d كم فقط. أعد التزود بالوقود الآن لتجنب توقف المحرك في الطريق.", kmRemaining) :
+            String.format("Approximately %d KM of range remaining. Refuel now to avoid an unexpected breakdown on the road.", kmRemaining);
 
         // Intent to open App
         Intent intent = new Intent(this, MainActivity.class);
@@ -397,9 +402,10 @@ public class BackgroundTrackingService extends Service {
                 .setContentText(body)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setColor(0xFFE53935)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(body + "\n\n⚠️ " + (lang.equals("ar") ? "اضغط هنا لإضافة بنزين." : "Tap to add fuel.")))
+                .setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText(body + "\n\n" + (lang.equals("ar") ? "👆 اضغط لتسجيل تعبئة وقود جديدة والحفاظ على دقة الحسابات." : "👆 Tap to log a new refuel and keep your fuel data accurate.")))
                 .setContentIntent(pendingIntent)
-                .addAction(android.R.drawable.ic_media_pause, "🛑 STOP", stopPendingIntent)
+                .addAction(android.R.drawable.ic_media_pause, lang.equals("ar") ? "🔕 كتم التنبيه" : "🔕 DISMISS", stopPendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setDefaults(NotificationCompat.DEFAULT_SOUND | NotificationCompat.DEFAULT_LIGHTS)
@@ -478,6 +484,14 @@ public class BackgroundTrackingService extends Service {
     }
 
     private void showGpsDisabledNotification() {
+        SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+        String lang = prefs.getString("fuel_settings_language", "ar");
+
+        String title = lang.equals("ar") ? "📍 تحذير — خدمة الموقع معطّلة" : "📍 Location Services Disabled";
+        String body = lang.equals("ar") ?
+            "تم إيقاف تتبع المشوار تلقائياً بسبب تعطيل الـ GPS. فعّل الموقع لاستئناف الحساب بدقة." :
+            "Ride tracking has been paused because GPS is turned off. Enable location services to resume accurate distance monitoring.";
+
         Intent notificationIntent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, 1, notificationIntent,
@@ -493,13 +507,14 @@ public class BackgroundTrackingService extends Service {
         );
 
         Notification notification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
-                .setContentTitle("🛑 GPS CONNECTION LOST")
-                .setContentText("Tap to open settings. Tracking is paused.")
+                .setContentTitle(title)
+                .setContentText(body)
                 .setSmallIcon(android.R.drawable.ic_dialog_map)
                 .setColor(0xFFFF3B30) // Premium Red
-                .setStyle(new NotificationCompat.BigTextStyle().bigText("Tracking has completely stopped! Please enable GPS (Location Services) immediately to continue measuring your accurate fuel consumption."))
+                .setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText(body + "\n\n" + (lang.equals("ar") ? "👆 اضغط لفتح إعدادات الموقع مباشرةً." : "👆 Tap to open Location Settings immediately.")))
                 .setContentIntent(pendingIntent)
-                .addAction(android.R.drawable.ic_media_pause, "🛑 STOP", stopPendingIntent)
+                .addAction(android.R.drawable.ic_media_pause, lang.equals("ar") ? "🔕 كتم التنبيه" : "🔕 DISMISS", stopPendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)

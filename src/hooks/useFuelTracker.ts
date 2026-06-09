@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Geolocation } from '@capacitor/geolocation';
-import { App } from '@capacitor/app';
 import { translations } from '../translations';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { Geolocation } from '@capacitor/geolocation';
 import { registerPlugin } from '@capacitor/core';
+import { useAudioAlerts, playTone, stopTone } from './useAudioAlerts';
+import { useGpsTracking } from './useGpsTracking';
+
+export { playTone, stopTone };
 
 export interface FuelSettings {
   tankCapacity: number; // Liters
@@ -60,167 +63,13 @@ const DEFAULT_SETTINGS: FuelSettings = {
   alertTone: 'Digital',
   customTones: [],
   isLightMode: false,
-  oilChangeInterval: 1000,
+  oilChangeInterval: 700,
   lastOilChangeOdo: 0,
   widgetAccentColor: '#00f0ff',
   widgetOpacity: 100,
 };
 
-// ── Global Audio Singleton for overlap prevention ───────────────────────────
-let globalAudioCtx: AudioContext | null = null;
-let globalActiveAudio: HTMLAudioElement | null = null;
-let globalToneInterval: any = null;
-let globalToneIntervalLock = false; // TRUE IF CURRENTLY RINGING AN ALARM
 
-// ── Audio Engine (Web Audio API) ───────────────────────────────────────────
-export const playTone = (
-  type: string, 
-  customTones: { name: string; data: string }[] = [],
-  audioCtxRef?: React.MutableRefObject<AudioContext | null>,
-  activeAudioRef?: React.MutableRefObject<HTMLAudioElement | null>,
-  isLoop: boolean = false
-) => {
-  try {
-    // ── 1. Cleanup any existing audio ──
-    if (globalToneInterval) {
-      clearInterval(globalToneInterval);
-      globalToneInterval = null;
-    }
-    if (globalAudioCtx) {
-      globalAudioCtx.close().catch(() => {});
-      globalAudioCtx = null;
-    }
-    if (audioCtxRef?.current) {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
-    }
-
-    if (globalActiveAudio) {
-      globalActiveAudio.pause();
-      globalActiveAudio.src = "";
-      globalActiveAudio = null;
-    }
-    if (activeAudioRef?.current) {
-      activeAudioRef.current.pause();
-      activeAudioRef.current.src = "";
-      activeAudioRef.current = null;
-    }
-
-    // ── 2. Handle Custom Tone (Look up in list) ──
-    const custom = customTones.find(t => t.name === type);
-    if (custom) {
-      const audio = new Audio(custom.data);
-      audio.volume = 0.5;
-      audio.loop = false;
-      globalActiveAudio = audio;
-      if (activeAudioRef) activeAudioRef.current = audio;
-      
-      let playCount = 0;
-      audio.onended = () => {
-         playCount++;
-         if (isLoop && playCount < 3) {
-            audio.play().catch(()=>{});
-         } else {
-            stopTone();
-         }
-      };
-      
-      audio.play().catch(e => console.warn('Custom audio playback failed', e));
-      return;
-    }
-
-    // ── 3. Handle Web Audio Tones ──
-    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    
-    const ctx = new AudioContextClass();
-    globalAudioCtx = ctx;
-    if (audioCtxRef) audioCtxRef.current = ctx;
-
-    let sequenceCount = 0;
-    const playSequence = () => {
-      if (!globalAudioCtx) return;
-      const now = globalAudioCtx.currentTime;
-      
-      const playBeep = (freq: number, startTime: number, duration: number, vol = 0.1, wave: 'sine'|'square'|'sawtooth'|'triangle' = 'sine') => {
-        const osc = globalAudioCtx!.createOscillator();
-        const gain = globalAudioCtx!.createGain();
-        osc.type = wave;
-        osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-        osc.connect(gain);
-        gain.connect(globalAudioCtx!.destination);
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-      };
-
-      switch(type) {
-        case 'Radar':
-          playBeep(880, now, 0.5, 0.15);
-          playBeep(440, now + 0.5, 0.5, 0.1);
-          break;
-        case 'Cyber':
-          playBeep(1200, now, 0.1, 0.1, 'square');
-          playBeep(800, now + 0.15, 0.1, 0.1, 'square');
-          playBeep(1600, now + 0.3, 0.2, 0.1, 'square');
-          break;
-        case 'Alarm':
-          for(let i=0; i<3; i++) {
-            playBeep(500, now + i*0.4, 0.2, 0.2, 'sawtooth');
-            playBeep(800, now + i*0.4 + 0.2, 0.2, 0.2, 'sawtooth');
-          }
-          break;
-        default: // 'Digital'
-          playBeep(2000, now, 0.05);
-          playBeep(2500, now + 0.1, 0.05);
-      }
-      
-      sequenceCount++;
-    };
-    
-    playSequence();
-    
-    if (isLoop) {
-      globalToneInterval = setInterval(playSequence, 3000);
-    } else {
-      setTimeout(() => {
-        if (audioCtxRef?.current === ctx) {
-          ctx.close().catch(() => {});
-          if (audioCtxRef) audioCtxRef.current = null;
-        }
-      }, 2500);
-    }
-  } catch(err) { console.error('Audio failed', err); }
-};
-
-export const stopTone = () => {
-  globalToneIntervalLock = false; // RELEASE LOCK
-  
-  if (globalToneInterval) {
-    clearInterval(globalToneInterval);
-    globalToneInterval = null;
-  }
-  if (globalAudioCtx) {
-    // Graceful and instant suspension of the web audio context
-    if (globalAudioCtx.state === 'running') {
-       globalAudioCtx.suspend().catch(() => {});
-    }
-    globalAudioCtx.close().catch(() => {});
-    globalAudioCtx = null;
-  }
-  if (globalActiveAudio) {
-    globalActiveAudio.pause();
-    globalActiveAudio.src = "";
-    globalActiveAudio = null;
-  }
-  
-  // ── FIX: Ensure native vibration and legacy alarms are stopped everywhere ──
-  try {
-    registerPlugin<any>('AlarmPlugin').stopAlarm().catch(() => {});
-  } catch (e) { /* ignore */ }
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Utility: check if we're on Android
@@ -255,32 +104,47 @@ export const useFuelTracker = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [isTracking, setIsTracking] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
   const [trackingError, setTrackingError] = useState<{ message: string; action?: 'openGPS' | 'openSettings' } | null>(null);
-  const [currentSpeed, setCurrentSpeed] = useState(0); // KM/H
   const [isMuted, setIsMuted] = useState(false);
-  const [gpsUpdateCount, setGpsUpdateCount] = useState(0);
-  const [lastGpsTime, setLastGpsTime] = useState<string | null>(null);
-  const lastPositionRef = useRef<any>(null);
-  const watchId = useRef<string | null>(null);
-  const wakeLock = useRef<any>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastNotifiedStepRef = useRef<number>(999);
   const lastNotifiedKmRef = useRef<number>(999);
+
+  const { triggerAlarm, triggerWarning, audioCtxRef, activeAudioRef } = useAudioAlerts();
+
+  const {
+    isTracking,
+    isStarting,
+    currentSpeed,
+    gpsUpdateCount,
+    lastGpsTime,
+    startTracking,
+    stopTracking
+  } = useGpsTracking({
+    settings,
+    initialOdo: fuelState.lastOdo,
+    onDistanceUpdate: (dist, _speedKmh) => {
+      const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
+      setFuelState(prev => ({
+        ...prev,
+        estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
+        lastOdo: prev.lastOdo + dist,
+        totalGpsDistance: prev.totalGpsDistance + dist,
+      }));
+    },
+    onTrackingError: (err) => {
+      setTrackingError(err);
+    }
+  });
 
   // ── settingsRef: always up-to-date inside GPS callbacks (fixes stale closure) ──
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
-  // ── Restore last GPS position from localStorage on mount ──────────────────
-  useEffect(() => {
-    const saved = localStorage.getItem('last_gps_position');
-    if (saved) {
-      try { lastPositionRef.current = JSON.parse(saved); } catch { /* ignore */ }
-    }
-  }, []);
+  // ── fuelStateRef: always up-to-date inside background app listener callbacks ──
+  const fuelStateRef = useRef(fuelState);
+  useEffect(() => { fuelStateRef.current = fuelState; }, [fuelState]);
+
+
 
   // ── Register Notification Channel & Actions ──────────────────────────────
   useEffect(() => {
@@ -354,419 +218,51 @@ export const useFuelTracker = () => {
     if (!settings.enableAlerts || isMuted) return;
     try {
       if (isAlarm) {
-        // ── GUARD: Prevent overlapping simultaneous alarms ──
-        if (globalToneIntervalLock) return;
-        globalToneIntervalLock = true;
-
-        // ── Loop tone for 3 rounds (approx 8 seconds) ──
-        playTone(settingsRef.current.alertTone || 'Digital', settingsRef.current.customTones, audioCtxRef, activeAudioRef, true);
-
-        // ── Native vibration (3x pattern in Java) ──
-        registerPlugin<any>('AlarmPlugin').startVibration().catch(() => {
-          if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800]);
-        });
-
-        // ── HARD STOP after 3 rounds (approx 10 seconds) ──
-        setTimeout(() => stopTone(), 10000);
-
+        triggerAlarm(settings.alertTone || 'Digital', settings.customTones);
       } else {
-        // Soft pre-warning (single short beep + gentle buzz)
-        playTone('Digital');
-        import('@capacitor/haptics').then(({ Haptics }) => Haptics.vibrate()).catch(() => {
-          if (navigator.vibrate) navigator.vibrate(200);
-        });
+        triggerWarning();
       }
     } catch (e) { console.warn('Audio failed', e); }
   };
 
-  // ── Wake Lock ─────────────────────────────────────────────────────────────
-  const requestWakeLock = async () => {
-    if ('wakeLock' in navigator) {
-      try { wakeLock.current = await (navigator as any).wakeLock.request('screen'); }
-      catch (e) { console.warn('[WakeLock]', e); }
-    }
-  };
-  const releaseWakeLock = () => {
-    if (wakeLock.current) { wakeLock.current.release(); wakeLock.current = null; }
-  };
-
-  // ── Haversine Distance ───────────────────────────────────────────────────
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  };
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // startTracking — THE CORE FUNCTION
-  // silent=false → user pressed button (request permissions if needed)
-  // silent=true  → auto-restart after swipe-kill / resume from background
-  // ═══════════════════════════════════════════════════════════════════════════
-  const startTracking = async (silent = false) => {
-    const isAndroid = isAndroidPlatform();
-
-    // ── GUARD: already running ───────────────────────────────────────────
-    if (watchId.current !== null) {
-      setIsTracking(true);
-      return;
-    }
-
-    if (!silent) setIsStarting(true);
-
-    try {
-      const isWeb = (window as any).Capacitor?.getPlatform() === 'web';
-
-      // ────────────────────────────────────────────────────────────────────
-      // STEP 1: Interactive Permission Checks (Only if NOT silent)
-      // ────────────────────────────────────────────────────────────────────
-      if (!silent && !isWeb) {
-        // Notifications (Android only)
-        if (isAndroid) {
-          try {
-            const { LocalNotifications } = await import('@capacitor/local-notifications');
-            const perm = await LocalNotifications.checkPermissions();
-            if (perm.display !== 'granted') await LocalNotifications.requestPermissions();
-          } catch (e) { console.warn('[FuelTracker] Notification permission error:', e); }
-        }
-
-        // ── 1. Check GPS Hardware First ──
-        // Capacitor Geolocation throws an error if we check tracking permissions while GPS is physically off.
-        // ── 1. Check GPS Hardware First ──
-        // Capacitor Geolocation throws an error if we check tracking permissions while GPS is physically off.
-        if (isAndroid) {
-          try {
-            const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
-            const gpsStatus = await AlarmPlugin.checkGPS();
-            if (!gpsStatus || !gpsStatus.enabled) {
-              setTrackingError({ message: translations[settings.language].gpsDisabledErrorInner, action: 'openGPS' });
-            }
-          } catch (gpsErr) { console.warn('[FuelTracker] Instant GPS check failed:', gpsErr); }
-        }
-
-        // ── 2. Location Permissions ──
-        try {
-          const locPerm = await Geolocation.checkPermissions();
-          if (locPerm.location !== 'granted') {
-            const result = await Geolocation.requestPermissions();
-            if (result.location !== 'granted') {
-              setTrackingError({ message: translations[settings.language].locPermissionReqInner, action: 'openSettings' });
-              setIsStarting(false);
-              return;
-            }
-          }
-        } catch (permErr: any) {
-          const msg = permErr?.message || String(permErr);
-          // If the plugin still complains about GPS OFF
-          if (msg.includes('Location services are not enabled')) {
-             setTrackingError({ message: translations[settings.language].gpsDisabledErrorInner, action: 'openGPS' });
-          } else {
-             setTrackingError({ message: translations[settings.language].locPermissionReqInner + msg });
-          }
-          setIsStarting(false);
-          return;
-        }
-      }
-
-      // ────────────────────────────────────────────────────────────────────
-      // STEP 2: Silent Mode Guard (Only if silent=true)
-      // ────────────────────────────────────────────────────────────────────
-      if (silent && isAndroid) {
-        const locPerm = await Geolocation.checkPermissions();
-        if (locPerm.location !== 'granted') {
-          localStorage.setItem('was_tracking', 'false');
-          return;
-        }
-      }
-    } catch (err: any) {
-      console.error('[FuelTracker] Start logic failed:', err);
-      setTrackingError({ 
-        message: translations[settings.language].setupError + (err?.message || String(err)),
-        action: undefined
-      });
-      setIsStarting(false);
-      return;
-    }
-
-    // ── STEP 3: Initiate Tracking ────────────────────────────────────────
-    localStorage.setItem('was_tracking', 'true');
-    localStorage.removeItem('resume_tracking_on_gps');
-
-    // Restore last position if available
-    const savedPos = localStorage.getItem('last_gps_position');
-    if (savedPos && !lastPositionRef.current) {
-      try { lastPositionRef.current = JSON.parse(savedPos); } catch { /* ignore */ }
-    }
-
-    setIsTracking(true);
-    setIsStarting(false);
-    setGpsUpdateCount(0);
-    setLastGpsTime(null);
-
-    // ── Start GPS Watcher using official @capacitor/geolocation ────────────
-    // This replaces the community plugin which was incompatible with Capacitor 8
-    try {
-      const wId = await Geolocation.watchPosition(
-        {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 0,
-        },
-        (pos, err) => {
-          try {
-            if (err) {
-              console.error('[FuelTracker] GPS watchPosition error:', err);
-              setTrackingError({ message: 'GPS Connection Lost' });
-              return;
-            }
-            if (!pos) return;
-
-            // ── SUCCESS: Clear any previous tracking error automatically ──
-            setTrackingError(null);
-
-            // ── Update diagnostics ──
-            setGpsUpdateCount(prev => prev + 1);
-            setLastGpsTime(new Date().toLocaleTimeString());
-
-            // ── PROFESSIONAL FILTERING FOR HIGH ACCURACY ───────────────────────
-            const MAX_GPS_ACCURACY = 15;    // meters (tighter filter to avoid drift)
-            const MIN_DISTANCE_KM = 0.015;  // 15 meters minimum to accumulate (fixes zig-zag overestimation)
-            const MAX_TIME_DIFF_MS = 60000; // ignore readings >60s apart to avoid teleporting
-
-            // Ignore jumpy/poor GPS signals
-            if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
-              console.warn(`[FuelTracker] Weak GPS Signal: Accuracy=${pos.coords.accuracy}m`);
-              return;
-            }
-
-            // ── Update UI speed ──
-            const nativeSpeed = pos.coords?.speed;
-            let currentKmh = 0;
-            if (nativeSpeed !== null && nativeSpeed !== undefined && nativeSpeed >= 0) {
-              currentKmh = nativeSpeed * 3.6;
-            } else if (lastPositionRef.current) {
-              const uiDist = calculateDistance(
-                lastPositionRef.current.latitude, lastPositionRef.current.longitude,
-                pos.coords.latitude, pos.coords.longitude
-              );
-              const uiTime = Math.max(1000, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
-              currentKmh = uiDist / (uiTime / 3600000);
-            }
-            // Filter out micro speeds when practically stopped
-            setCurrentSpeed(Math.round(currentKmh >= 3 ? currentKmh : 0));
-
-            // ── Distance Accumulation (Smoothed) ──
-            if (lastPositionRef.current && pos.coords) {
-              const gpsDistKm = calculateDistance(
-                lastPositionRef.current.latitude, lastPositionRef.current.longitude,
-                pos.coords.latitude, pos.coords.longitude
-              );
-
-              // Only accumulate if we moved at least MIN_DISTANCE_KM (15 meters)
-              if (gpsDistKm >= MIN_DISTANCE_KM) {
-                 const timeDiffMs = Math.max(1000, (pos.timestamp ?? Date.now()) - lastPositionRef.current.timestamp);
-                 const calcSpeedKmh = gpsDistKm / (timeDiffMs / 3600000);
-                 
-                 // If the jump is realistic (under 120 km/h) and not a huge time gap teleport
-                 if (calcSpeedKmh <= 120 && timeDiffMs < MAX_TIME_DIFF_MS) {
-                   const consumed = gpsDistKm / (settingsRef.current.avgConsumption || 21.4);
-                   setFuelState(prev => ({
-                     ...prev,
-                     estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-                     lastOdo: prev.lastOdo + gpsDistKm,
-                     totalGpsDistance: prev.totalGpsDistance + gpsDistKm,
-                   }));
-                   
-                   // Update the reference point ONLY when we accumulate distance
-                   lastPositionRef.current = {
-                     latitude: pos.coords.latitude,
-                     longitude: pos.coords.longitude,
-                     timestamp: pos.timestamp ?? Date.now(),
-                     accuracy: pos.coords.accuracy
-                   };
-                   localStorage.setItem('last_gps_position', JSON.stringify(lastPositionRef.current));
-                 } else if (timeDiffMs >= MAX_TIME_DIFF_MS) {
-                   // If it was a long pause, just reset the anchor point without adding distance
-                   lastPositionRef.current = {
-                     latitude: pos.coords.latitude,
-                     longitude: pos.coords.longitude,
-                     timestamp: pos.timestamp ?? Date.now(),
-                     accuracy: pos.coords.accuracy
-                   };
-                 }
-              }
-            } else if (pos.coords) {
-               // First valid point, just set the anchor
-               lastPositionRef.current = {
-                 latitude: pos.coords.latitude,
-                 longitude: pos.coords.longitude,
-                 timestamp: pos.timestamp ?? Date.now(),
-                 accuracy: pos.coords.accuracy
-               };
-               localStorage.setItem('last_gps_position', JSON.stringify(lastPositionRef.current));
-            }
-          } catch (callbackErr: any) {
-            console.error('[FuelTracker] CRASH AVERTED in watchPosition callback:', callbackErr);
-            setTrackingError({ message: 'App Logic Error: ' + String(callbackErr) });
-          }
-        }
-      );
-      watchId.current = String(wId);
-
-      // ── One-time prompt for "Allow all the time" (Background Location) ────
-      // Removed: This was using a synchronous window.confirm that was blocking the WebView
-      // and redirecting to Android settings immediately when location was found, causing a perceived crash.
-      // With the foreground service set to type "location", "While using the app" permission is enough.
-    } catch (geoErr: any) {
-      console.error('[FuelTracker] watchPosition failed:', geoErr);
-      const lang = (settings.language in translations) ? settings.language : 'ar';
-      setTrackingError({
-        message: ((translations[lang] as any)?.bgTrackingError || 'Error: ') + (geoErr?.message || String(geoErr))
-      });
-      setIsTracking(false);
-      setIsStarting(false);
-      localStorage.setItem('was_tracking', 'false');
-      return;
-    }
-
-    // ── Wake Lock ─────────────────────────────────────────────────────────
-    await requestWakeLock();
-
-    // ── Start Native Background Tracking Service ──
-    try {
-      const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-      await alarmPlugin.startBackgroundTracking();
-    } catch(e) {
-      console.warn('[FuelTracker] Native bg tracking failed to start', e);
-    }
-    // NOTE: GPS Health Monitor removed — it was calling getCurrentPosition() every 30s
-    // while watchPosition() was already active, causing Android to kill the WebView
-    // due to concurrent GPS request conflicts. The watchPosition error callback handles
-    // GPS loss detection instead.
-  };
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // stopTracking
-  // ═══════════════════════════════════════════════════════════════════════════
-  const stopTracking = async () => {
-    localStorage.setItem('was_tracking', 'false');
-    // Clear saved position when user explicitly stops tracking
-    localStorage.removeItem('last_gps_position');
-
-    if (watchId.current !== null) {
-      try {
-        await Geolocation.clearWatch({ id: watchId.current });
-      } catch (e) {
-        console.warn('[FuelTracker] clearWatch error:', e);
-      }
-      watchId.current = null;
-    }
-
-    // ── Stop Native Background Tracking Service ──
-    try {
-      const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-      await alarmPlugin.stopBackgroundTracking();
-    } catch(e) {
-      console.warn('[FuelTracker] Native bg tracking failed to stop', e);
-    }
-
-    setCurrentSpeed(0);
-    setIsTracking(false);
-    lastPositionRef.current = null;
-    releaseWakeLock();
-
-    // (GPS health monitor interval was removed — no cleanup needed)
-  };
 
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Auto-start on app open / resume from background
-  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Mount/Initialization Effect ──
   useEffect(() => {
     let appStateListener: any = null;
 
     const init = async () => {
-      const wasTracking = localStorage.getItem('was_tracking') === 'true';
-
-      // 1. Recover accumulated distance if app was killed while tracking
-      if (wasTracking) {
-        try {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-          const res = await alarmPlugin.getNativeDistance();
-          if (res && res.distanceKm && res.distanceKm > 0) {
-            const dist = res.distanceKm;
-            setFuelState(prev => {
-              const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
-              return {
-                ...prev,
-                estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-                lastOdo: prev.lastOdo + dist,
-                totalGpsDistance: prev.totalGpsDistance + dist,
-              };
-            });
-          }
-        } catch(e) { /* ignore */ }
-      }
-
-      if (wasTracking && !isTracking) {
-        await new Promise(r => setTimeout(r, 1500)); // let plugins initialize
-        startTracking(true);
-      }
-
-      appStateListener = await App.addListener('appStateChange', async (state) => {
-        if (state.isActive) {
-          const stillTracking = localStorage.getItem('was_tracking') === 'true';
-          const resumeAfterGps = localStorage.getItem('resume_tracking_on_gps') === 'true';
-
-          // 2. Recover distance if app was merely suspended/swiped away
-          if (stillTracking) {
-            try {
-              const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-              const res = await alarmPlugin.getNativeDistance();
-              if (res && res.distanceKm && res.distanceKm > 0) {
-                const dist = res.distanceKm;
-                setFuelState(prev => {
-                  const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
-                  return {
-                    ...prev,
-                    estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-                    lastOdo: prev.lastOdo + dist,
-                    totalGpsDistance: prev.totalGpsDistance + dist,
-                  };
-                });
-              }
-            } catch(e) { /* ignore */ }
-          }
-
-          // ── Explicit check when user returns ──
-          if (trackingError) {
-             try {
-                const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-                const status = await alarmPlugin.checkGPS();
-                if (status && status.enabled) {
-                   setTrackingError(null);
-                   if (stillTracking) startTracking(true);
-                }
-             } catch (e) { /* ignore */ }
-          }
-
-          if (resumeAfterGps) {
-            // User returned from GPS settings — try starting tracking again
-            console.log('[FuelTracker] Returned from GPS settings — retrying tracking...');
-            localStorage.removeItem('resume_tracking_on_gps');
-            setTimeout(() => startTracking(false), 800);
-          } else if (stillTracking && watchId.current === null) {
-            // Watcher was killed by OS — restart silently
-            console.log('[FuelTracker] App resumed — restarting watcher silently');
-            startTracking(true);
-          }
+      // ── Ensure we load the reliable native settings in case localStorage was wiped ──
+      try {
+        const { Preferences } = await import('@capacitor/preferences');
+        const prefSettings = await Preferences.get({ key: 'fuel_settings' });
+        if (prefSettings.value) {
+          const parsedPrefs = JSON.parse(prefSettings.value);
+          setSettings(prev => {
+            const merged = { ...prev, ...parsedPrefs };
+            localStorage.setItem('fuel_settings', JSON.stringify(merged));
+            return merged;
+          });
         }
-      });
+      } catch (e) { /* ignore */ }
+
+      try {
+        const { App } = await import('@capacitor/app');
+        appStateListener = await App.addListener('appStateChange', async (state) => {
+          if (!state.isActive) {
+            // App going to background, ensure state is saved
+            localStorage.setItem('fuel_state', JSON.stringify(fuelStateRef.current));
+          }
+        });
+      } catch (e) {}
     };
 
     init();
-    return () => { appStateListener?.remove(); };
+
+    return () => {
+      appStateListener?.remove();
+    };
   }, []);
 
   // ── Persist state & Sync to Native Widget ────────────────────────────────
@@ -849,7 +345,7 @@ export const useFuelTracker = () => {
       baseFuel = fuelState.estimatedFuelLiters;
     }
 
-    const newFuel = isFullTank ? settings.tankCapacity : Math.min(settings.tankCapacity, baseFuel + liters);
+    const newFuel = baseFuel + liters;
     const newLog: RefuelLog = {
       id: isEdit ? prevLog!.id : crypto.randomUUID(),
       date: new Date().toISOString(),
@@ -857,8 +353,34 @@ export const useFuelTracker = () => {
       fuelBeforeRefuel: baseFuel,
     };
 
+    // ── Auto-learn consumption from refuel history ──
+    if (!isEdit && liters > 0) {
+      const prevRefuel = logs.find(l => l.odo < odo);
+      if (prevRefuel) {
+        const kmDriven = odo - prevRefuel.odo;
+        if (kmDriven > 5) {
+          // ✅ FIX Bug 3: Correctly calculate liters BURNED between the two refuels.
+          // Before: was (fuelBeforeRefuel + liters) which sums both sides wrongly.
+          // Now: fuel at start of interval - fuel remaining when we arrived = consumed.
+          const fuelAtStartOfInterval = (prevRefuel.fuelBeforeRefuel ?? 0) + prevRefuel.litersAdded;
+          const litersConsumed = fuelAtStartOfInterval - baseFuel; // baseFuel = fuel remaining before THIS refuel
+          if (litersConsumed > 0.5) {
+            const actualConsumption = kmDriven / litersConsumed;
+            const newAvg = Math.round((settings.avgConsumption * 0.7 + actualConsumption * 0.3) * 10) / 10;
+            const clamped = Math.max(5, Math.min(60, newAvg));
+            setSettings(prev => ({ ...prev, avgConsumption: clamped }));
+            localStorage.setItem('fuel_settings', JSON.stringify({ ...settings, avgConsumption: clamped }));
+            import('@capacitor/preferences').then(({ Preferences }) =>
+              Preferences.set({ key: 'fuel_settings', value: JSON.stringify({ ...settings, avgConsumption: clamped }) })
+            ).catch(() => {});
+          }
+        }
+      }
+    }
+
     setLogs(prev => isEdit ? prev.map((l, i) => i === 0 ? newLog : l) : [newLog, ...prev]);
-    setFuelState({ estimatedFuelLiters: newFuel, lastOdo: odo, totalGpsDistance: 0 });
+    // ✅ FIX Bug 2: Preserve totalGpsDistance instead of wiping it on every refuel.
+    setFuelState(prev => ({ ...prev, estimatedFuelLiters: newFuel, lastOdo: odo }));
     lastNotifiedStepRef.current = 999;
     
     // ── FIX: Stop vibration upon refueling ──
@@ -940,6 +462,28 @@ export const useFuelTracker = () => {
     setSettings(prev => ({ ...prev, lastOilChangeOdo: odoValue }));
   };
 
+  // ── Widget Settings (accent color, opacity) ─────────────────────────────
+  const setWidgetSettings = (partial: Partial<Pick<FuelSettings, 'widgetAccentColor' | 'widgetOpacity'>>) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...partial };
+      // Persist immediately so it survives app close
+      localStorage.setItem('fuel_settings', JSON.stringify(updated));
+      import('@capacitor/preferences').then(({ Preferences }) =>
+        Preferences.set({ key: 'fuel_settings', value: JSON.stringify(updated) })
+      ).catch(() => {});
+      // Immediately push to native widget
+      if (isAndroidPlatform()) {
+        try {
+          registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+            accentColor: updated.widgetAccentColor,
+            opacity: updated.widgetOpacity
+          }).catch(() => {});
+        } catch (e) { /* ignore */ }
+      }
+      return updated;
+    });
+  };
+
   // ── Sync Live Stats with Native Widget ────────────────────────────────────
   useEffect(() => {
     if (!isAndroidPlatform()) return;
@@ -947,13 +491,9 @@ export const useFuelTracker = () => {
     const updateWidget = () => {
       try {
         // Calculate Trip & Budget logic matching App.tsx
-        const tripValue = Math.max(0, fuelState.lastOdo - (Number(localStorage.getItem('custom_trip_base')) || logs[0]?.odo || 0));
-        const lastLog = logs[0];
+        const tripValue = Math.max(0, fuelState.lastOdo - (Number(localStorage.getItem('custom_trip_base')) || 0));
         const pricePerLiter = settings.fuelPricePerLiter || 14.5;
-        const pricePaid = (lastLog?.pricePaid && lastLog.pricePaid > 0) ? lastLog.pricePaid : (lastLog?.litersAdded ?? 0) * pricePerLiter;
-        const litersAtRefuel = lastLog ? (lastLog.fuelBeforeRefuel ?? 0) + lastLog.litersAdded : 0;
-        const consumedSinceRefuel = Math.max(0, litersAtRefuel - fuelState.estimatedFuelLiters);
-        const budgetRemaining = Math.max(0, pricePaid - (consumedSinceRefuel * pricePerLiter));
+        const budgetRemaining = Math.max(0, fuelState.estimatedFuelLiters * pricePerLiter);
 
         registerPlugin<any>('AlarmPlugin').updateWidgetStats({
           speed: Math.round(currentSpeed || 0),
@@ -969,9 +509,11 @@ export const useFuelTracker = () => {
           fuelLitersRaw: fuelState.estimatedFuelLiters,
           oilLeftRaw: kmUntilNextOilChange,
           tripRaw: tripValue,
+          odoRaw: fuelState.lastOdo,
           consumptionRate: settings.avgConsumption,
           tankCapacity: settings.tankCapacity,
           fuelPrice: settings.fuelPricePerLiter,
+          odo: `ODO: ${fuelState.lastOdo.toFixed(0)}`,
 
           isWarning,
           isDanger,
@@ -994,8 +536,6 @@ export const useFuelTracker = () => {
     logs, settings.fuelPricePerLiter, settings.avgConsumption, settings.tankCapacity
   ]);
 
-
-
   return {
     fuelState, settings, userProfile, logs,
     isWarning, isDanger, fuelPercentage, rangeRemainingKm, runOutOdo,
@@ -1003,9 +543,9 @@ export const useFuelTracker = () => {
     trackingError, clearTrackingError: () => setTrackingError(null),
     gpsUpdateCount, lastGpsTime,
     kmSinceOilChange, kmUntilNextOilChange, recordOilChange,
-    setSettings, addRefuel, removeRefuel, updateCurrentOdo, updateUserProfile,
+    setSettings, setWidgetSettings, addRefuel, removeRefuel, updateCurrentOdo, updateUserProfile,
     startTracking, stopTracking, setIsMuted, playWarningSound,
-    resetData, requestAllPermissions, setCurrentSpeed,
+    resetData, requestAllPermissions,
     audioCtxRef, activeAudioRef,
     isDataLoaded: true
   };
