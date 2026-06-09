@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { MapPin, AlertTriangle, User, Camera, Smartphone, Fuel, X, Bike, Sun, Moon, Droplet, Navigation } from 'lucide-react';
+import { MapPin, AlertTriangle, User, Camera, Smartphone, Fuel, X, Sun, Moon, Droplet, Navigation } from 'lucide-react';
 import { translations } from './translations';
 import { App as CapApp } from '@capacitor/app';
 import gsap from 'gsap';
@@ -476,7 +476,7 @@ function App() {
             </div>
           )}
 
-          {/* GPS activating / waiting state */}
+          {!tracker.isTracking && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center', textAlign: 'center', flex: 1 }}>
             <div style={{
               position: 'relative',
@@ -575,27 +575,7 @@ function App() {
             )}
           </div>
           )}
-                      style={{
-                        fontSize: '11px',
-                        padding: '8px 16px',
-                        borderRadius: '10px',
-                        color: 'var(--text-primary)',
-                        border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
-                        background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => tracker.clearTrackingError()}
-                    >
-                      {t('cancel')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+
         </div>
 
         {tracker.isTracking && (
