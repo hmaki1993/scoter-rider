@@ -1048,8 +1048,8 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
           {/* Fuel Price */}
           <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
                         borderRadius:'14px', padding:'10px 14px' }}>
-            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
-                           color:labelClr, textTransform:'uppercase', letterSpacing:'1px',
+            <span style={{ display:'block', fontSize:'11px', fontWeight:900,
+                           color:accentColor, textTransform:'uppercase', letterSpacing:'1px',
                            marginBottom:'6px' }}>
               {t('fuelPrice')}
             </span>
@@ -1069,8 +1069,8 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
           {/* Odometer */}
           <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
                         borderRadius:'14px', padding:'10px 14px' }}>
-            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
-                           color:labelClr, textTransform:'uppercase', letterSpacing:'1px',
+            <span style={{ display:'block', fontSize:'11px', fontWeight:900,
+                           color:accentColor, textTransform:'uppercase', letterSpacing:'1px',
                            marginBottom:'6px' }}>
               {t('odoReading')}
             </span>
