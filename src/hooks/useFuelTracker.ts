@@ -333,13 +333,8 @@ export const useFuelTracker = () => {
   // ── Refuel ────────────────────────────────────────────────────────────────
   const addRefuel = (odo: number, liters: number, price: number | undefined, isFullTank: boolean) => {
     let baseFuel = 0;
-    let isEdit = false;
-    let prevLog: RefuelLog | null = null;
 
-    if (logs.length > 0 && logs[0].odo === odo) {
-      isEdit = true; prevLog = logs[0];
-      baseFuel = prevLog.fuelBeforeRefuel ?? 0;
-    } else if (fuelState.lastOdo > 0 && odo > fuelState.lastOdo) {
+    if (fuelState.lastOdo > 0 && odo > fuelState.lastOdo) {
       baseFuel = Math.max(0, fuelState.estimatedFuelLiters - (odo - fuelState.lastOdo) / settings.avgConsumption);
     } else {
       baseFuel = fuelState.estimatedFuelLiters;
@@ -347,14 +342,14 @@ export const useFuelTracker = () => {
 
     const newFuel = baseFuel + liters;
     const newLog: RefuelLog = {
-      id: isEdit ? prevLog!.id : crypto.randomUUID(),
+      id: crypto.randomUUID(),
       date: new Date().toISOString(),
       odo, litersAdded: liters, pricePaid: price, isFullTank,
       fuelBeforeRefuel: baseFuel,
     };
 
     // ── Auto-learn consumption from refuel history ──
-    if (!isEdit && liters > 0) {
+    if (liters > 0) {
       const prevRefuel = logs.find(l => l.odo < odo);
       if (prevRefuel) {
         const kmDriven = odo - prevRefuel.odo;
@@ -378,7 +373,7 @@ export const useFuelTracker = () => {
       }
     }
 
-    setLogs(prev => isEdit ? prev.map((l, i) => i === 0 ? newLog : l) : [newLog, ...prev]);
+    setLogs(prev => [newLog, ...prev]);
     // ✅ FIX Bug 2: Preserve totalGpsDistance instead of wiping it on every refuel.
     setFuelState(prev => ({ ...prev, estimatedFuelLiters: newFuel, lastOdo: odo }));
     lastNotifiedStepRef.current = 999;
