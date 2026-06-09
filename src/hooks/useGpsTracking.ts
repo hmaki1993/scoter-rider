@@ -212,6 +212,11 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           lastAcceptedRef.current = null;
           Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
           localStorage.removeItem('last_gps_position');
+          // Fix Double Tracking: Stop JS watcher so it doesn't run concurrently with Native Service
+          if (watchId.current !== null) {
+            try { Geolocation.clearWatch({ id: watchId.current }).catch(() => {}); } catch(e) {}
+            watchId.current = null;
+          }
         }
       });
     };
@@ -226,6 +231,11 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
         });
         localStorage.removeItem('last_gps_position');
+        // Fix Double Tracking: Stop JS watcher so it doesn't run concurrently with Native Service
+        if (watchId.current !== null) {
+          try { Geolocation.clearWatch({ id: watchId.current }).catch(() => {}); } catch(e) {}
+          watchId.current = null;
+        }
       }
     };
 

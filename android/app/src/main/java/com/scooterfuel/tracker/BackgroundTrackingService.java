@@ -147,7 +147,7 @@ public class BackgroundTrackingService extends Service {
         }
     }
 
-    private static final float MAX_ACCURACY_METERS = 15.0f; // Tighter filter to avoid drift
+    private static final float MAX_ACCURACY_METERS = 50.0f; // Relaxed filter to avoid losing distance when phone is in pocket
 
     private final LocationListener locationListener = new LocationListener() {
         @Override
