@@ -919,388 +919,260 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
     }
   };
 
+  /* ─── colour helpers ─── */
+  const cardBg   = isLightMode ? '#ffffff'          : 'rgba(255,255,255,0.06)';
+  const cardBdr  = isLightMode ? '#e8e8ee'          : 'rgba(255,255,255,0.12)';
+  const pageBg   = isLightMode ? '#f0f2f5'          : '#111115';
+  const labelClr = isLightMode ? '#7b7b8a'          : 'rgba(255,255,255,0.45)';
+  const textClr  = isLightMode ? '#12121c'          : '#ffffff';
+  const inputFs  = '16px';
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: isLightMode ? '#f5f5f7' : '#141417',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'auto'
-      }}
-    >
-      <div style={{ padding: '48px 24px 24px', textAlign: 'center' }}>
-        <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+    <div style={{ position:'fixed', inset:0, background:pageBg, zIndex:1000,
+                  display:'flex', flexDirection:'column', overflow:'auto' }}>
+
+      {/* ── HERO HEADER ── */}
+      <div style={{
+        background: accentColor,
+        padding: '52px 24px 28px',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* diagonal stripe pattern */}
+        <div style={{
+          position:'absolute', inset:0, opacity:0.12,
+          backgroundImage:'repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)',
+          backgroundSize:'14px 14px'
+        }} />
+
+        <input type="file" accept="image/*" ref={fileInputRef} style={{ display:'none' }} onChange={handleFileChange} />
+
+        {/* Avatar */}
         <div
           onClick={handlePhotoClick}
           style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
-            border: `3px solid ${accentColor}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px',
-            cursor: 'pointer',
-            overflow: 'hidden',
-            transition: 'border-color 0.3s'
+            width:'88px', height:'88px', borderRadius:'50%',
+            background:'rgba(0,0,0,0.25)',
+            border:'3px solid rgba(255,255,255,0.9)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            margin:'0 auto 16px', cursor:'pointer', overflow:'hidden',
+            position:'relative', zIndex:1,
           }}
         >
-          {photo ? (
-            <img src={photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <User size={32} color={accentColor} strokeWidth={1.5} />
-          )}
+          {photo
+            ? <img src={photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            : <User size={38} color="#fff" strokeWidth={1.5} />
+          }
         </div>
+
         <h1 style={{
-          margin: '0 0 8px',
-          fontSize: '26px',
-          fontWeight: 900,
-          fontFamily: "'Orbitron', sans-serif",
-          color: isLightMode ? '#2c2c2e' : '#ffffff',
-          letterSpacing: '1px',
-          textTransform: 'uppercase'
+          margin:'0 0 6px', position:'relative', zIndex:1,
+          fontSize:'26px', fontWeight:900,
+          fontFamily:"'Orbitron', sans-serif",
+          color:'#ffffff',
+          letterSpacing:'1.5px', textTransform:'uppercase',
+          textShadow:'0 2px 8px rgba(0,0,0,0.25)'
         }}>
-          {t('welcomeRider')}
+          {t('welcomeRider')} 🛵
         </h1>
         <p style={{
-          fontSize: '13px',
-          color: isLightMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.45)',
-          margin: 0,
-          fontWeight: 600
+          fontSize:'13px', color:'rgba(255,255,255,0.82)',
+          margin:0, fontWeight:600, position:'relative', zIndex:1,
         }}>
           {t('setupProfile')}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ flex: 1, padding: '0 24px 40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {/* Name Input */}
-        <div style={{
-          background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-          border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: '14px',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <User size={24} color={accentColor} strokeWidth={2} />
+      {/* ── FORM ── */}
+      <form
+        onSubmit={handleSubmit}
+        style={{ flex:1, padding:'20px 18px 40px',
+                 display:'flex', flexDirection:'column', gap:'12px' }}
+      >
+
+        {/* Name */}
+        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                      borderRadius:'14px', padding:'0',
+                      overflow:'hidden' }}>
+          <div style={{ padding:'8px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <User size={13} color={accentColor} strokeWidth={2.5} />
+            <span style={{ fontSize:'11px', fontWeight:800, color:accentColor,
+                           textTransform:'uppercase', letterSpacing:'1px' }}>
+              {t('riderName')}
+            </span>
+          </div>
           <input
-            required
-            type="text"
-            value={name}
-            onChange={(e) => {
-              const val = e.target.value;
-              setName(val.charAt(0).toUpperCase() + val.slice(1));
-            }}
-            placeholder={t('riderName')}
-            style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              fontSize: '15px',
-              fontWeight: 700,
-              fontFamily: "'Rajdhani', sans-serif",
-              color: isLightMode ? '#2c2c2e' : '#ffffff'
-            }}
+            required type="text" value={name}
+            onChange={e=>{ const v=e.target.value; setName(v.charAt(0).toUpperCase()+v.slice(1)); }}
+            placeholder="Ahmed…"
+            style={{ width:'100%', background:'none', border:'none', outline:'none',
+                     padding:'6px 16px 12px', fontSize:inputFs, fontWeight:700,
+                     fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
           />
         </div>
 
-        {/* Phone Input */}
-        <div style={{
-          background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-          border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: '14px',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <Smartphone size={24} color={accentColor} strokeWidth={2} />
+        {/* Phone */}
+        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                      borderRadius:'14px', overflow:'hidden' }}>
+          <div style={{ padding:'8px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <Smartphone size={13} color={accentColor} strokeWidth={2.5} />
+            <span style={{ fontSize:'11px', fontWeight:800, color:accentColor,
+                           textTransform:'uppercase', letterSpacing:'1px' }}>
+              {t('phoneNumber')}
+            </span>
+          </div>
           <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-            placeholder={t('phoneNumber')}
-            style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              fontSize: '15px',
-              fontWeight: 700,
-              fontFamily: "'Rajdhani', sans-serif",
-              color: isLightMode ? '#2c2c2e' : '#ffffff'
-            }}
+            type="tel" value={phone}
+            onChange={e=>setPhone(e.target.value.replace(/\D/g,''))}
+            placeholder="01XXXXXXXXX"
+            style={{ width:'100%', background:'none', border:'none', outline:'none',
+                     padding:'6px 16px 12px', fontSize:inputFs, fontWeight:700,
+                     fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
           />
         </div>
 
-        {/* Vehicle Input */}
-        <div style={{
-          background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-          border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: '14px',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            flexShrink: 0,
-            background: accentColor,
-            WebkitMaskImage: 'url(/icon-scooter.png)',
-            maskImage: 'url(/icon-scooter.png)',
-            WebkitMaskSize: 'contain',
-            maskSize: 'contain',
-            WebkitMaskRepeat: 'no-repeat',
-            maskRepeat: 'no-repeat',
-            WebkitMaskPosition: 'center',
-            maskPosition: 'center'
-          }} />
+        {/* Vehicle */}
+        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                      borderRadius:'14px', overflow:'hidden' }}>
+          <div style={{ padding:'8px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <div style={{ width:'13px', height:'13px', flexShrink:0,
+                          background:accentColor,
+                          WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
+                          WebkitMaskSize:'contain', maskSize:'contain',
+                          WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
+                          WebkitMaskPosition:'center', maskPosition:'center' }} />
+            <span style={{ fontSize:'11px', fontWeight:800, color:accentColor,
+                           textTransform:'uppercase', letterSpacing:'1px' }}>
+              {t('vehicleType')}
+            </span>
+          </div>
           <input
-            type="text"
-            value={vehicleType}
-            onChange={(e) => setVehicleType(e.target.value.toUpperCase())}
-            placeholder={t('vehicleType') || 'Vehicle'}
-            style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              fontSize: '15px',
-              fontWeight: 700,
-              fontFamily: "'Rajdhani', sans-serif",
-              color: isLightMode ? '#2c2c2e' : '#ffffff',
-              textTransform: 'uppercase'
-            }}
+            type="text" value={vehicleType}
+            onChange={e=>setVehicleType(e.target.value.toUpperCase())}
+            placeholder="SCOOTER / MOTORCYCLE"
+            style={{ width:'100%', background:'none', border:'none', outline:'none',
+                     padding:'6px 16px 12px', fontSize:inputFs, fontWeight:700,
+                     fontFamily:"'Rajdhani', sans-serif", color:textClr,
+                     textTransform:'uppercase', boxSizing:'border-box' }}
           />
         </div>
 
-        {/* Fuel Price & Odo Reading Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        {/* Fuel Price + Odo */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
           {/* Fuel Price */}
-          <div style={{
-            background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-            border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-            borderRadius: '14px',
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px'
-          }}>
-            <span style={{
-              fontSize: '12px',
-              fontWeight: 800,
-              color: isLightMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)',
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}>
+          <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                        borderRadius:'14px', padding:'10px 14px' }}>
+            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
+                           color:labelClr, textTransform:'uppercase', letterSpacing:'1px',
+                           marginBottom:'6px' }}>
               {t('fuelPrice')}
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
               <input
-                type="number"
-                step="0.5"
-                value={fuelPrice}
-                onChange={(e) => setFuelPrice(e.target.value)}
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '20px',
-                  fontWeight: 900,
-                  fontFamily: "'Orbitron', sans-serif",
-                  color: accentColor,
-                  width: '100%'
-                }}
+                type="number" step="0.5" value={fuelPrice}
+                onChange={e=>setFuelPrice(e.target.value)}
+                style={{ flex:1, background:'none', border:'none', outline:'none',
+                         fontSize:'22px', fontWeight:900,
+                         fontFamily:"'Orbitron', sans-serif",
+                         color:accentColor, width:'100%' }}
               />
-              <span style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                color: isLightMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)'
-              }}>
-                EGP
-              </span>
+              <span style={{ fontSize:'11px', fontWeight:700, color:labelClr }}>EGP</span>
             </div>
           </div>
 
           {/* Odometer */}
-          <div style={{
-            background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-            border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-            borderRadius: '14px',
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px'
-          }}>
-            <span style={{
-              fontSize: '12px',
-              fontWeight: 800,
-              color: isLightMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)',
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}>
+          <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                        borderRadius:'14px', padding:'10px 14px' }}>
+            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
+                           color:labelClr, textTransform:'uppercase', letterSpacing:'1px',
+                           marginBottom:'6px' }}>
               {t('odoReading')}
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
               <input
-                type="number"
-                step="0.1"
-                value={odoReading}
-                onChange={(e) => setOdoReading(e.target.value)}
+                type="number" step="0.1" value={odoReading}
+                onChange={e=>setOdoReading(e.target.value)}
                 placeholder="0"
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '20px',
-                  fontWeight: 900,
-                  fontFamily: "'Orbitron', sans-serif",
-                  color: isLightMode ? '#2c2c2e' : '#ffffff',
-                  width: '100%'
-                }}
+                style={{ flex:1, background:'none', border:'none', outline:'none',
+                         fontSize:'22px', fontWeight:900,
+                         fontFamily:"'Orbitron', sans-serif",
+                         color:textClr, width:'100%' }}
               />
-              <span style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                color: isLightMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)'
-              }}>
-                KM
-              </span>
+              <span style={{ fontSize:'11px', fontWeight:700, color:labelClr }}>KM</span>
             </div>
           </div>
         </div>
 
-        {/* Theme Mode Toggle */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-          border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: '14px',
-          padding: '14px 16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {isLightMode ? (
-              <Sun size={18} color={accentColor} />
-            ) : (
-              <Moon size={18} color={accentColor} />
-            )}
-            <span style={{
-              fontSize: '13px',
-              fontWeight: 700,
-              color: isLightMode ? '#2c2c2e' : '#ffffff'
-            }}>
+        {/* Dark / Light toggle */}
+        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                      borderRadius:'14px', padding:'12px 16px',
+                      display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+            {isLightMode
+              ? <Sun size={18} color={accentColor} />
+              : <Moon size={18} color={accentColor} />}
+            <span style={{ fontSize:'14px', fontWeight:700, color:textClr }}>
               {isLightMode ? 'Light Mode' : 'Dark Mode'}
             </span>
           </div>
-          <div
-            onClick={() => setIsLightMode(!isLightMode)}
-            style={{
-              width: '44px',
-              height: '24px',
-              borderRadius: '12px',
-              cursor: 'pointer',
-              background: isLightMode ? accentColor : 'rgba(255,255,255,0.15)',
-              position: 'relative',
-              transition: 'background 0.3s'
-            }}
-          >
-            <div style={{
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              background: '#fff',
-              position: 'absolute',
-              top: '3px',
-              left: isLightMode ? '23px' : '3px',
-              transition: 'left 0.3s'
-            }} />
+          <div onClick={()=>setIsLightMode(!isLightMode)}
+               style={{ width:'50px', height:'28px', borderRadius:'14px', cursor:'pointer',
+                        background: isLightMode ? accentColor : 'rgba(255,255,255,0.18)',
+                        position:'relative', transition:'background 0.3s' }}>
+            <div style={{ width:'22px', height:'22px', borderRadius:'50%', background:'#fff',
+                          position:'absolute', top:'3px',
+                          left: isLightMode ? '25px' : '3px',
+                          transition:'left 0.3s',
+                          boxShadow:'0 2px 6px rgba(0,0,0,0.25)' }} />
           </div>
         </div>
 
-        {/* Theme Accent Color Selection */}
-        <div style={{
-          background: isLightMode ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-          border: `1.5px solid ${isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: '14px',
-          padding: '14px 16px'
-        }}>
-          <span style={{
-            fontSize: '12px',
-            fontWeight: 800,
-            color: isLightMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)',
-            textTransform: 'uppercase',
-            letterSpacing: '1px',
-            display: 'block',
-            marginBottom: '12px'
-          }}>
-            Theme
+        {/* Theme colours */}
+        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
+                      borderRadius:'14px', padding:'12px 16px' }}>
+          <span style={{ display:'block', fontSize:'10px', fontWeight:800,
+                         color:labelClr, textTransform:'uppercase', letterSpacing:'1px',
+                         marginBottom:'12px' }}>
+            THEME COLOR
           </span>
-          <div style={{
-            display: 'flex',
-            gap: '10px',
-            justifyContent: 'center'
-          }}>
-            {THEME_COLORS.map((theme) => (
+          <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
+            {THEME_COLORS.map(theme=>(
               <div
                 key={theme.hex}
-                onClick={() => setAccentColor(theme.hex)}
+                onClick={()=>setAccentColor(theme.hex)}
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: theme.hex,
-                  border: accentColor === theme.hex
-                    ? `3px solid ${isLightMode ? '#2c2c2e' : '#ffffff'}`
+                  width:'34px', height:'34px', borderRadius:'50%',
+                  background:theme.hex,
+                  border: accentColor===theme.hex
+                    ? `3px solid ${textClr}`
                     : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  transform: accentColor === theme.hex ? 'scale(1.15)' : 'scale(1)'
+                  cursor:'pointer', transition:'all 0.2s',
+                  transform: accentColor===theme.hex ? 'scale(1.2)' : 'scale(1)',
                 }}
               />
             ))}
           </div>
         </div>
 
-        {/* Submit Button */}
+        {/* Submit */}
         <button
           type="submit"
           disabled={!name.trim()}
           style={{
-            marginTop: '8px',
-            width: '100%',
-            padding: '16px',
-            borderRadius: '14px',
-            border: 'none',
+            marginTop:'6px', width:'100%', padding:'18px',
+            borderRadius:'14px', border:'none',
             background: name.trim()
               ? accentColor
-              : isLightMode
-                ? 'rgba(0,0,0,0.1)'
-                : 'rgba(255,255,255,0.08)',
+              : isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.07)',
             color: name.trim()
               ? '#fff'
-              : isLightMode
-                ? 'rgba(0,0,0,0.3)'
-                : 'rgba(255,255,255,0.3)',
-            fontSize: '14px',
-            fontWeight: 900,
-            fontFamily: "'Orbitron', sans-serif",
-            letterSpacing: '3px',
-            textTransform: 'uppercase',
+              : isLightMode ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.28)',
+            fontSize:'13px', fontWeight:900,
+            fontFamily:"'Orbitron', sans-serif",
+            letterSpacing:'3px', textTransform:'uppercase',
             cursor: name.trim() ? 'pointer' : 'not-allowed',
-            transition: 'all 0.3s'
+            transition:'all 0.3s',
           }}
         >
           {t('startRide')}
@@ -1309,6 +1181,7 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
     </div>
   );
 };
+
 
 // Trip Adjust Modal Component
 const TripAdjustModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker: any; tripBase: number | null; setTripBase: (val: number | null) => void; onClose: () => void }) => {
