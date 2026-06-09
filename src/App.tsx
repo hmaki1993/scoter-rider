@@ -712,7 +712,7 @@ function App() {
         />
       )}
 
-      {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} />}
+      {showRefuel && <RefuelModal tracker={tracker} onClose={() => setShowRefuel(false)} setConfirmDialog={setConfirmDialog} />}
       {showSync && <SyncOdoModal tracker={tracker} onClose={() => setShowSync(false)} />}
       {showSettings && <SettingsModal tracker={tracker} onClose={() => setShowSettings(false)} setConfirmDialog={setConfirmDialog} />}
 
@@ -1461,7 +1461,7 @@ const SyncOdoModal = ({ tracker, onClose }: { tracker: any, onClose: () => void 
   );
 };
 
-function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }) {
+function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onClose: () => void, setConfirmDialog?: any }) {
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
 
@@ -1768,7 +1768,18 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(tracker.settings.language === 'ar' ? 'هل أنت متأكد من تصفير البنزين بالكامل؟' : 'Are you sure you want to completely empty the tank?')) {
+                const msg = tracker.settings.language === 'ar' ? 'هل أنت متأكد من تصفير البنزين بالكامل؟' : 'Are you sure you want to completely empty the tank?';
+                if (setConfirmDialog) {
+                  setConfirmDialog({
+                    isOpen: true,
+                    message: msg,
+                    isDanger: true,
+                    onConfirm: () => {
+                      tracker.emptyTank();
+                      onClose();
+                    }
+                  });
+                } else if (window.confirm(msg)) {
                   tracker.emptyTank();
                   onClose();
                 }

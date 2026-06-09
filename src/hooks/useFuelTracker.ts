@@ -353,7 +353,7 @@ export const useFuelTracker = () => {
       baseFuel = fuelState.estimatedFuelLiters;
     }
 
-    const newFuel = baseFuel + liters;
+    const newFuel = Math.min(settings.tankCapacity, baseFuel + liters);
     const newLog: RefuelLog = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
