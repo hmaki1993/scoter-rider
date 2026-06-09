@@ -934,53 +934,94 @@ const OnboardingModal = ({ tracker, onComplete }: { tracker: any, onComplete: (p
       {/* ── HERO HEADER ── */}
       <div style={{
         background: accentColor,
-        padding: '36px 24px 24px',
-        textAlign: 'center',
         position: 'relative',
+        paddingBottom: '0',
       }}>
-        {/* diagonal stripe pattern */}
-        <div style={{
-          position:'absolute', inset:0, opacity:0.12, overflow:'hidden',
-          backgroundImage:'repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)',
-          backgroundSize:'14px 14px', pointerEvents:'none'
-        }} />
-
         <input type="file" accept="image/*" ref={fileInputRef} style={{ display:'none' }} onChange={handleFileChange} />
 
-        {/* Avatar */}
-        <div
-          onClick={handlePhotoClick}
-          style={{
-            width:'72px', height:'72px', borderRadius:'50%',
-            background:'rgba(0,0,0,0.25)',
-            border:'3px solid rgba(255,255,255,0.9)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            margin:'0 auto 12px', cursor:'pointer', overflow:'hidden',
-            position:'relative', zIndex:1,
-          }}
-        >
-          {photo
-            ? <img src={photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-            : <User size={30} color="#fff" strokeWidth={1.5} />
-          }
+        {/* Dark overlay for depth */}
+        <div style={{
+          position:'absolute', inset:0,
+          background:'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 100%)',
+          pointerEvents:'none'
+        }} />
+
+        {/* Top bar: scooter + app name */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'center',
+          gap:'8px', padding:'18px 20px 0', position:'relative', zIndex:1
+        }}>
+          <div style={{
+            width:'22px', height:'22px',
+            background:'rgba(255,255,255,0.9)',
+            WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
+            WebkitMaskSize:'contain', maskSize:'contain',
+            WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
+            WebkitMaskPosition:'center', maskPosition:'center'
+          }} />
+          <span style={{
+            fontSize:'11px', fontWeight:800, color:'rgba(255,255,255,0.85)',
+            letterSpacing:'3px', textTransform:'uppercase',
+            fontFamily:"'Orbitron', sans-serif"
+          }}>
+            FUEL TRACKER
+          </span>
         </div>
 
-        <h1 style={{
-          margin:'0 0 4px', position:'relative', zIndex:1,
-          fontSize:'21px', fontWeight:900,
-          fontFamily:"'Orbitron', sans-serif",
-          color:'#ffffff',
-          letterSpacing:'1.5px', textTransform:'uppercase',
-          textShadow:'0 2px 8px rgba(0,0,0,0.25)'
+        {/* Main content: avatar left + text right */}
+        <div style={{
+          display:'flex', alignItems:'center', gap:'16px',
+          padding:'16px 22px 22px', position:'relative', zIndex:1
         }}>
-          {t('welcomeRider')} 🛵
-        </h1>
-        <p style={{
-          fontSize:'12px', color:'rgba(255,255,255,0.82)',
-          margin:0, fontWeight:600, position:'relative', zIndex:1,
-        }}>
-          {t('setupProfile')}
-        </p>
+          {/* Avatar */}
+          <div
+            onClick={handlePhotoClick}
+            style={{
+              width:'70px', height:'70px', borderRadius:'18px',
+              background:'rgba(0,0,0,0.3)',
+              border:'2.5px solid rgba(255,255,255,0.85)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', overflow:'hidden', flexShrink:0,
+            }}
+          >
+            {photo
+              ? <img src={photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              : <User size={28} color="rgba(255,255,255,0.9)" strokeWidth={1.5} />
+            }
+          </div>
+
+          {/* Text */}
+          <div style={{ textAlign:'left' }}>
+            <p style={{
+              margin:'0 0 2px', fontSize:'11px',
+              color:'rgba(255,255,255,0.7)', fontWeight:700,
+              letterSpacing:'2px', textTransform:'uppercase'
+            }}>
+              {t('setupProfile')}
+            </p>
+            <h1 style={{
+              margin:0, fontSize:'22px', fontWeight:900,
+              fontFamily:"'Orbitron', sans-serif",
+              color:'#ffffff', letterSpacing:'0.5px',
+              textTransform:'uppercase', lineHeight:1.1,
+              textShadow:'0 2px 10px rgba(0,0,0,0.3)'
+            }}>
+              {t('welcomeRider')}
+            </h1>
+            <p style={{
+              margin:'6px 0 0', fontSize:'11px',
+              color:'rgba(255,255,255,0.65)', fontWeight:500,
+            }}>
+              Tap avatar to add photo
+            </p>
+          </div>
+        </div>
+
+        {/* Wave bottom edge */}
+        <svg viewBox="0 0 375 24" style={{ display:'block', width:'100%', height:'24px', marginBottom:'-1px' }}
+             preserveAspectRatio="none">
+          <path d="M0,0 C120,24 255,24 375,0 L375,24 L0,24 Z" fill={pageBg} />
+        </svg>
       </div>
 
       {/* ── FORM ── */}
