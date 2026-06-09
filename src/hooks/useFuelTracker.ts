@@ -400,6 +400,13 @@ export const useFuelTracker = () => {
     setLogs(prev => prev.filter(l => l.id !== id));
   };
 
+  const emptyTank = () => {
+    setFuelState(prev => ({ ...prev, estimatedFuelLiters: 0 }));
+    // Fix: Stop vibration if fuel was low and user reset it explicitly (though usually reset means 0 fuel, but user wants it clean)
+    stopTone();
+    setIsMuted(false);
+  };
+
   const updateCurrentOdo = (odo: number) => {
     setFuelState(prev => {
       const diff = odo - prev.lastOdo;
@@ -549,7 +556,7 @@ export const useFuelTracker = () => {
     trackingError, clearTrackingError: () => setTrackingError(null),
     gpsUpdateCount, lastGpsTime,
     kmSinceOilChange, kmUntilNextOilChange, recordOilChange,
-    setSettings, setWidgetSettings, addRefuel, removeRefuel, updateCurrentOdo, updateUserProfile,
+    setSettings, setWidgetSettings, addRefuel, removeRefuel, updateCurrentOdo, updateUserProfile, emptyTank,
     startTracking, stopTracking, setIsMuted, playWarningSound,
     resetData, requestAllPermissions,
     audioCtxRef, activeAudioRef,

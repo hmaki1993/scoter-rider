@@ -1476,6 +1476,24 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
   const [inputValue, setInputValue] = useState(initialValue);
   const [inputMode, setInputMode] = useState<'currency' | 'liters'>('currency');
 
+  const handleModeSwitch = (newMode: 'currency' | 'liters') => {
+    if (newMode === inputMode) return;
+    const currentVal = Number(inputValue);
+    if (!currentVal) {
+      setInputMode(newMode);
+      return;
+    }
+    const price = tracker.settings.fuelPricePerLiter || 14.5;
+    if (newMode === 'liters') {
+      // When converting EGP to Liters, show 2 decimals
+      setInputValue((currentVal / price).toFixed(2));
+    } else {
+      // When converting Liters to EGP, round to nearest 0.1 to avoid 619.96
+      setInputValue(Number((currentVal * price).toFixed(1)).toString());
+    }
+    setInputMode(newMode);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const odometerVal = odo ? Number(odo) : tracker.fuelState.lastOdo;
@@ -1489,7 +1507,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
       liters = pricePaidEGP / price;
     } else {
       liters = Number(inputValue);
-      pricePaidEGP = liters * price;
+      pricePaidEGP = Number((liters * price).toFixed(1));
     }
     
     if (!liters || liters <= 0) return;
@@ -1670,7 +1688,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
               }}>
                 <button
                   type="button"
-                  onClick={() => setInputMode('currency')}
+                  onClick={() => handleModeSwitch('currency')}
                   style={{
                     padding: '4px 10px',
                     borderRadius: '8px',
@@ -1685,7 +1703,7 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
                 >EGP</button>
                 <button
                   type="button"
-                  onClick={() => setInputMode('liters')}
+                  onClick={() => handleModeSwitch('liters')}
                   style={{
                     padding: '4px 10px',
                     borderRadius: '8px',
@@ -1714,18 +1732,18 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
               <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
                 {inputMode === 'currency' ? (
                   <>
-                    = {(Number(inputValue) / (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(2)} L
+                    = {Number((Number(inputValue) / (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(2))} L
                   </>
                 ) : (
                   <>
-                    = {(Number(inputValue) * (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(2)} EGP
+                    = {Number((Number(inputValue) * (tracker.settings.fuelPricePerLiter || 14.5)).toFixed(1))} EGP
                   </>
                 )}
               </span>
             </div>
           )}
 
-          <div style={{ display: 'flex', marginTop: '16px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
             <button
               type="submit"
               style={{
@@ -1746,6 +1764,30 @@ function RefuelModal({ tracker, onClose }: { tracker: any, onClose: () => void }
               }}
             >
               {t('save')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(tracker.settings.language === 'ar' ? 'هل أنت متأكد من تصفير البنزين بالكامل؟' : 'Are you sure you want to completely empty the tank?')) {
+                  tracker.emptyTank();
+                  onClose();
+                }
+              }}
+              style={{
+                width: '100%',
+                background: 'rgba(255, 59, 48, 0.1)',
+                color: '#ff3b30',
+                border: '1px solid rgba(255, 59, 48, 0.2)',
+                fontWeight: 800,
+                padding: '10px',
+                fontSize: '12px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontFamily: "'Orbitron', sans-serif",
+                transition: 'all 0.2s',
+              }}
+            >
+              {tracker.settings.language === 'ar' ? 'تصفير كمية البنزين' : 'Empty Tank Completely'}
             </button>
           </div>
         </form>
