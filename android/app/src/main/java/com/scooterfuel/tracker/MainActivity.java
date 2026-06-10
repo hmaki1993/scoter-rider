@@ -190,8 +190,10 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void startVibration(PluginCall call) {
             try {
-                // ── Start repeating vibration pattern ONLY (audio is handled by JS/WebAudio) ──
-                Vibrator v = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+                Context context = getContext();
+                
+                // ── 1. VIBRATION ──
+                Vibrator v = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
                 if (v != null) {
                     long[] pattern = {
                         0,   // Initial delay
@@ -220,9 +222,74 @@ public class MainActivity extends BridgeActivity {
                         v.vibrate(pattern, -1, audioAttrs);
                     }
                 }
+                
+                // ── 2. NATIVE ALARM SOUND at MAX VOLUME (bypasses silent mode) ──
+                playNativeAlarmSound(context);
+                
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
+            }
+        }
+        
+        private android.media.MediaPlayer alarmMediaPlayer = null;
+        
+        private void playNativeAlarmSound(Context context) {
+            try {
+                // Stop any previous alarm sound
+                stopAlarmSound();
+                
+                // Get the default alarm ringtone
+                Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                if (alarmUri == null) {
+                    // Fallback to notification sound if no alarm tone set
+                    alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                }
+                if (alarmUri == null) {
+                    alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                }
+                
+                // Save original alarm volume to restore later
+                android.media.AudioManager audioManager = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                
+                // Force max alarm volume (STREAM_ALARM bypasses silent/vibrate mode)
+                int maxVol = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM);
+                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, maxVol, 0);
+                
+                // Create MediaPlayer on STREAM_ALARM (plays even in silent mode)
+                alarmMediaPlayer = new android.media.MediaPlayer();
+                alarmMediaPlayer.setDataSource(context, alarmUri);
+                alarmMediaPlayer.setAudioAttributes(
+                    new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                );
+                alarmMediaPlayer.setLooping(false);
+                alarmMediaPlayer.prepare();
+                alarmMediaPlayer.start();
+                
+                // Auto-stop after 10 seconds
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    stopAlarmSound();
+                }, 10000);
+                
+            } catch (Exception e) {
+                android.util.Log.e("AlarmPlugin", "Failed to play native alarm sound", e);
+            }
+        }
+        
+        private void stopAlarmSound() {
+            try {
+                if (alarmMediaPlayer != null) {
+                    if (alarmMediaPlayer.isPlaying()) {
+                        alarmMediaPlayer.stop();
+                    }
+                    alarmMediaPlayer.release();
+                    alarmMediaPlayer = null;
+                }
+            } catch (Exception e) {
+                // ignore
             }
         }
 
@@ -276,6 +343,9 @@ public class MainActivity extends BridgeActivity {
                     activity.currentRingtone.stop();
                     activity.currentRingtone = null;
                 }
+                
+                // Stop native alarm sound
+                stopAlarmSound();
                 
                 // Always stop the vibrator — this covers both startVibration and vibrateSimple calls
                 Vibrator v = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
