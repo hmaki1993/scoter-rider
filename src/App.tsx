@@ -224,44 +224,17 @@ function App() {
             zIndex: 2
           }}>
             {/* Icon Container with glowing pulse */}
+            {/* Clean & Static Navigation Icon - No Circle, No Glowing Blur, No Animation */}
             <div style={{
-              position: 'relative',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              width: '80px',
+              height: '80px',
+              color: '#ef4444',
+              zIndex: 1
             }}>
-              <div style={{
-                position: 'absolute',
-                width: '100px',
-                height: '100px',
-                borderRadius: '50%',
-                background: 'rgba(239, 68, 68, 0.25)',
-                filter: 'blur(16px)',
-                animation: 'pulse 2s infinite ease-in-out'
-              }} />
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'transparent',
-                border: '2px solid rgba(239, 68, 68, 0.35)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ef4444',
-                boxShadow: '0 8px 20px rgba(239, 68, 68, 0.15)',
-                zIndex: 1,
-                animation: 'scaleUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'gps-pulse 2s infinite ease-in-out'
-                }}>
-                  <Navigation size={38} style={{ color: '#ef4444', transform: 'translate(2.5px, -2.5px)' }} />
-                </div>
-              </div>
+              <Navigation size={46} style={{ color: '#ef4444' }} />
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
