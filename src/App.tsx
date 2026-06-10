@@ -59,6 +59,33 @@ function App() {
   const [showPhotoZoom, setShowPhotoZoom] = useState(false);
   const [showTripAdjustModal, setShowTripAdjustModal] = useState(false);
 
+  // ── Shake to open Refuel ──────────────────────────────────────────────
+  useEffect(() => {
+    let lastShakeTime = 0;
+    const SHAKE_THRESHOLD = 25; // m/s² — needs a good shake
+    const SHAKE_COOLDOWN = 2000; // 2 sec between shakes
+
+    const handleMotion = (e: DeviceMotionEvent) => {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      
+      const force = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
+      const now = Date.now();
+      
+      if (force > SHAKE_THRESHOLD && now - lastShakeTime > SHAKE_COOLDOWN) {
+        lastShakeTime = now;
+        // Haptic feedback
+        import('@capacitor/haptics').then(({ Haptics }) => Haptics.vibrate()).catch(() => {
+          if (navigator.vibrate) navigator.vibrate(100);
+        });
+        setShowRefuel(true);
+      }
+    };
+
+    window.addEventListener('devicemotion', handleMotion);
+    return () => window.removeEventListener('devicemotion', handleMotion);
+  }, []);
+
   const [tripBase, setTripBase] = useState<number | null>(null);
 
   useEffect(() => {
