@@ -464,72 +464,96 @@ function App() {
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer',
-              marginTop: '-4px',
-              transition: 'transform 0.2s ease'
+              marginTop: '-8px',
+              transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
+            {/* Circular Premium Gradient Ring Border */}
             <div
               style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
-                background: tracker.settings.isLightMode
-                  ? 'rgba(255, 255, 255, 0.85)'
-                  : 'rgba(20, 20, 24, 0.75)',
-                border: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
-                boxShadow: tracker.settings.isLightMode 
-                  ? '0 4px 12px rgba(0,0,0,0.05)' 
-                  : '0 4px 20px rgba(0,0,0,0.35)',
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                padding: '2px',
+                background: 'linear-gradient(135deg, var(--accent-secondary, #ff5e00) 0%, #ff8f00 50%, #ffcc00 100%)',
+                boxShadow: tracker.settings.isLightMode
+                  ? '0 3px 8px rgba(0, 0, 0, 0.12)'
+                  : '0 4px 12px rgba(0, 0, 0, 0.50)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                overflow: 'hidden'
+                boxSizing: 'border-box'
               }}
             >
-              {tracker.userProfile.photoUrl ? (
-                <img 
-                  src={tracker.userProfile.photoUrl} 
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    objectFit: 'cover' 
-                  }} 
-                />
-              ) : (
-                <div style={{
-                  width: '24px',
-                  height: '24px',
-                  backgroundColor: 'var(--accent-secondary, #ff5e00)',
-                  WebkitMaskImage: 'url(/icon-scooter.png)',
-                  maskImage: 'url(/icon-scooter.png)',
-                  WebkitMaskSize: 'contain',
-                  maskSize: 'contain',
-                  WebkitMaskRepeat: 'no-repeat',
-                  maskRepeat: 'no-repeat',
-                  WebkitMaskPosition: 'center',
-                  maskPosition: 'center'
-                }} />
-              )}
+              {/* Inner container to crop image/icon */}
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  background: tracker.settings.isLightMode ? '#ffffff' : '#141417',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxSizing: 'border-box'
+                }}
+              >
+                {tracker.userProfile.photoUrl ? (
+                  <img 
+                    src={tracker.userProfile.photoUrl} 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover' 
+                    }} 
+                  />
+                ) : (
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    backgroundColor: 'var(--accent-secondary, #ff5e00)',
+                    WebkitMaskImage: 'url(/icon-scooter.png)',
+                    maskImage: 'url(/icon-scooter.png)',
+                    WebkitMaskSize: 'contain',
+                    maskSize: 'contain',
+                    WebkitMaskRepeat: 'no-repeat',
+                    maskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
+                    maskPosition: 'center'
+                  }} />
+                )}
+              </div>
             </div>
+            {/* Flat & Clean Minimalist Model Text with side bullet highlights */}
             {tracker.userProfile.vehicleType && (
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                fontFamily: "'Orbitron', sans-serif",
-                color: 'var(--accent-secondary, #ff5e00)',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-                textAlign: 'center',
-                maxWidth: '120px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                lineHeight: '1'
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                marginTop: '2px'
               }}>
-                {tracker.userProfile.vehicleType}
-              </span>
+                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '8px', opacity: 0.8 }}>•</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  fontFamily: "'Orbitron', sans-serif",
+                  color: 'var(--text-primary)',
+                  letterSpacing: '1.2px',
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
+                  maxWidth: '130px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: '1.2'
+                }}>
+                  {tracker.userProfile.vehicleType}
+                </span>
+                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '8px', opacity: 0.8 }}>•</span>
+              </div>
             )}
           </div>
         )}
