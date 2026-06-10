@@ -572,7 +572,7 @@ export const useFuelTracker = () => {
     fuelState, settings, userProfile, logs,
     isWarning, isDanger, fuelPercentage, rangeRemainingKm, runOutOdo,
     isTracking, isStarting, isMuted, currentSpeed,
-    trackingError, clearTrackingError: () => setTrackingError(null),
+    trackingError, clearTrackingError: () => setTrackingError(null), setTrackingError,
     gpsUpdateCount, lastGpsTime,
     kmSinceOilChange, kmUntilNextOilChange, recordOilChange,
     setSettings, setWidgetSettings, addRefuel, removeRefuel, updateCurrentOdo, updateUserProfile, emptyTank,

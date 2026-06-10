@@ -58,6 +58,7 @@ function App() {
   const [showWidgetMiniSettings, setShowWidgetMiniSettings] = useState(false);
   const [showPhotoZoom, setShowPhotoZoom] = useState(false);
   const [showTripAdjustModal, setShowTripAdjustModal] = useState(false);
+  const [showOilAdjustModal, setShowOilAdjustModal] = useState(false);
 
   // ── Shake to open Refuel ──────────────────────────────────────────────
   useEffect(() => {
@@ -175,20 +176,197 @@ function App() {
   }
 
   return (
-    <div
-      className="app-container"
-      ref={appRef}
-      dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      style={{
-        padding: '24px 24px 70px 24px',
-        width: '100%',
-        maxWidth: '480px',
-        margin: '0 auto',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-    >
+    <>
+      {tracker.trackingError && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: tracker.settings.isLightMode 
+            ? 'rgba(255, 255, 255, 0.4)' 
+            : 'rgba(10, 10, 12, 0.65)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100000,
+          padding: '24px',
+          boxSizing: 'border-box',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <div style={{
+            width: '90%',
+            maxWidth: '380px',
+            background: tracker.settings.isLightMode 
+              ? 'rgba(255, 255, 255, 0.85)' 
+              : 'rgba(20, 20, 24, 0.85)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRadius: '28px',
+            padding: '36px 24px 28px 24px',
+            boxSizing: 'border-box',
+            border: tracker.settings.isLightMode 
+              ? '1.5px solid rgba(255, 255, 255, 0.6)' 
+              : '1.5px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: tracker.settings.isLightMode
+              ? '0 25px 50px -12px rgba(0, 0, 0, 0.12)'
+              : '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            gap: '24px',
+            animation: 'scaleUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+            zIndex: 2
+          }}>
+            {/* Icon Container with glowing pulse */}
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                position: 'absolute',
+                width: '100px',
+                height: '100px',
+                borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.25)',
+                filter: 'blur(16px)',
+                animation: 'pulse 2s infinite ease-in-out'
+              }} />
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'transparent',
+                border: '2px solid rgba(239, 68, 68, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ef4444',
+                boxShadow: '0 8px 20px rgba(239, 68, 68, 0.15)',
+                zIndex: 1,
+                animation: 'scaleUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'gps-pulse 2s infinite ease-in-out'
+                }}>
+                  <Navigation size={38} style={{ color: '#ef4444', transform: 'translate(2.5px, -2.5px)' }} />
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: '26px',
+                color: tracker.settings.isLightMode ? '#0f172a' : '#ffffff',
+                fontWeight: 900,
+                fontFamily: "'Orbitron', sans-serif",
+                letterSpacing: '1px'
+              }}>
+                {tracker.settings.language === 'ar' ? 'تنبيه الـ GPS' : 'GPS ALERT'}
+              </h3>
+              <p style={{
+                margin: 0,
+                fontSize: '15px',
+                color: tracker.settings.isLightMode ? '#475569' : '#94a3b8',
+                lineHeight: 1.5,
+                fontWeight: 600,
+                padding: '0 8px'
+              }}>
+                {tracker.trackingError.message}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+              {(tracker.trackingError.action === 'openGPS' || tracker.trackingError.action === 'openSettings') && (
+                <button
+                  style={{
+                    fontSize: '16px', padding: '16px 20px', borderRadius: '18px',
+                    color: '#ffffff', border: 'none',
+                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                    fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px',
+                    cursor: 'pointer', boxShadow: '0 8px 20px rgba(239, 68, 68, 0.35), inset 0 2px 0 rgba(255,255,255,0.2)',
+                    width: '100%',
+                    transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    fontFamily: "'Orbitron', sans-serif"
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.97)';
+                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(239, 68, 68, 0.25)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(239, 68, 68, 0.35), inset 0 2px 0 rgba(255,255,255,0.2)';
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.97)';
+                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(239, 68, 68, 0.25)';
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(239, 68, 68, 0.35), inset 0 2px 0 rgba(255,255,255,0.2)';
+                  }}
+                  onClick={() => {
+                    import('@capacitor/core').then(({ registerPlugin }) => {
+                      registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
+                    });
+                  }}
+                >
+                  {tracker.settings.language === 'ar' ? 'تفعيل الموقع الجغرافي' : 'ENABLE LOCATION'}
+                </button>
+              )}
+              {(!tracker.trackingError.action || (tracker.trackingError.action !== 'openGPS' && tracker.trackingError.action !== 'openSettings')) && (
+                <button
+                  style={{
+                    fontSize: '15px', padding: '14px 20px', borderRadius: '18px',
+                    color: 'var(--text-primary)',
+                    border: `2px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
+                    background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)',
+                    fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer',
+                    width: '100%',
+                    fontFamily: "'Orbitron', sans-serif",
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.background = tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.background = tracker.settings.isLightMode ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)';
+                  }}
+                  onClick={() => tracker.clearTrackingError()}
+                >
+                  {tracker.settings.language === 'ar' ? 'إلغاء' : 'CANCEL'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="app-container"
+        ref={appRef}
+        dir={lang === 'ar' ? 'rtl' : 'ltr'}
+        style={{
+          padding: '44px 24px 70px 24px',
+          width: '100%',
+          maxWidth: '480px',
+          margin: '0 auto',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
       {/* Immersive Header Section */}
       <div
         style={{
@@ -196,7 +374,7 @@ function App() {
           justifyContent: 'space-between',
           alignItems: 'center',
           width: '100%',
-          marginBottom: '8px'
+          marginBottom: '20px'
         }}
       >
         <button
@@ -208,32 +386,154 @@ function App() {
           }
           style={{
             background: tracker.settings.isLightMode
-              ? 'rgba(255,255,255,0.7)'
-              : 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(128,128,128,0.15)',
+              ? 'rgba(255, 255, 255, 0.85)'
+              : 'rgba(20, 20, 24, 0.75)',
+            borderLeft: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'}`,
+            borderRight: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'}`,
+            borderBottom: '2.5px solid var(--accent-secondary, #ff5e00)',
+            borderTop: '2.5px solid var(--accent-secondary, #ff5e00)',
             cursor: 'pointer',
-            width: '38px',
-            height: '38px',
+            width: '42px',
+            height: '42px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: '10px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+            borderRadius: '12px',
+            padding: '0',
+            boxSizing: 'border-box',
+            boxShadow: tracker.settings.isLightMode 
+              ? '0 4px 12px rgba(0,0,0,0.05)' 
+              : '0 4px 20px rgba(0,0,0,0.35)',
+            transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s, background 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 6px 14px rgba(0,0,0,0.08)' 
+              : '0 8px 25px rgba(0,0,0,0.45)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 4px 12px rgba(0,0,0,0.05)' 
+              : '0 4px 20px rgba(0,0,0,0.35)';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(2px) scale(0.96)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px) scale(1)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 6px 14px rgba(0,0,0,0.08)' 
+              : '0 8px 25px rgba(0,0,0,0.45)';
+          }}
+          onTouchStart={(e) => {
+            e.currentTarget.style.transform = 'translateY(2px) scale(0.96)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+          }}
+          onTouchEnd={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 4px 12px rgba(0,0,0,0.05)' 
+              : '0 4px 20px rgba(0,0,0,0.35)';
           }}
         >
           <span
             style={{
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 900,
               fontFamily: "'Orbitron', sans-serif",
+              letterSpacing: '0.5px',
+              lineHeight: '1',
               color: tracker.settings.isLightMode
                 ? 'rgba(0,0,0,0.85)'
-                : 'rgba(255,255,255,0.85)'
+                : 'rgba(255,255,255,0.9)'
             }}
           >
             {tracker.settings.language === 'ar' ? 'EN' : 'AR'}
           </span>
         </button>
+
+        {tracker.userProfile && (
+          <div 
+            onClick={() => setShowPhotoZoom(true)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              marginTop: '-4px',
+              transition: 'transform 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: tracker.settings.isLightMode
+                  ? 'rgba(255, 255, 255, 0.85)'
+                  : 'rgba(20, 20, 24, 0.75)',
+                border: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
+                boxShadow: tracker.settings.isLightMode 
+                  ? '0 4px 12px rgba(0,0,0,0.05)' 
+                  : '0 4px 20px rgba(0,0,0,0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden'
+              }}
+            >
+              {tracker.userProfile.photoUrl ? (
+                <img 
+                  src={tracker.userProfile.photoUrl} 
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover' 
+                  }} 
+                />
+              ) : (
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  backgroundColor: 'var(--accent-secondary, #ff5e00)',
+                  WebkitMaskImage: 'url(/icon-scooter.png)',
+                  maskImage: 'url(/icon-scooter.png)',
+                  WebkitMaskSize: 'contain',
+                  maskSize: 'contain',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center',
+                  maskPosition: 'center'
+                }} />
+              )}
+            </div>
+            {tracker.userProfile.vehicleType && (
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                fontFamily: "'Orbitron', sans-serif",
+                color: 'var(--accent-secondary, #ff5e00)',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+                maxWidth: '120px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: '1'
+              }}>
+                {tracker.userProfile.vehicleType}
+              </span>
+            )}
+          </div>
+        )}
+
         <button
           onClick={() =>
             tracker.setSettings({
@@ -243,17 +543,57 @@ function App() {
           }
           style={{
             background: tracker.settings.isLightMode
-              ? 'rgba(255,255,255,0.7)'
-              : 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(128,128,128,0.15)',
+              ? 'rgba(255, 255, 255, 0.85)'
+              : 'rgba(20, 20, 24, 0.75)',
+            borderLeft: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'}`,
+            borderRight: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'}`,
+            borderBottom: '2.5px solid var(--accent-secondary, #ff5e00)',
+            borderTop: '2.5px solid var(--accent-secondary, #ff5e00)',
             cursor: 'pointer',
-            width: '38px',
-            height: '38px',
+            width: '42px',
+            height: '42px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: '10px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+            borderRadius: '12px',
+            padding: '0',
+            boxSizing: 'border-box',
+            boxShadow: tracker.settings.isLightMode 
+              ? '0 4px 12px rgba(0,0,0,0.05)' 
+              : '0 4px 20px rgba(0,0,0,0.35)',
+            transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s, background 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 6px 14px rgba(0,0,0,0.08)' 
+              : '0 8px 25px rgba(0,0,0,0.45)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 4px 12px rgba(0,0,0,0.05)' 
+              : '0 4px 20px rgba(0,0,0,0.35)';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(2px) scale(0.96)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px) scale(1)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 6px 14px rgba(0,0,0,0.08)' 
+              : '0 8px 25px rgba(0,0,0,0.45)';
+          }}
+          onTouchStart={(e) => {
+            e.currentTarget.style.transform = 'translateY(2px) scale(0.96)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+          }}
+          onTouchEnd={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+            e.currentTarget.style.boxShadow = tracker.settings.isLightMode 
+              ? '0 4px 12px rgba(0,0,0,0.05)' 
+              : '0 4px 20px rgba(0,0,0,0.35)';
           }}
         >
           {tracker.settings.isLightMode ? (
@@ -262,123 +602,17 @@ function App() {
             <Moon size={18} style={{ color: '#ffffff', opacity: 0.85 }} />
           )}
         </button>
+
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {tracker.trackingError && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: '24px',
-            boxSizing: 'border-box'
-          }}>
-            <div className="glass-panel" style={{
-              width: '100%',
-              maxWidth: '340px',
-              padding: '24px 20px',
-              borderRadius: '16px',
-              background: tracker.settings.isLightMode ? '#ffffff' : '#121212',
-              border: '2px solid var(--danger-color)',
-              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-              animation: 'scaleUp 0.3s ease',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                backgroundColor: tracker.settings.isLightMode ? 'rgba(220, 38, 38, 0.08)' : 'rgba(220, 38, 38, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--danger-color)',
-                boxShadow: '0 0 15px rgba(220, 38, 38, 0.2)'
-              }}>
-                <AlertTriangle size={28} />
-              </div>
-              <div style={{
-                fontSize: '15.5px',
-                color: tracker.settings.isLightMode ? '#1e293b' : '#f8fafc',
-                fontWeight: 750,
-                lineHeight: 1.5,
-                fontFamily: "'Rajdhani', sans-serif"
-              }}>
-                {tracker.trackingError.message}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                {tracker.trackingError.action === 'openGPS' && (
-                  <button
-                    className="raised-btn"
-                    style={{
-                      fontSize: '13px', padding: '12px 20px', borderRadius: '10px',
-                      color: '#ffffff', border: 'none',
-                      background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
-                      fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.5px',
-                      cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
-                      width: '100%'
-                    }}
-                    onClick={() => {
-                      import('@capacitor/core').then(({ registerPlugin }) => {
-                        registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
-                      });
-                    }}
-                  >
-                    {t('openSettings')}
-                  </button>
-                )}
-                {tracker.trackingError.action === 'openSettings' && (
-                  <button
-                    className="raised-btn"
-                    style={{
-                      fontSize: '13px', padding: '12px 20px', borderRadius: '10px',
-                      color: '#ffffff', border: 'none',
-                      background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
-                      fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.5px',
-                      cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
-                      width: '100%'
-                    }}
-                    onClick={() => {
-                      import('@capacitor/core').then(({ registerPlugin }) => {
-                        registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
-                      });
-                    }}
-                  >
-                    {t('openSettings')}
-                  </button>
-                )}
-                {(!tracker.trackingError.action || (tracker.trackingError.action !== 'openGPS' && tracker.trackingError.action !== 'openSettings')) && (
-                  <button
-                    className="raised-btn"
-                    style={{
-                      fontSize: '13px', padding: '12px 20px', borderRadius: '10px',
-                      color: 'var(--text-primary)',
-                      border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
-                      background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
-                      fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer',
-                      width: '100%'
-                    }}
-                    onClick={() => tracker.clearTrackingError()}
-                  >
-                    {t('cancel')}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        gap: '20px',
+        width: '100%'
+      }}>
         {/* Top Status Pills Bar */}
           <div
             style={{
@@ -394,14 +628,7 @@ function App() {
             {/* Maintenance / Status Pill */}
             <div
               className={`elite-status-pill ${tracker.kmUntilNextOilChange <= 100 ? 'oil-warning-pulse' : ''}`}
-              onClick={() => {
-                setConfirmDialog({
-                  isOpen: true,
-                  message: tracker.settings.language === 'ar' ? 'هل قمت بتغيير الزيت بالفعل؟' : 'Have you actually changed the oil?',
-                  onConfirm: () => tracker.recordOilChange(tracker.fuelState.lastOdo),
-                  isDanger: false
-                });
-              }}
+              onClick={() => setShowOilAdjustModal(true)}
               style={{
                 position: 'relative',
                 margin: 0,
@@ -483,17 +710,17 @@ function App() {
 
         <div
           style={{
-            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             textAlign: 'center',
-            position: 'relative'
+            position: 'relative',
+            width: '100%'
           }}
         >
             <div
               style={{
-                borderRadius: '10px',
+                borderRadius: '24px',
                 background: 'transparent',
                 border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'}`,
                 padding: '20px 16px',
@@ -618,10 +845,9 @@ function App() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginTop: 'auto',
             marginBottom: '0px',
             paddingBottom: '16px',
-            paddingTop: '20px',
+            paddingTop: '4px',
             width: '100%'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -830,6 +1056,13 @@ function App() {
         />
       )}
 
+      {showOilAdjustModal && (
+        <OilAdjustModal
+          tracker={tracker}
+          onClose={() => setShowOilAdjustModal(false)}
+        />
+      )}
+
       {confirmDialog.isOpen && (
         <ConfirmModal 
           isOpen={confirmDialog.isOpen} 
@@ -842,6 +1075,7 @@ function App() {
       )}
 
     </div>
+  </>
   );
 }
 
@@ -1390,6 +1624,183 @@ const TripAdjustModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker:
             cursor: 'pointer',
             transition: 'all 0.2s',
           }}>{tracker.settings.language === 'ar' ? 'تصفير' : 'RESET'}</button>
+          <button onClick={handleSave} style={{
+            flex: 1,
+            padding: '13px',
+            fontWeight: 800,
+            fontSize: '13px',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            fontFamily: "'Rajdhani', sans-serif",
+            background: 'transparent',
+            color: 'var(--accent-color)',
+            border: '2.5px solid var(--accent-color)',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}>{tracker.settings.language === 'ar' ? 'حفظ' : 'SAVE'}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Oil Adjust Modal Component
+const OilAdjustModal = ({ tracker, onClose }: { tracker: any; onClose: () => void }) => {
+
+
+  
+  const initialRemaining = Math.max(0, tracker.kmUntilNextOilChange).toFixed(0);
+  const [remainingVal, setRemainingVal] = useState(initialRemaining);
+
+  const handleReset = () => {
+    // Record oil change sets lastOilChangeOdo to lastOdo
+    tracker.recordOilChange(tracker.fuelState.lastOdo);
+    onClose();
+  };
+
+  const handleSave = () => {
+    const val = Number(remainingVal);
+    if (!isNaN(val) && val >= 0) {
+      // Calculate lastOilChangeOdo from new remaining km (val)
+      // lastOilChangeOdo = lastOdo - oilChangeInterval + val
+      const newLastOilChangeOdo = tracker.fuelState.lastOdo - tracker.settings.oilChangeInterval + val;
+      tracker.setSettings({
+        ...tracker.settings,
+        lastOilChangeOdo: Math.round(newLastOilChangeOdo)
+      });
+      onClose();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+      animation: 'fadeIn 0.3s ease',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+      background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.72)',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        animation: 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+        background: tracker.settings.isLightMode ? '#ffffff' : 'var(--card-bg)',
+        border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.08)' : 'var(--glass-border)'}`,
+        borderRadius: '20px',
+        padding: '24px',
+        width: '90%',
+        maxWidth: '320px',
+        boxShadow: tracker.settings.isLightMode ? '0 8px 32px rgba(0,0,0,0.12)' : '0 20px 60px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="themed-icon" style={{
+              width: '24px',
+              height: '24px',
+              WebkitMaskImage: 'url(/icon-oil.png)',
+              maskImage: 'url(/icon-oil.png)',
+            }} />
+            <span style={{
+              fontSize: '16px',
+              fontFamily: "'Orbitron', sans-serif",
+              fontWeight: 900,
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              color: 'var(--text-primary)',
+            }}>{tracker.settings.language === 'ar' ? 'الزيت' : 'OIL'}</span>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}>
+            <img src="/cancel.png" alt="close" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
+          </button>
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <label style={{
+            fontSize: '11px',
+            fontWeight: 800,
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.7)' : 'var(--text-secondary)',
+          }}>{tracker.settings.language === 'ar' ? 'المسافة المتبقية لتغيير الزيت' : 'KM Until Next Oil Change'}</label>
+        </div>
+
+        <div style={{
+          background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.04)' : 'var(--glass-bg)',
+          border: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.15)' : 'var(--glass-border)'}`,
+          borderRadius: '14px',
+          padding: '4px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: '8px',
+        }}>
+          <input
+            type="number"
+            value={remainingVal}
+            onChange={(e) => setRemainingVal(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '10px 0',
+              fontSize: '32px',
+              fontWeight: 900,
+              fontFamily: "'Rajdhani', sans-serif",
+              border: 'none',
+              background: 'transparent',
+              textAlign: 'center',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              letterSpacing: '1px',
+            }}
+          />
+          <span style={{
+            fontSize: '12px',
+            fontWeight: 800,
+            color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.6)' : 'var(--text-secondary)',
+            letterSpacing: '1px',
+          }}>KM</span>
+        </div>
+
+        <div style={{
+          fontSize: '12px',
+          fontWeight: 700,
+          textAlign: 'center',
+          marginBottom: '22px',
+          lineHeight: '1.6',
+          color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.8)' : 'var(--text-secondary)',
+        }}>
+          {tracker.settings.language === 'ar' ? 'اكتب الكيلومترات المتبقية لتغيير الزيت' : "Enter the remaining KM before next oil change"}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={handleReset} style={{
+            flex: 1,
+            padding: '13px',
+            fontWeight: 800,
+            fontSize: '13px',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            fontFamily: "'Rajdhani', sans-serif",
+            background: 'transparent',
+            color: 'var(--danger-color)',
+            border: '2.5px solid var(--danger-color)',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}>{tracker.settings.language === 'ar' ? 'تغيير الزيت' : 'RESET OIL'}</button>
           <button onClick={handleSave} style={{
             flex: 1,
             padding: '13px',
@@ -2540,19 +2951,16 @@ const PhotoZoomModal = ({ photoUrl, photoPosition, tracker, onClose }: { photoUr
           onClick={onClose}
           style={{
             position: 'absolute', top: '12px', right: '12px',
-            width: '32px', height: '32px', borderRadius: '50%',
-            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-            color: 'var(--text-primary)', fontSize: '14px', cursor: 'pointer',
+            width: '40px', height: '40px', borderRadius: '50%',
+            background: 'transparent', border: 'none',
+            cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(10px)',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-            zIndex: 10
+            zIndex: 10,
+            padding: '0',
+            boxSizing: 'border-box'
           }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <X size={18} />
+          <img src="/cancel.png" alt="close" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
         </button>
       </div>
     </div>

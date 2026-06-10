@@ -108,6 +108,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
   useEffect(() => {
     let appStateListener: any = null;
+    let gpsListener: any = null;
     let isResuming = false;
 
     const handleResume = async () => {
@@ -149,6 +150,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           const status = await alarmPlugin.checkGPS();
           if (status && status.enabled) {
             onTrackingErrorRef.current(null);
+          } else {
+            const currentLang = settingsRef.current.language as 'en' | 'ar';
+            const msg = currentLang === 'ar' 
+              ? '📍 الـ GPS مقفول خالص يا ريس. افتحه الأول من السيتنج عشان أقدر أحسبلك المشوار.'
+              : '📍 GPS is completely disabled. Enable it first to grant permissions.';
+            onTrackingErrorRef.current({ message: msg, action: 'openGPS' });
           }
         } catch (e) {}
 
@@ -202,6 +209,55 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
         startTracking(true);
       }
 
+      // Check GPS status immediately on boot
+      try {
+        const isAndroid = (window as any).Capacitor?.getPlatform() === 'android';
+        if (isAndroid) {
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const status = await alarmPlugin.checkGPS();
+          if (status && !status.enabled) {
+            const currentLang = settingsRef.current.language as 'en' | 'ar';
+            const msg = currentLang === 'ar' 
+              ? '📍 الـ GPS مقفول خالص يا ريس. افتحه الأول من السيتنج عشان أقدر أحسبلك المشوار.'
+              : '📍 GPS is completely disabled. Enable it first to grant permissions.';
+            onTrackingErrorRef.current({ message: msg, action: 'openGPS' });
+          }
+        }
+      } catch (e) {
+        console.warn('[GpsTracking] Init GPS check failed:', e);
+      }
+
+      try {
+        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        gpsListener = await alarmPlugin.addListener('gpsStateChanged', (data: any) => {
+          if (!data.enabled) {
+            console.warn('[GpsTracking] GPS disabled detected via broadcast!');
+            const currentLang = settingsRef.current.language as 'en' | 'ar';
+            const msg = currentLang === 'ar' 
+              ? '📍 الـ GPS مقفول خالص يا ريس. افتحه الأول من السيتنج عشان أقدر أحسبلك المشوار.'
+              : '📍 GPS is completely disabled. Enable it first to grant permissions.';
+            onTrackingErrorRef.current({ message: msg, action: 'openGPS' });
+            import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+              LocalNotifications.schedule({
+                notifications: [
+                  {
+                    title: currentLang === 'ar' ? "تم إيقاف تتبع الـ GPS" : "GPS Tracking Stopped",
+                    body: currentLang === 'ar' ? "الـ GPS مقفول. برجاء تشغيله للمتابعة." : "GPS is disabled. Please turn it back on to continue tracking.",
+                    id: 1001,
+                    schedule: { at: new Date(Date.now() + 100) },
+                  }
+                ]
+              });
+            }).catch(() => {});
+          } else {
+            console.log('[GpsTracking] GPS enabled detected via broadcast!');
+            onTrackingErrorRef.current(null);
+          }
+        });
+      } catch (e) {
+        console.warn('[GpsTracking] Could not add gpsStateChanged listener', e);
+      }
+
       const { App } = await import('@capacitor/app');
       appStateListener = await App.addListener('appStateChange', async (state) => {
         if (state.isActive) {
@@ -245,6 +301,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
     return () => {
       appStateListener?.remove();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Wait for gpsListener to resolve and remove if it exists. Since it's a promise, we handle it simply
+      // But we can't easily wait for the promise in a sync cleanup function, so we'll just ignore for now or if we had it synchronously. 
+      // Capacitor listener objects have a .remove() method. 
+      if (gpsListener && typeof gpsListener.remove === 'function') {
+        gpsListener.remove();
+      }
     };
   }, []);
 
@@ -342,7 +404,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
         { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
         (pos, err) => {
           if (err) {
-            onTrackingError({ message: 'GPS Connection Lost' });
+            onTrackingError({ message: 'We lost connection to your GPS signal. Please make sure Location Services are turned on to continue tracking.', action: 'openGPS' });
             return;
           }
           if (!pos) return;

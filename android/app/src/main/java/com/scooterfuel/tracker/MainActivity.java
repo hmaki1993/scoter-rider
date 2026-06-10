@@ -53,6 +53,57 @@ public class MainActivity extends BridgeActivity {
     @CapacitorPlugin(name = "AlarmPlugin")
     public static class AlarmPlugin extends Plugin {
         
+        private android.content.BroadcastReceiver gpsReceiver;
+
+        @Override
+        public void load() {
+            super.load();
+            gpsReceiver = new android.content.BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (android.location.LocationManager.PROVIDERS_CHANGED_ACTION.equals(intent.getAction())) {
+                        checkGPSAndNotify();
+                    }
+                }
+            };
+            getContext().registerReceiver(gpsReceiver, new android.content.IntentFilter(android.location.LocationManager.PROVIDERS_CHANGED_ACTION));
+        }
+
+        @Override
+        protected void handleOnDestroy() {
+            if (gpsReceiver != null) {
+                try {
+                    getContext().unregisterReceiver(gpsReceiver);
+                } catch (Exception e) {}
+            }
+            super.handleOnDestroy();
+        }
+
+        private void checkGPSAndNotify() {
+            try {
+                android.location.LocationManager lm = (android.location.LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
+                boolean isEnabled = false;
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    isEnabled = lm.isLocationEnabled();
+                } else {
+                    boolean gps_enabled = false;
+                    boolean network_enabled = false;
+                    try {
+                        gps_enabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER);
+                    } catch(Exception ex) {}
+                    try {
+                        network_enabled = lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
+                    } catch(Exception ex) {}
+                    isEnabled = gps_enabled || network_enabled;
+                }
+
+                com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+                ret.put("enabled", isEnabled);
+                notifyListeners("gpsStateChanged", ret);
+            } catch (Exception e) {}
+        }
+
         @PluginMethod
         public void getWidgetAction(PluginCall call) {
             com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
