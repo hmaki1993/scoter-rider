@@ -266,57 +266,116 @@ function App() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {tracker.trackingError && (
-          <div className="glass-panel" style={{
-            width: '100%',
-            maxWidth: '340px',
-            padding: '16px 20px',
-            borderRadius: '10px',
-            background: tracker.settings.isLightMode ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.08)',
-            border: '1px solid var(--danger-color)',
-            animation: 'fadeIn 0.3s ease',
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
             alignItems: 'center',
-            textAlign: 'center',
-            margin: '0 auto'
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '24px',
+            boxSizing: 'border-box'
           }}>
-            <div style={{ fontSize: '13.5px', color: 'var(--danger-color)', fontWeight: 750, lineHeight: 1.5, fontFamily: "'Rajdhani', sans-serif" }}>
-              {tracker.trackingError.message}
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {tracker.trackingError.action === 'openGPS' && (
-                <button
-                  className="raised-btn"
-                  style={{
-                    fontSize: '11px', padding: '8px 16px', borderRadius: '10px',
-                    color: '#ffffff', border: 'none',
-                    background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
-                    fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.5px',
-                    cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
-                  }}
-                  onClick={() => {
-                    import('@capacitor/core').then(({ registerPlugin }) => {
-                      registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
-                    });
-                  }}
-                >
-                  {t('openSettings')}
-                </button>
-              )}
-              <button
-                className="raised-btn"
-                style={{
-                  fontSize: '11px', padding: '8px 16px', borderRadius: '10px',
-                  color: 'var(--text-primary)',
-                  border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
-                  background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
-                  fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer'
-                }}
-                onClick={() => tracker.clearTrackingError()}
-              >
-                {t('cancel')}
-              </button>
+            <div className="glass-panel" style={{
+              width: '100%',
+              maxWidth: '340px',
+              padding: '24px 20px',
+              borderRadius: '16px',
+              background: tracker.settings.isLightMode ? '#ffffff' : '#121212',
+              border: '2px solid var(--danger-color)',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+              animation: 'scaleUp 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              alignItems: 'center',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: tracker.settings.isLightMode ? 'rgba(220, 38, 38, 0.08)' : 'rgba(220, 38, 38, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--danger-color)',
+                boxShadow: '0 0 15px rgba(220, 38, 38, 0.2)'
+              }}>
+                <AlertTriangle size={28} />
+              </div>
+              <div style={{
+                fontSize: '15.5px',
+                color: tracker.settings.isLightMode ? '#1e293b' : '#f8fafc',
+                fontWeight: 750,
+                lineHeight: 1.5,
+                fontFamily: "'Rajdhani', sans-serif"
+              }}>
+                {tracker.trackingError.message}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                {tracker.trackingError.action === 'openGPS' && (
+                  <button
+                    className="raised-btn"
+                    style={{
+                      fontSize: '13px', padding: '12px 20px', borderRadius: '10px',
+                      color: '#ffffff', border: 'none',
+                      background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
+                      fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.5px',
+                      cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
+                      width: '100%'
+                    }}
+                    onClick={() => {
+                      import('@capacitor/core').then(({ registerPlugin }) => {
+                        registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
+                      });
+                    }}
+                  >
+                    {t('openSettings')}
+                  </button>
+                )}
+                {tracker.trackingError.action === 'openSettings' && (
+                  <button
+                    className="raised-btn"
+                    style={{
+                      fontSize: '13px', padding: '12px 20px', borderRadius: '10px',
+                      color: '#ffffff', border: 'none',
+                      background: 'linear-gradient(135deg, var(--danger-color), #c62828)',
+                      fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.5px',
+                      cursor: 'pointer', boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
+                      width: '100%'
+                    }}
+                    onClick={() => {
+                      import('@capacitor/core').then(({ registerPlugin }) => {
+                        registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
+                      });
+                    }}
+                  >
+                    {t('openSettings')}
+                  </button>
+                )}
+                {(!tracker.trackingError.action || (tracker.trackingError.action !== 'openGPS' && tracker.trackingError.action !== 'openSettings')) && (
+                  <button
+                    className="raised-btn"
+                    style={{
+                      fontSize: '13px', padding: '12px 20px', borderRadius: '10px',
+                      color: 'var(--text-primary)',
+                      border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'}`,
+                      background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
+                      fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer',
+                      width: '100%'
+                    }}
+                    onClick={() => tracker.clearTrackingError()}
+                  >
+                    {t('cancel')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
