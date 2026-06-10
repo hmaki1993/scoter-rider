@@ -30,7 +30,7 @@ class KalmanFilter1D {
   private errorMeasure: number;
   private q: number; // process noise
 
-  constructor(initialEstimate: number, errorEstimate = 0.0001, errorMeasure = 0.00015, q = 0.000005) {
+  constructor(initialEstimate: number, errorEstimate = 0.0001, errorMeasure = 0.00015, q = 0.000015) {
     this.estimate = initialEstimate;
     this.errorEstimate = errorEstimate;
     this.errorMeasure = errorMeasure;
@@ -351,8 +351,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           setGpsUpdateCount(prev => prev + 1);
           setLastGpsTime(new Date().toLocaleTimeString());
 
-          // ── GUARD 1: Accuracy filter — reject readings worse than 35m ──
-          const MAX_GPS_ACCURACY = 35;
+          // ── GUARD 1: Accuracy filter — reject readings worse than 50m ──
+          const MAX_GPS_ACCURACY = 50;
           if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
             console.log('[GPS] Skipping low accuracy reading:', pos.coords.accuracy.toFixed(0) + 'm');
             return; // Don't even update lastPosition with bad data
@@ -370,6 +370,10 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           }
           const smoothLat = kalmanLat.current.update(rawLat, accuracy);
           const smoothLon = kalmanLon.current.update(rawLon, accuracy);
+
+          // Use RAW coordinates when GPS accuracy is good, Kalman only when poor
+          const useLat = accuracy <= 15 ? rawLat : smoothLat;
+          const useLon = accuracy <= 15 ? rawLon : smoothLon;
 
           // ── Speed from native GPS (most reliable) ──
           const nativeSpeed = pos.coords?.speed;
@@ -396,10 +400,10 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             const prevTimestamp = refPoint.timestamp;
             const isValidTimestamp = prevTimestamp > 0 && currTimestamp > prevTimestamp;
 
-            // Distance from last accepted point to current smoothed position
+            // Distance from last accepted point to current position
             const dist = calculateDistance(
               refPoint.latitude, refPoint.longitude,
-              smoothLat, smoothLon
+              useLat, useLon
             );
 
             // Also compute calculated speed from distance
@@ -433,12 +437,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 };
                 lastBearingRef.current = null;
               }
-              // ── GUARD 3: Minimum distance 8m to count ──
-              // ── GUARD 4: Must be moving ≥ 6 km/h (scooter speed minimum, avoids walking ~3-5 km/h) ──
+              // ── GUARD 3: Minimum distance 5m to count ──
+              // ── GUARD 4: Must be moving ≥ 8 km/h (scooter speed minimum, avoids walking/brisk walking ~5-7 km/h) ──
               // ── GUARD 5: Must not be in a "still" streak ──
               else if (
-                dist > 0.008 &&            // at least 8m moved
-                currentKmh >= 6 &&          // avoids counting when walking on foot
+                dist > 0.005 &&            // at least 5m moved
+                currentKmh >= 8 &&          // avoids counting when walking on foot
                 stillCountRef.current < 3   // not standing still for multiple readings
               ) {
                 // ── GUARD 6: Bearing consistency check ──
@@ -448,11 +452,11 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 );
 
                 let bearingOk = true;
-                if (lastBearingRef.current !== null && dist < 0.080) {
-                  // For short segments, check bearing didn't flip 180° (GPS bounce)
+                if (lastBearingRef.current !== null && dist < 0.030) {
+                  // Only check bearing for very short segments (<30m) to catch GPS bounce
                   let bearingDiff = Math.abs(bearing - lastBearingRef.current);
                   if (bearingDiff > 180) bearingDiff = 360 - bearingDiff;
-                  if (bearingDiff > 150) {
+                  if (bearingDiff > 170) {
                     bearingOk = false;
                     console.log('[GPS] Bearing flip detected (' + bearingDiff.toFixed(0) + '°), skipping segment.');
                   }
@@ -465,7 +469,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
                   // Move accepted reference to current position
                   lastAcceptedRef.current = {
-                    latitude: smoothLat, longitude: smoothLon,
+                    latitude: useLat, longitude: useLon,
                     timestamp: currTimestamp, accuracy, bearing
                   };
                 }
@@ -474,7 +478,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           } else {
             // First reading — set as reference
             lastAcceptedRef.current = {
-              latitude: smoothLat, longitude: smoothLon,
+              latitude: useLat, longitude: useLon,
               timestamp: currTimestamp, accuracy
             };
           }
