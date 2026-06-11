@@ -34,19 +34,19 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * Manages a floating system overlay for quick ODO sync.
- * Shows a card with an input field and save button on top of everything.
- * Requires SYSTEM_ALERT_WINDOW permission.
+ * Manages a floating system overlay for quick Add Fuel.
  */
-public class FloatingOdoOverlay {
+public class FloatingAddFuelOverlay {
 
     private final Context context;
     private WindowManager windowManager;
     private View overlayView;
     private boolean isShowing = false;
-    private EditText odoInput;
+    private EditText litersInput;
+    private EditText costInput;
+    private boolean isFullTank = true;
 
-    public FloatingOdoOverlay(Context context) {
+    public FloatingAddFuelOverlay(Context context) {
         this.context = context.getApplicationContext();
     }
 
@@ -82,10 +82,16 @@ public class FloatingOdoOverlay {
         handler.post(() -> {
             try {
                 // Hide soft keyboard immediately before fading out
-                if (odoInput != null) {
+                if (litersInput != null) {
                     android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
                     if (imm != null) {
-                        imm.hideSoftInputFromWindow(odoInput.getWindowToken(), 0);
+                        imm.hideSoftInputFromWindow(litersInput.getWindowToken(), 0);
+                    }
+                }
+                if (costInput != null) {
+                    android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(costInput.getWindowToken(), 0);
                     }
                 }
 
@@ -135,6 +141,7 @@ public class FloatingOdoOverlay {
         SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
         float currentOdo = prefs.getFloat("latest_odo_raw", 0.0f);
         String lang = prefs.getString("fuel_settings_language", "ar");
+        boolean isAr = "ar".equals(lang);
 
         // ── Root container (full screen dimmed background) ──
         FrameLayout root = new FrameLayout(context);
@@ -155,7 +162,7 @@ public class FloatingOdoOverlay {
         card.setPadding(cardPadding, cardPadding, cardPadding, cardPadding);
 
         FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(
-            dp(300), FrameLayout.LayoutParams.WRAP_CONTENT
+            dp(320), FrameLayout.LayoutParams.WRAP_CONTENT
         );
         cardLp.gravity = Gravity.CENTER;
         card.setLayoutParams(cardLp);
@@ -169,7 +176,7 @@ public class FloatingOdoOverlay {
 
         // Title
         TextView title = new TextView(context);
-        title.setText("⚡ SYNC ODO");
+        title.setText(isAr ? "تفويل" : "REFUEL");
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -190,7 +197,7 @@ public class FloatingOdoOverlay {
         }
         closeBtn.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
         closeBtn.setPadding(dp(4), dp(4), dp(4), dp(4));
-        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dp(54), dp(54));
+        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dp(40), dp(40));
         closeBtn.setLayoutParams(closeLp);
         closeBtn.setOnClickListener(v -> dismiss());
 
@@ -198,147 +205,220 @@ public class FloatingOdoOverlay {
         header.addView(closeBtn);
         card.addView(header);
 
-        // ── Spacer ──
-        addSpacer(card, dp(16));
+        addSpacer(card, dp(22));
 
-        // ── Label ──
-        TextView label = new TextView(context);
-        label.setText("CURRENT ODO READING");
-        label.setTextColor(Color.parseColor("#888888"));
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        label.setTypeface(Typeface.DEFAULT_BOLD);
-        label.setLetterSpacing(0.08f);
-        card.addView(label);
+        // ── Input 1: ODO Reading ──
+        LinearLayout inputGroup1 = new LinearLayout(context);
+        inputGroup1.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable groupBg = new GradientDrawable();
+        groupBg.setColor(Color.parseColor("#141417"));
+        groupBg.setCornerRadius(dp(12));
+        groupBg.setStroke(dp(2), Color.parseColor("#2a2a2a"));
+        inputGroup1.setBackground(groupBg);
+        inputGroup1.setPadding(dp(16), dp(12), dp(16), dp(12));
 
-        addSpacer(card, dp(8));
-
-        // ── Input container ──
-        LinearLayout inputContainer = new LinearLayout(context);
-        inputContainer.setOrientation(LinearLayout.HORIZONTAL);
-        inputContainer.setGravity(Gravity.CENTER_VERTICAL);
-
-        GradientDrawable inputBg = new GradientDrawable();
-        inputBg.setColor(Color.parseColor("#111111"));
-        inputBg.setCornerRadius(dp(14));
-        inputBg.setStroke(dp(1), Color.parseColor("#333333"));
-        inputContainer.setBackground(inputBg);
-        inputContainer.setPadding(dp(16), dp(4), dp(16), dp(4));
-
-        // EditText
-        odoInput = new EditText(context);
-        odoInput.setText(currentOdo > 0 ? String.format("%.1f", currentOdo) : "");
+        TextView labelOdo = new TextView(context);
+        labelOdo.setText(isAr ? "قراءة العداد" : "ODO READING");
+        labelOdo.setTextColor(Color.parseColor("#888888"));
+        labelOdo.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        labelOdo.setTypeface(Typeface.DEFAULT_BOLD);
+        inputGroup1.addView(labelOdo);
+        
+        LinearLayout odoInputRow = new LinearLayout(context);
+        odoInputRow.setOrientation(LinearLayout.HORIZONTAL);
+        odoInputRow.setGravity(Gravity.CENTER_VERTICAL);
+        
+        EditText odoInput = new EditText(context);
+        odoInput.setText(currentOdo > 0 ? String.format(java.util.Locale.US, "%.1f", currentOdo) : "");
         odoInput.setHint("0.0");
         odoInput.setHintTextColor(Color.parseColor("#444455"));
         odoInput.setTextColor(Color.WHITE);
-        odoInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        odoInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         odoInput.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         odoInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         odoInput.setBackground(null);
-        odoInput.setGravity(Gravity.CENTER);
-        odoInput.setLetterSpacing(0.05f);
-        odoInput.setPadding(0, dp(8), 0, dp(8));
-
-        LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-        );
-        odoInput.setLayoutParams(inputLp);
-
-        // KM suffix
+        odoInput.setPadding(0, dp(4), 0, 0);
+        LinearLayout.LayoutParams odoLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        odoInput.setLayoutParams(odoLp);
+        
         TextView kmLabel = new TextView(context);
         kmLabel.setText("KM");
-        kmLabel.setTextColor(Color.parseColor("#8888AA"));
-        kmLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        kmLabel.setTextColor(Color.parseColor("#888888"));
         kmLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        kmLabel.setLetterSpacing(0.1f);
+        kmLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        
+        odoInputRow.addView(odoInput);
+        odoInputRow.addView(kmLabel);
+        inputGroup1.addView(odoInputRow);
+        card.addView(inputGroup1);
 
-        inputContainer.addView(odoInput);
-        inputContainer.addView(kmLabel);
-        card.addView(inputContainer);
+        addSpacer(card, dp(16));
 
-        addSpacer(card, dp(8));
+        // ── Input 2: Fuel Cost ──
+        LinearLayout inputGroup2 = new LinearLayout(context);
+        inputGroup2.setOrientation(LinearLayout.VERTICAL);
+        inputGroup2.setBackground(groupBg);
+        inputGroup2.setPadding(dp(16), dp(12), dp(16), dp(12));
 
-        // ── Diff badge (shows +X.X KM when value > current) ──
-        TextView diffBadge = new TextView(context);
-        diffBadge.setTextColor(Color.parseColor("#FFFFFF"));
-        diffBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        diffBadge.setTypeface(Typeface.DEFAULT_BOLD);
-        diffBadge.setGravity(Gravity.CENTER);
-        diffBadge.setVisibility(View.GONE);
-        card.addView(diffBadge);
+        TextView labelCost = new TextView(context);
+        labelCost.setText(isAr ? "هتفوّل بكام؟" : "NEW FUEL COST");
+        labelCost.setTextColor(Color.parseColor("#888888"));
+        labelCost.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        labelCost.setTypeface(Typeface.DEFAULT_BOLD);
+        inputGroup2.addView(labelCost);
+        
+        LinearLayout costInputRow = new LinearLayout(context);
+        costInputRow.setOrientation(LinearLayout.HORIZONTAL);
+        costInputRow.setGravity(Gravity.CENTER_VERTICAL);
+        
+        EditText fuelInput = new EditText(context);
+        fuelInput.setHint("0.0");
+        fuelInput.setHintTextColor(Color.parseColor("#444455"));
+        fuelInput.setTextColor(Color.WHITE);
+        fuelInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        fuelInput.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        fuelInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        fuelInput.setBackground(null);
+        fuelInput.setPadding(0, dp(4), 0, 0);
+        fuelInput.setLayoutParams(odoLp);
+        
+        TextView egpLabel = new TextView(context);
+        egpLabel.setText("EGP");
+        egpLabel.setTextColor(Color.WHITE);
+        egpLabel.setBackgroundColor(Color.parseColor("#ff5e00")); // Accent secondary
+        egpLabel.setPadding(dp(8), dp(4), dp(8), dp(4));
+        egpLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        egpLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        GradientDrawable egpBg = new GradientDrawable();
+        egpBg.setColor(Color.parseColor("#ff5e00"));
+        egpBg.setCornerRadius(dp(8));
+        egpLabel.setBackground(egpBg);
+        
+        costInputRow.addView(fuelInput);
+        costInputRow.addView(egpLabel);
+        inputGroup2.addView(costInputRow);
+        card.addView(inputGroup2);
+        
+        addSpacer(card, dp(24));
 
-        // Update diff badge on text change
-        final float finalCurrentOdo = currentOdo;
-        odoInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                try {
-                    float newVal = Float.parseFloat(s.toString());
-                    if (newVal > finalCurrentOdo && finalCurrentOdo > 0) {
-                        float diff = newVal - finalCurrentOdo;
-                        diffBadge.setText(String.format("+%.1f KM", diff));
-                        diffBadge.setVisibility(View.VISIBLE);
-                    } else {
-                        diffBadge.setVisibility(View.GONE);
-                    }
-                } catch (NumberFormatException e) {
-                    diffBadge.setVisibility(View.GONE);
-                }
-            }
-        });
-
-        addSpacer(card, dp(6));
-
-        // ── Helper text ──
-        TextView helper = new TextView(context);
-        helper.setText("Match your scooter's odometer screen");
-        helper.setTextColor(Color.parseColor("#666666"));
-        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        helper.setGravity(Gravity.CENTER);
-        card.addView(helper);
-
-        addSpacer(card, dp(20));
-
-        // ── Save Button ──
-        Button saveBtn = new Button(context);
-        saveBtn.setText("SAVE");
-        saveBtn.setTextColor(Color.BLACK);
-        saveBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        saveBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        saveBtn.setLetterSpacing(0.15f);
-        saveBtn.setAllCaps(true);
-
+        // ── SAVE Button ──
+        FrameLayout saveBtnContainer = new FrameLayout(context);
         GradientDrawable saveBg = new GradientDrawable();
-        saveBg.setColor(Color.WHITE);
+        saveBg.setColor(Color.TRANSPARENT);
+        saveBg.setStroke(dp(2), Color.parseColor("#ff5e00")); // Accent border
         saveBg.setCornerRadius(dp(12));
-        saveBtn.setBackground(saveBg);
-        saveBtn.setPadding(dp(16), dp(14), dp(16), dp(14));
+        saveBtnContainer.setBackground(saveBg);
+        
+        TextView saveText = new TextView(context);
+        saveText.setText(isAr ? "حفظ" : "SAVE");
+        saveText.setTextColor(Color.parseColor("#ff5e00"));
+        saveText.setTypeface(Typeface.DEFAULT_BOLD);
+        saveText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        saveText.setLetterSpacing(0.1f);
+        saveText.setGravity(Gravity.CENTER);
+        
+        FrameLayout.LayoutParams saveLp = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, dp(48)
+        );
+        saveBtnContainer.addView(saveText, saveLp);
+        card.addView(saveBtnContainer);
 
-        saveBtn.setOnClickListener(v -> {
+        addSpacer(card, dp(12));
+
+        // ── RESET TANK Button ──
+        FrameLayout resetBtnContainer = new FrameLayout(context);
+        GradientDrawable resetBg = new GradientDrawable();
+        resetBg.setColor(Color.parseColor("#1aff3b30")); // 10% red
+        resetBg.setStroke(dp(1), Color.parseColor("#33ff3b30")); // 20% red border
+        resetBg.setCornerRadius(dp(10));
+        resetBtnContainer.setBackground(resetBg);
+        
+        TextView resetText = new TextView(context);
+        resetText.setText(isAr ? "تصفير التانك" : "RESET TANK");
+        resetText.setTextColor(Color.parseColor("#ff3b30")); // Red
+        resetText.setTypeface(Typeface.DEFAULT_BOLD);
+        resetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        resetText.setGravity(Gravity.CENTER);
+        
+        FrameLayout.LayoutParams resetLp = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, dp(40)
+        );
+        resetLp.gravity = Gravity.CENTER;
+        resetText.setPadding(dp(20), 0, dp(20), 0);
+        resetBtnContainer.addView(resetText, resetLp);
+        
+        LinearLayout resetWrapper = new LinearLayout(context);
+        resetWrapper.setGravity(Gravity.CENTER);
+        resetWrapper.addView(resetBtnContainer);
+        card.addView(resetWrapper);
+
+        // ── Button Logic ──
+        saveBtnContainer.setOnClickListener(v -> {
+            String odoStr = odoInput.getText().toString();
+            String fuelStr = fuelInput.getText().toString();
+            if (odoStr.isEmpty() || fuelStr.isEmpty()) return;
+            
             try {
-                String text = odoInput.getText().toString().trim();
-                float newOdo = Float.parseFloat(text);
-                if (newOdo > 0) {
-                    saveOdoValue(newOdo);
-                    // Vibrate confirm
-                    Vibrator vib = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-                    if (vib != null) {
-                        if (Build.VERSION.SDK_INT >= 26) {
-                            vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE));
-                        } else {
-                            vib.vibrate(80);
-                        }
+                float newOdo = Float.parseFloat(odoStr);
+                float addedEGP = Float.parseFloat(fuelStr);
+                float pricePerL = prefs.getFloat("fuel_price_per_liter", 14.5f);
+                float liters = addedEGP / pricePerL;
+                
+                long ts = System.currentTimeMillis();
+                String logsJson = prefs.getString("fuel_logs", "[]");
+                org.json.JSONArray logs = new org.json.JSONArray(logsJson);
+                
+                org.json.JSONObject newLog = new org.json.JSONObject();
+                newLog.put("id", java.util.UUID.randomUUID().toString());
+                newLog.put("timestamp", ts);
+                newLog.put("liters", liters);
+                newLog.put("cost", addedEGP);
+                newLog.put("odo", newOdo);
+                newLog.put("isFullTank", false); // Native quick sync defaults to partial
+                
+                logs.put(newLog);
+                
+                // We also need to update ODO stats (handled by JS usually, but we store ODO for widget)
+                prefs.edit()
+                     .putString("fuel_logs", logs.toString())
+                     .putFloat("latest_odo_raw", newOdo)
+                     .putString("latest_odo", String.format(java.util.Locale.US, "ODO: %.0f", newOdo))
+                     .putFloat("fuel_warning_last_odo", 0.0f) // reset warning
+                     .apply();
+                
+                // Vibrate
+                Vibrator vib = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                if (vib != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vib.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        vib.vibrate(50);
                     }
-                    dismiss();
                 }
-            } catch (NumberFormatException e) {
-                // Invalid input - shake the input
-                odoInput.requestFocus();
-            }
+                
+                dismiss();
+                
+                android.content.Intent updateIntent = new android.content.Intent(context, SpeedometerWidget.class);
+                updateIntent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
+                context.sendBroadcast(updateIntent);
+            } catch (Exception e) {}
         });
 
-        card.addView(saveBtn);
+        resetBtnContainer.setOnClickListener(v -> {
+            // Just clear fuel tracking stats
+            prefs.edit()
+                 .putFloat("latest_fuelLiters_raw", 0.0f)
+                 .putString("latest_litersLeft", "0.0 L")
+                 .putInt("latest_fuelPercent", 0)
+                 .putString("latest_range", "0.0 KM")
+                 .apply();
+                 
+            dismiss();
+            
+            android.content.Intent updateIntent = new android.content.Intent(context, SpeedometerWidget.class);
+            updateIntent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
+            context.sendBroadcast(updateIntent);
+        });
 
         // ── Add card to root ──
         root.addView(card);
@@ -373,6 +453,7 @@ public class FloatingOdoOverlay {
 
         overlayView = root;
         
+        // Hide navigation and status bar, extend into cutout areas
         // Extend into cutout areas but don't hide navigation bar to prevent flicker on exit
         overlayView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
@@ -404,62 +485,8 @@ public class FloatingOdoOverlay {
         card.startAnimation(inAnim);
 
         // Focus input and show keyboard
-        odoInput.requestFocus();
-        odoInput.selectAll();
-    }
-
-    private void saveOdoValue(float newOdo) {
-        SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-
-        float oldOdo = prefs.getFloat("latest_odo_raw", 0.0f);
-        float diff = newOdo - oldOdo;
-
-        // Update ODO
-        editor.putFloat("latest_odo_raw", newOdo);
-        editor.putString("latest_odo", String.format("ODO: %.0f", newOdo));
-
-        // If new ODO is higher, update trip and fuel accordingly
-        if (diff > 0 && oldOdo > 0) {
-            float kmPerLiter = prefs.getFloat("setting_consumption", 21.4f);
-            float currentLiters = prefs.getFloat("latest_fuelLiters_raw", 0.0f);
-            float currentTrip = prefs.getFloat("latest_trip_raw", 0.0f);
-            float oilLeft = prefs.getFloat("latest_oilLeft_raw", 1000.0f);
-            float tankCap = prefs.getFloat("setting_tank", 7.0f);
-
-            // Consume fuel for the driven distance
-            float consumedLiters = (kmPerLiter > 0) ? (diff / kmPerLiter) : 0;
-            float newLiters = Math.max(0, currentLiters - consumedLiters);
-            float newTrip = currentTrip + diff;
-            float newOil = Math.max(0, oilLeft - diff);
-            float newRange = newLiters * kmPerLiter;
-            int fuelPercent = tankCap > 0 ? Math.round((newLiters / tankCap) * 100) : 0;
-
-            editor.putFloat("latest_fuelLiters_raw", newLiters);
-            editor.putFloat("latest_trip_raw", newTrip);
-            editor.putFloat("latest_oilLeft_raw", newOil);
-            editor.putString("latest_range", String.format("%.1f KM", newRange));
-            editor.putInt("latest_fuelPercent", fuelPercent);
-            editor.putString("latest_litersLeft", String.format("%.1f L", newLiters));
-            editor.putString("latest_oilLeft", String.format("OIL: %.0f", newOil));
-            editor.putString("latest_trip", String.format("TRIP: %.1f", newTrip));
-        }
-
-        editor.commit();
-
-        // Trigger widget update
-        try {
-            android.content.Intent intent = new android.content.Intent(context, SpeedometerWidget.class);
-            intent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
-            context.sendBroadcast(intent);
-        } catch (Exception e) {
-            // Widget update failed, not critical
-        }
-
-        // Also store a flag so the JS side picks up the new ODO on next resume
-        editor.putFloat("overlay_sync_odo", newOdo);
-        editor.putBoolean("overlay_sync_pending", true);
-        editor.apply();
+        litersInput.requestFocus();
+        litersInput.selectAll();
     }
 
     private void addSpacer(LinearLayout parent, int heightPx) {

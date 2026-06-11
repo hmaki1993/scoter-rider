@@ -321,7 +321,10 @@ function App() {
         ref={appRef}
         dir={lang === 'ar' ? 'rtl' : 'ltr'}
         style={{
-          padding: '44px 24px 70px 24px',
+          paddingTop: 'calc(env(safe-area-inset-top, 44px) + 24px)',
+          paddingBottom: '70px',
+          paddingLeft: '24px',
+          paddingRight: '24px',
           width: '100%',
           maxWidth: '480px',
           margin: '0 auto',
@@ -438,7 +441,7 @@ function App() {
               style={{
                 width: '60px',
                 height: '60px',
-                borderRadius: '50%',
+                borderRadius: '24px',
                 padding: '2px',
                 background: 'var(--accent-secondary, #ff5e00)',
                 boxShadow: tracker.settings.isLightMode
@@ -455,7 +458,7 @@ function App() {
                 style={{
                   width: '100%',
                   height: '100%',
-                  borderRadius: '50%',
+                  borderRadius: '24px',
                   background: tracker.settings.isLightMode ? '#ffffff' : '#141417',
                   overflow: 'hidden',
                   display: 'flex',

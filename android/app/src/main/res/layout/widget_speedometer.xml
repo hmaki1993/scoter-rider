@@ -144,7 +144,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="center_horizontal"
-            android:layout_alignParentBottom="true">
+            android:layout_above="@+id/widget_btn_add_fuel">
             
             <TextView
                 android:id="@+id/widget_range_text"
@@ -227,6 +227,20 @@
                     android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
+
+        <!-- ADD FUEL BUTTON -->
+        <TextView
+            android:id="@+id/widget_btn_add_fuel"
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:layout_alignParentBottom="true"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/widget_add_fuel_bg"
+            android:text="➕ ADD FUEL"
+            android:textColor="#ffffff"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:gravity="center" />
     </RelativeLayout>
 
 </RelativeLayout>

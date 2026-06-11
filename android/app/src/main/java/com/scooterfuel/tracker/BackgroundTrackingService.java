@@ -41,9 +41,12 @@ public class BackgroundTrackingService extends Service {
     private float accumulatedDistanceKm = 0.0f;
     private int lastBroadcastedSpeed = -1;
     private long lastBroadcastTime = 0;
+    private long lastHighSpeedTime = 0;
+    private long stopStartTime = 0;
     
     // --- Floating Overlay ---
     private FloatingOdoOverlay floatingOverlay;
+    private FloatingAddFuelOverlay floatingAddFuelOverlay;
 
     @Nullable
     @Override
@@ -62,6 +65,7 @@ public class BackgroundTrackingService extends Service {
 
         // Initialize floating overlay
         floatingOverlay = new FloatingOdoOverlay(this);
+        floatingAddFuelOverlay = new FloatingAddFuelOverlay(this);
     }
 
     @SuppressLint("MissingPermission")
@@ -70,6 +74,11 @@ public class BackgroundTrackingService extends Service {
         if (intent != null && "ACTION_SHOW_SYNC_CARD".equals(intent.getAction())) {
             triggerQuickSyncAction();
             return START_STICKY; // Don't re-setup notifications
+        }
+        
+        if (intent != null && "ACTION_SHOW_ADD_FUEL_CARD".equals(intent.getAction())) {
+            triggerQuickAddFuelAction();
+            return START_STICKY;
         }
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -176,6 +185,24 @@ public class BackgroundTrackingService extends Service {
                         lastBroadcastTime = now;
                     }
 
+                    // --- Traffic Mode Logic ---
+                    if (currentSpeedKmh >= 10.0f) {
+                        lastHighSpeedTime = now;
+                        stopStartTime = 0;
+                    } else if (currentSpeedKmh < 1.0f) {
+                        if (stopStartTime == 0) {
+                            stopStartTime = now;
+                        } else if (now - stopStartTime > 20000) {
+                            // Stopped for 20+ seconds, clear high speed memory
+                            lastHighSpeedTime = 0;
+                        }
+                    } else {
+                        stopStartTime = 0;
+                    }
+                    
+                    boolean isTrafficMode = (lastHighSpeedTime > 0 && (now - lastHighSpeedTime) < 180000); // 3 minutes
+                    float requiredSpeed = isTrafficMode ? 2.0f : 10.0f;
+
                     // --- 2. Distance Accumulation (Smoothed) ---
                     // Accumulate if moved at least 10 meters (reduced from 15m to catch slow traffic)
                     if (distanceMeters >= 10.0f) {
@@ -183,14 +210,14 @@ public class BackgroundTrackingService extends Service {
                         float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 41.6f);
                         
                         if (distanceMeters < maxAllowedDistance) {
-                            if (currentSpeedKmh >= 8.0f) {
+                            if (currentSpeedKmh >= requiredSpeed) {
                                 float distKm = (distanceMeters / 1000.0f);
                                 accumulatedDistanceKm += distKm;
                                 
                                 // --- LIVE BACKGROUND NATIVE UPDATES ---
                                 updateNativeStats(distKm);
                             } else {
-                                android.util.Log.d("FuelTracker", "Walking/Slow speed detected natively: " + currentSpeedKmh + " km/h. Ignoring distance.");
+                                android.util.Log.d("FuelTracker", "Walking/Slow speed detected natively: " + currentSpeedKmh + " km/h (req: " + requiredSpeed + "). Ignoring distance.");
                             }
                             
                             // Anchor point is only updated when we register valid movement (or ignored movement due to low speed)
@@ -524,6 +551,16 @@ public class BackgroundTrackingService extends Service {
         if (floatingOverlay != null) {
             floatingOverlay.dismiss();
             floatingOverlay = null;
+        }
+        if (floatingAddFuelOverlay != null) {
+            floatingAddFuelOverlay.dismiss();
+            floatingAddFuelOverlay = null;
+        }
+    }
+
+    private void triggerQuickAddFuelAction() {
+        if (floatingAddFuelOverlay != null && !floatingAddFuelOverlay.isShowing()) {
+            floatingAddFuelOverlay.show();
         }
     }
 

@@ -12,6 +12,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.widget.RemoteViews;
 
 public class SpeedometerWidget extends AppWidgetProvider {
@@ -34,6 +35,18 @@ public class SpeedometerWidget extends AppWidgetProvider {
         android.app.PendingIntent configPendingIntent = android.app.PendingIntent.getActivity(context, appWidgetId + 1000, configIntent, 
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.widget_btn_settings, configPendingIntent);
+
+        // Add Fuel Button -> Open App with "add_fuel" action
+        // ── "Add Fuel" Button Logic ──
+        Intent addFuelIntent = new Intent(context, BackgroundTrackingService.class);
+        addFuelIntent.setAction("ACTION_SHOW_ADD_FUEL_CARD");
+        PendingIntent pendingAddFuel;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            pendingAddFuel = PendingIntent.getForegroundService(context, 102, addFuelIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            pendingAddFuel = PendingIntent.getService(context, 102, addFuelIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
+        views.setOnClickPendingIntent(R.id.widget_btn_add_fuel, pendingAddFuel);
 
         // Default values from SharedPreferences (Cached Stats)
         android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", android.content.Context.MODE_PRIVATE);

@@ -95,12 +95,9 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
   const lastBearingRef = useRef<number | null>(null);
   // Track consecutive still readings to avoid counting drift while stopped
   const stillCountRef = useRef(0);
-  // ── Walking filter: rolling speed history ──
-  // Keep last N speed readings to require SUSTAINED riding speed before counting distance
-  const speedHistoryRef = useRef<number[]>([]);
-  const SPEED_HISTORY_SIZE = 5;         // how many readings to keep
-  const MIN_RIDING_READINGS = 3;        // how many must be above threshold
-  const MIN_RIDING_SPEED_KMH = 10;      // minimum km/h to be considered "riding" (walking max ~7)
+  // ── Traffic Mode Logic State ──
+  const lastHighSpeedTimeRef = useRef(0);
+  const stopStartTimeRef = useRef(0);
 
   const onDistanceUpdateRef = useRef(onDistanceUpdate);
   const onTrackingErrorRef = useRef(onTrackingError);
@@ -482,15 +479,22 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             stillCountRef.current = 0;
           }
 
-          // ── Update speed history buffer for walking filter ──
-          const history = speedHistoryRef.current;
-          history.push(currentKmh);
-          if (history.length > SPEED_HISTORY_SIZE) {
-            history.shift(); // keep only the latest N readings
+          // ── Traffic Mode Logic ──
+          if (currentKmh >= 10.0) {
+            lastHighSpeedTimeRef.current = currTimestamp;
+            stopStartTimeRef.current = 0;
+          } else if (currentKmh < 1.0) {
+            if (stopStartTimeRef.current === 0) {
+              stopStartTimeRef.current = currTimestamp;
+            } else if (currTimestamp - stopStartTimeRef.current > 20000) {
+              lastHighSpeedTimeRef.current = 0; // Stopped for 20+ seconds, clear high speed memory
+            }
+          } else {
+            stopStartTimeRef.current = 0;
           }
-          // Count how many recent readings are at riding speed
-          const ridingReadings = history.filter(s => s >= MIN_RIDING_SPEED_KMH).length;
-          const isLikelyRiding = ridingReadings >= MIN_RIDING_READINGS;
+
+          const isTrafficMode = (lastHighSpeedTimeRef.current > 0 && (currTimestamp - lastHighSpeedTimeRef.current) < 180000); // 3 minutes
+          const requiredSpeed = isTrafficMode ? 2.0 : 10.0;
 
           const finalDisplaySpeed = Math.round(currentKmh);
           setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
@@ -558,10 +562,10 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
                 if (bearingOk) {
                   // ✅ Accept this segment
-                  if (isLikelyRiding) {
+                  if (currentKmh >= requiredSpeed) {
                     onDistanceUpdate(dist, currentKmh);
                   } else {
-                    console.log('[GPS] Walking/Slow movement detected (speed: ' + currentKmh.toFixed(1) + ' km/h). Ignoring distance.');
+                    console.log(`[GPS] Ignoring distance. Speed: ${currentKmh.toFixed(1)} km/h (req: ${requiredSpeed})`);
                   }
                   lastBearingRef.current = bearing;
 
@@ -636,10 +640,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
     lastPositionRef.current = null;
     lastAcceptedRef.current = null;
     kalmanLat.current = null;
-    kalmanLon.current = null;
-    lastBearingRef.current = null;
-    stillCountRef.current = 0;
-    speedHistoryRef.current = [];
+    lastHighSpeedTimeRef.current = 0;
+    stopStartTimeRef.current = 0;
   };
 
   return { isTracking, isStarting, currentSpeed, gpsUpdateCount, lastGpsTime, startTracking, stopTracking };
