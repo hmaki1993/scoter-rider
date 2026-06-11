@@ -321,7 +321,7 @@ function App() {
         ref={appRef}
         dir={lang === 'ar' ? 'rtl' : 'ltr'}
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 44px) + 24px)',
+          paddingTop: 'calc(env(safe-area-inset-top, 44px) + 44px)',
           paddingBottom: '70px',
           paddingLeft: '24px',
           paddingRight: '24px',
@@ -1799,6 +1799,7 @@ const TripAdjustModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker:
     ).catch(() => {});
     localStorage.setItem('custom_trip_base', String(odo));
     setTripBase(odo);
+    tracker.forceWidgetSync();
     onClose();
   };
 
@@ -1811,6 +1812,7 @@ const TripAdjustModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker:
       ).catch(() => {});
       localStorage.setItem('custom_trip_base', String(base));
       setTripBase(base);
+      tracker.forceWidgetSync();
       onClose();
     }
   };
@@ -2164,7 +2166,7 @@ const SyncOdoModal = ({ tracker, tripBase, setTripBase, onClose }: { tracker: an
         ).catch(() => {});
         localStorage.setItem('custom_trip_base', String(val));
       }
-      
+      tracker.forceWidgetSync();
       onClose();
     }
   };

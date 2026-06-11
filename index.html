@@ -11,6 +11,54 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var settingsStr = localStorage.getItem('fuel_settings');
+          if (settingsStr) {
+            var settings = JSON.parse(settingsStr);
+            var isLight = settings.isLightMode;
+            var root = document.documentElement;
+            
+            if (isLight) {
+              root.classList.add('app-light');
+              root.classList.remove('app-dark');
+              document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff');
+              root.style.setProperty('--primary-bg', '#ffffff');
+              root.style.setProperty('--text-primary', '#000000');
+              root.style.setProperty('--text-secondary', 'rgba(0,0,0,0.7)');
+              root.style.setProperty('--glass-bg', 'rgba(255,255,255,0.92)');
+              root.style.setProperty('--glass-border', 'rgba(0,0,0,0.12)');
+            } else {
+              root.classList.add('app-dark');
+              root.classList.remove('app-light');
+              document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0c');
+              root.style.setProperty('--primary-bg', '#0a0a0c');
+              root.style.setProperty('--text-primary', '#ffffff');
+              root.style.setProperty('--text-secondary', 'rgba(255,255,255,0.6)');
+              root.style.setProperty('--glass-bg', 'rgba(255,255,255,0.03)');
+              root.style.setProperty('--glass-border', 'rgba(255,255,255,0.08)');
+            }
+
+            if (settings.accentColor) {
+              root.style.setProperty('--accent-color', settings.accentColor);
+              var themes = {
+                '#326144': '#ff5e00',
+                '#ffcc00': '#ffcc00',
+                '#ff9500': '#ff9500',
+                '#ff3b30': '#ff3b30',
+                '#af52de': '#af52de',
+                '#5ac8fa': '#5ac8fa',
+                '#248a3d': '#248a3d'
+              };
+              if (themes[settings.accentColor]) {
+                root.style.setProperty('--accent-secondary', themes[settings.accentColor]);
+              }
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

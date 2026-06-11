@@ -490,6 +490,24 @@ public class MainActivity extends BridgeActivity {
         }
 
         @PluginMethod
+        public void getNativeLogs(PluginCall call) {
+            try {
+                Context context = getContext();
+                android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                String logs = prefs.getString("fuel_logs", "[]");
+                
+                // Clear the logs so they aren't imported twice
+                prefs.edit().putString("fuel_logs", "[]").apply();
+                
+                com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+                ret.put("logs", logs);
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
         public void getWidgetSettings(PluginCall call) {
             try {
                 Context context = getContext();
@@ -542,6 +560,12 @@ public class MainActivity extends BridgeActivity {
                 editor.putFloat("setting_consumption", (float)call.getDouble("consumptionRate", 21.4).doubleValue());
                 editor.putFloat("setting_tank", (float)call.getDouble("tankCapacity", 7.0).doubleValue());
                 editor.putFloat("setting_warning_threshold", (float)call.getFloat("warningThreshold", 15.0f));
+                if (call.hasOption("language")) {
+                    editor.putString("setting_language", call.getString("language", "en"));
+                }
+                if (call.hasOption("fuelPrice")) {
+                    editor.putFloat("fuel_price_per_liter", (float)call.getDouble("fuelPrice", 14.5).doubleValue());
+                }
                 
                 editor.commit(); // Durable synchronous write
 

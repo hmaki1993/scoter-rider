@@ -229,18 +229,29 @@
         </LinearLayout>
 
         <!-- ADD FUEL BUTTON -->
-        <TextView
+        <FrameLayout
             android:id="@+id/widget_btn_add_fuel"
             android:layout_width="match_parent"
             android:layout_height="32dp"
             android:layout_alignParentBottom="true"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/widget_add_fuel_bg"
-            android:text="➕ ADD FUEL"
-            android:textColor="#ffffff"
-            android:textStyle="bold"
-            android:textSize="13sp"
-            android:gravity="center" />
+            android:layout_marginTop="8dp">
+
+            <ImageView
+                android:id="@+id/widget_btn_add_fuel_bg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/widget_add_fuel_solid_bg"
+                android:scaleType="fitXY" />
+
+            <TextView
+                android:id="@+id/widget_btn_add_fuel_text"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="➕"
+                android:textColor="#ffffff"
+                android:textSize="18sp"
+                android:gravity="center" />
+        </FrameLayout>
     </RelativeLayout>
 
 </RelativeLayout>

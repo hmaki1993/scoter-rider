@@ -211,6 +211,12 @@ public class SpeedometerWidget extends AppWidgetProvider {
         views.setInt(com.scooterfuel.tracker.R.id.widget_trip_dot, "setColorFilter", android.graphics.Color.parseColor("#00f0ff"));
         views.setInt(com.scooterfuel.tracker.R.id.widget_budget_dot, "setColorFilter", android.graphics.Color.parseColor("#f0ff00"));
         views.setInt(com.scooterfuel.tracker.R.id.widget_odo_dot, "setColorFilter", android.graphics.Color.parseColor("#ffffff"));
+        
+        int btnAlpha = (opacity * 255) / 100;
+        // Set solid color filter
+        views.setInt(com.scooterfuel.tracker.R.id.widget_btn_add_fuel_bg, "setColorFilter", activeColor);
+        // Apply transparency to the entire ImageView
+        views.setInt(com.scooterfuel.tracker.R.id.widget_btn_add_fuel_bg, "setImageAlpha", btnAlpha);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }

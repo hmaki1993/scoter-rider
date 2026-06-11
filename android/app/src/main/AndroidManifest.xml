@@ -20,13 +20,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
+
         <activity
             android:name=".WidgetSettingsActivity"
             android:theme="@style/WidgetSettingsTheme"
             android:excludeFromRecents="true"
             android:taskAffinity=""
-            android:exported="true" />
+            android:exported="true"
+        />
 
         <service
             android:name=".BackgroundTrackingService"

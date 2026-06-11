@@ -255,6 +255,28 @@ export const useFuelTracker = () => {
               return merged;
             });
           }
+          
+          const logsRes = await alarmPlugin.getNativeLogs();
+          if (logsRes && logsRes.logs && logsRes.logs !== "[]") {
+            try {
+              const newLogs = JSON.parse(logsRes.logs);
+              if (newLogs.length > 0) {
+                let addedLiters = 0;
+                newLogs.forEach((log: any) => { addedLiters += log.liters || 0; });
+                
+                setFuelState(prev => ({
+                  ...prev,
+                  estimatedFuelLiters: Math.min(settingsRef.current.tankCapacity, prev.estimatedFuelLiters + addedLiters)
+                }));
+
+                setLogs(prev => {
+                  const merged = [...newLogs, ...prev];
+                  merged.sort((a: any, b: any) => b.timestamp - a.timestamp);
+                  return merged;
+                });
+              }
+            } catch(e) {}
+          }
         }
       } catch (e) { /* ignore */ }
 
@@ -282,6 +304,28 @@ export const useFuelTracker = () => {
                     };
                   });
                   console.log('[FuelTracker] Overlay sync applied: ODO =', newOdo);
+                }
+
+                const logsRes = await alarmPlugin.getNativeLogs();
+                if (logsRes && logsRes.logs && logsRes.logs !== "[]") {
+                  try {
+                    const newLogs = JSON.parse(logsRes.logs);
+                    if (newLogs.length > 0) {
+                      let addedLiters = 0;
+                      newLogs.forEach((log: any) => { addedLiters += log.liters || 0; });
+                      
+                      setFuelState(prev => ({
+                        ...prev,
+                        estimatedFuelLiters: Math.min(settingsRef.current.tankCapacity, prev.estimatedFuelLiters + addedLiters)
+                      }));
+
+                      setLogs(prev => {
+                        const merged = [...newLogs, ...prev];
+                        merged.sort((a: any, b: any) => b.timestamp - a.timestamp);
+                        return merged;
+                      });
+                    }
+                  } catch(e) {}
                 }
               } catch (e) {
                 console.warn('[FuelTracker] Overlay sync check failed:', e);
@@ -535,7 +579,7 @@ export const useFuelTracker = () => {
   };
 
   // ── Widget Settings (accent color, opacity) ─────────────────────────────
-  const setWidgetSettings = (partial: Partial<Pick<FuelSettings, 'widgetAccentColor' | 'widgetOpacity'>>) => {
+  const setWidgetSettings = (partial: Partial<Pick<FuelSettings, 'widgetAccentColor' | 'widgetOpacity' | 'language'>>) => {
     setSettings(prev => {
       const updated = { ...prev, ...partial };
       // Persist immediately so it survives app close
@@ -557,53 +601,52 @@ export const useFuelTracker = () => {
   };
 
   // ── Sync Live Stats with Native Widget ────────────────────────────────────
+  const forceWidgetSync = () => {
+    if (!isAndroidPlatform()) return;
+    try {
+      const tripValue = Math.max(0, fuelState.lastOdo - (Number(localStorage.getItem('custom_trip_base')) || 0));
+      const pricePerLiter = settings.fuelPricePerLiter || 14.5;
+      const budgetRemaining = Math.max(0, fuelState.estimatedFuelLiters * pricePerLiter);
+
+      registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+        speed: Math.round(currentSpeed || 0),
+        range: `${rangeRemainingKm.toFixed(1)} KM`,
+        fuelPercent: Math.round(fuelPercentage),
+        litersLeft: `${fuelState.estimatedFuelLiters.toFixed(1)} L`,
+        emptyAt: `EMPTY: ${runOutOdo.toFixed(1)} KM`,
+        oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)}`,
+        trip: `TRIP: ${tripValue.toFixed(1)}`,
+        budget: `${budgetRemaining.toFixed(0)} EGP`,
+        fuelLitersRaw: fuelState.estimatedFuelLiters,
+        oilLeftRaw: kmUntilNextOilChange,
+        tripRaw: tripValue,
+        odoRaw: fuelState.lastOdo,
+        consumptionRate: settings.avgConsumption,
+        tankCapacity: settings.tankCapacity,
+        fuelPrice: settings.fuelPricePerLiter,
+        odo: `ODO: ${fuelState.lastOdo.toFixed(0)}`,
+        language: settings.language,
+        isWarning,
+        isDanger
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  };
+
   useEffect(() => {
     if (!isAndroidPlatform()) return;
-    
-    const updateWidget = () => {
-      try {
-        // Calculate Trip & Budget logic matching App.tsx
-        const tripValue = Math.max(0, fuelState.lastOdo - (Number(localStorage.getItem('custom_trip_base')) || 0));
-        const pricePerLiter = settings.fuelPricePerLiter || 14.5;
-        const budgetRemaining = Math.max(0, fuelState.estimatedFuelLiters * pricePerLiter);
-
-        registerPlugin<any>('AlarmPlugin').updateWidgetStats({
-          speed: Math.round(currentSpeed || 0),
-          range: `${rangeRemainingKm.toFixed(1)} KM`,
-          fuelPercent: Math.round(fuelPercentage),
-          litersLeft: `${fuelState.estimatedFuelLiters.toFixed(1)} L`,
-          emptyAt: `EMPTY: ${runOutOdo.toFixed(1)} KM`,
-          oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)}`,
-          trip: `TRIP: ${tripValue.toFixed(1)}`,
-          budget: `${budgetRemaining.toFixed(0)} EGP`,
-          
-          // Raw data for background service continuity
-          fuelLitersRaw: fuelState.estimatedFuelLiters,
-          oilLeftRaw: kmUntilNextOilChange,
-          tripRaw: tripValue,
-          odoRaw: fuelState.lastOdo,
-          consumptionRate: settings.avgConsumption,
-          tankCapacity: settings.tankCapacity,
-          fuelPrice: settings.fuelPricePerLiter,
-          odo: `ODO: ${fuelState.lastOdo.toFixed(0)}`,
-
-          isWarning,
-          isDanger
-        }).catch(() => {});
-      } catch (e) { /* ignore */ }
-    };
 
     // Immediate update for critical telemetry
-    updateWidget();
+    forceWidgetSync();
 
     // Debounced update for settings changes
-    const timer = setTimeout(updateWidget, 150);
+    const timer = setTimeout(forceWidgetSync, 150);
     return () => clearTimeout(timer);
   }, [
     currentSpeed, rangeRemainingKm, fuelPercentage, runOutOdo, 
     kmUntilNextOilChange, fuelState.estimatedFuelLiters, 
     isWarning, isDanger, settings.widgetAccentColor, settings.widgetOpacity,
-    logs, settings.fuelPricePerLiter, settings.avgConsumption, settings.tankCapacity
+    logs, settings.fuelPricePerLiter, settings.avgConsumption, settings.tankCapacity,
+    fuelState.lastOdo, settings.language
   ]);
 
   return {
@@ -615,7 +658,7 @@ export const useFuelTracker = () => {
     kmSinceOilChange, kmUntilNextOilChange, recordOilChange,
     setSettings, setWidgetSettings, addRefuel, removeRefuel, updateCurrentOdo, updateUserProfile, emptyTank,
     startTracking, stopTracking, setIsMuted, playWarningSound,
-    resetData, requestAllPermissions,
+    resetData, requestAllPermissions, forceWidgetSync,
     audioCtxRef, activeAudioRef,
     isDataLoaded: true
   };
