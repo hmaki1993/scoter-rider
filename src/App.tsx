@@ -495,27 +495,40 @@ function App() {
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                marginTop: '2px'
+                gap: '8px',
+                marginTop: '6px'
               }}>
-                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '16px', lineHeight: 1 }}>•</span>
+                <div style={{
+                  width: '18px',
+                  height: '2px',
+                  background: 'linear-gradient(90deg, transparent, var(--accent-secondary))',
+                  opacity: 0.7,
+                  borderRadius: '2px'
+                }} />
                 <span style={{
-                  fontSize: '14px',
-                  fontWeight: 900,
+                  fontSize: '13px',
+                  fontWeight: 800,
                   fontFamily: "'Orbitron', sans-serif",
                   color: 'var(--text-primary)',
-                  letterSpacing: '1.2px',
+                  letterSpacing: '2px',
                   textTransform: 'uppercase',
                   textAlign: 'center',
                   maxWidth: '130px',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  lineHeight: '1.2'
+                  lineHeight: '1.2',
+                  textShadow: tracker.settings.isLightMode ? 'none' : '0 0 10px rgba(255,255,255,0.2)'
                 }}>
                   {tracker.userProfile.vehicleType}
                 </span>
-                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '16px', lineHeight: 1 }}>•</span>
+                <div style={{
+                  width: '18px',
+                  height: '2px',
+                  background: 'linear-gradient(270deg, transparent, var(--accent-secondary))',
+                  opacity: 0.7,
+                  borderRadius: '2px'
+                }} />
               </div>
             )}
           </div>
@@ -1006,7 +1019,7 @@ function App() {
           onAllGranted={() => {
             setShowPermissions(false);
             // All permissions granted, start tracking
-            setTimeout(() => tracker.startTracking(false), 400);
+            setTimeout(() => tracker.startTracking(), 400);
           }}
         />
       )}
@@ -1209,7 +1222,7 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
   const pageBg = isLight ? '#f0f2f5' : '#0a0a0c';
   const cardBg = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.05)';
   const cardBdr = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)';
-  const textClr = isLight ? '#12121c' : '#ffffff';
+  // const textClr = isLight ? '#12121c' : '#ffffff';
   const subClr = isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)';
   const stepNum = currentStep === 'location' ? 1 : currentStep === 'notifications' ? 2 : 3;
 
@@ -1343,7 +1356,7 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
 };
 
 // Onboarding Modal Component
-const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, onComplete: (profile: any) => void, setTripBase: (v: number) => void }) => {
+function OnboardingModal({ tracker, onComplete, setTripBase }: { tracker: any, onComplete: (profile: any) => void, setTripBase: (v: number) => void }) {
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
   const [name, setName] = useState('');
@@ -1411,10 +1424,8 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
   const pageBg   = isLightMode ? '#f0f2f5'          : '#111115';
   const labelClr = isLightMode ? '#7b7b8a'          : 'rgba(255,255,255,0.45)';
   const textClr  = isLightMode ? '#12121c'          : '#ffffff';
-  // Bright label color: for the default green theme (#326144) use a vivid green, otherwise use the accent itself
-  const brightLabel = accentColor === '#326144'
-    ? (isLightMode ? '#1a7a3a' : '#4ade80')
-    : accentColor;
+  // Bright label color: use the exact theme color chosen by the user
+  const brightLabel = accentColor;
 
   return (
     <div style={{ position:'fixed', inset:0, background:pageBg, zIndex:1000,
@@ -1429,6 +1440,7 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
         position: 'relative',
         padding: '30px 24px 20px',
         overflow: 'hidden',
+        flexShrink: 0,
       }}>
         <input type="file" accept="image/*" ref={fileInputRef} style={{ display:'none' }} onChange={handleFileChange} />
 
@@ -1766,7 +1778,7 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
       </form>
     </div>
   );
-};
+}
 
 
 // Trip Adjust Modal Component
@@ -2303,6 +2315,12 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
   const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
   const t = (key: string) => (translations[lang] as any)?.[key] ?? key;
 
+  const [isClosing, setIsClosing] = useState(false);
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(onClose, 250);
+  };
+
   const [odo, setOdo] = useState(
     tracker.fuelState.lastOdo === 0 ? '' : tracker.fuelState.lastOdo.toFixed(1)
   );
@@ -2352,13 +2370,13 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
     
     const addedEGP = Number((addedLiters * price).toFixed(1));
     tracker.addRefuel(odometerVal, addedLiters, addedEGP, false);
-    onClose();
+    handleClose();
   };
 
   return (
     <div
       className="modal-overlay"
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed',
         inset: 0,
@@ -2367,7 +2385,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
-        animation: 'fadeIn 0.3s ease',
+        animation: isClosing ? 'fadeOut 0.25s ease forwards' : 'fadeIn 0.3s ease',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.72)',
@@ -2376,7 +2394,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          animation: 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+          animation: isClosing ? 'slideDown 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards' : 'slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
           background: tracker.settings.isLightMode ? '#ffffff' : 'var(--card-bg)',
           border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.08)' : 'var(--glass-border)'}`,
           borderRadius: '20px',
@@ -2408,7 +2426,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
             }}>{t('refuel')}</span>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'transparent',
               border: 'none',
@@ -2459,8 +2477,8 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
             </div>
             <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '8px' }}>
               <input
-                type="number"
-                step="0.1"
+                type="text"
+                inputMode="decimal"
                 className="fusion-input"
                 style={{
                   width: '100%',
@@ -2470,7 +2488,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
                   color: 'var(--text-primary)',
                 }}
                 value={odo}
-                onChange={(e) => setOdo(e.target.value)}
+                onChange={(e) => setOdo(e.target.value.replace(/[^0-9.]/g, ''))}
               />
               <span style={{
                 fontSize: '12px',
@@ -2492,21 +2510,31 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
               boxShadow: tracker.settings.isLightMode ? '0 4px 12px rgba(0,0,0,0.06)' : '0 2px 8px rgba(0,0,0,0.08)',
             }}
           >
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 800,
-              color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.7)' : 'var(--text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-            }}>
-              {inputMode === 'currency'
-                ? (tracker.settings.language === 'ar' ? 'المبلغ' : 'Amount')
-                : (tracker.settings.language === 'ar' ? 'الكمية' : 'Liters')}
-            </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.7)' : 'var(--text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                {inputMode === 'currency'
+                  ? (tracker.settings.language === 'ar' ? 'هتفوّل بكام؟' : 'New Fuel Cost')
+                  : (tracker.settings.language === 'ar' ? 'هتفوّل كام لتر؟' : 'New Fuel Liters')}
+              </span>
+              <span style={{
+                fontSize: '9px',
+                color: tracker.settings.isLightMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.4)',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+              }}>
+                {tracker.settings.language === 'ar' ? 'المتبقي في التانك: ' : 'Tank Has: '}{(tracker.fuelState.estimatedFuelLiters * currentPrice).toFixed(1)} EGP
+              </span>
+            </div>
             <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '8px' }}>
               <input
-                type="number"
-                step="0.1"
+                type="text"
+                inputMode="decimal"
                 className="fusion-input"
                 style={{
                   width: '100%',
@@ -2516,7 +2544,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
                   color: 'var(--text-primary)',
                 }}
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => setInputValue(e.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder="0.0"
               />
               <div style={{
@@ -2558,31 +2586,42 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
                 >Liters</button>
               </div>
             </div>
-          </div>
+            {/* Conversions preview integrated */}
+            {(() => {
+              const price = tracker.settings.fuelPricePerLiter || 14.5;
+              const val = Number(inputValue || 0);
+              const addedL = inputMode === 'currency' ? val / price : val;
+              const addedEGP = inputMode === 'currency' ? val : val * price;
+              const currentEGP = tracker.fuelState.estimatedFuelLiters * price;
+              const totalEGP = currentEGP + addedEGP;
+              const totalLiters = tracker.fuelState.estimatedFuelLiters + addedL;
 
-          {/* Conversions preview */}
-          {inputValue && Number(inputValue) > 0 && (() => {
-            const price = tracker.settings.fuelPricePerLiter || 14.5;
-            const val = Number(inputValue);
-            const addedL = inputMode === 'currency' ? val / price : val;
-            return (
-              <div style={{
-                textAlign: 'center',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                background: tracker.settings.isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
-              }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                  {inputMode === 'currency' ? (
-                    <>= {addedL.toFixed(2)} L</>
-                  ) : (
-                    <>= {Number((val * price).toFixed(1))} EGP</>
-                  )}
-                </span>
-              </div>
-            );
-          })()}
+              return (
+                <div style={{
+                  width: '100%',
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: `1px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  textAlign: 'center'
+                }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    {inputMode === 'currency' ? (
+                      <>= {addedL.toFixed(2)} L</>
+                    ) : (
+                      <>= {addedEGP.toFixed(1)} EGP</>
+                    )}
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: 900, color: 'var(--accent-color)' }}>
+                    {tracker.settings.language === 'ar' ? 'التانك هيكون فيه: ' : 'Total After: '}
+                    {totalEGP.toFixed(1)} EGP | {totalLiters.toFixed(2)} L
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
             <button
@@ -2626,12 +2665,13 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
                 }
               }}
               style={{
-                width: '100%',
+                width: 'fit-content',
+                alignSelf: 'center',
                 background: 'rgba(255, 59, 48, 0.1)',
                 color: '#ff3b30',
                 border: '1px solid rgba(255, 59, 48, 0.2)',
                 fontWeight: 800,
-                padding: '10px',
+                padding: '10px 20px',
                 fontSize: '12px',
                 borderRadius: '10px',
                 cursor: 'pointer',
@@ -2639,7 +2679,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
                 transition: 'all 0.2s',
               }}
             >
-              {tracker.settings.language === 'ar' ? 'تصفير كمية البنزين' : 'Empty Tank Completely'}
+              {tracker.settings.language === 'ar' ? 'تصفير التانك' : 'Reset Tank'}
             </button>
           </div>
         </form>

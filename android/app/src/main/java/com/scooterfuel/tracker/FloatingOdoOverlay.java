@@ -44,6 +44,7 @@ public class FloatingOdoOverlay {
     private WindowManager windowManager;
     private View overlayView;
     private boolean isShowing = false;
+    private EditText odoInput;
 
     public FloatingOdoOverlay(Context context) {
         this.context = context.getApplicationContext();
@@ -80,6 +81,14 @@ public class FloatingOdoOverlay {
         Handler handler = new Handler(Looper.getMainLooper());
         handler.post(() -> {
             try {
+                // Hide soft keyboard immediately before fading out
+                if (odoInput != null) {
+                    android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(odoInput.getWindowToken(), 0);
+                    }
+                }
+
                 // Dim background fade out
                 overlayView.animate()
                     .alpha(0f)
@@ -160,7 +169,7 @@ public class FloatingOdoOverlay {
 
         // Title
         TextView title = new TextView(context);
-        title.setText("🔄 SYNC ODO");
+        title.setText("⚡ SYNC ODO");
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -180,8 +189,8 @@ public class FloatingOdoOverlay {
             // Fallback to text if image not found (shouldn't happen since Vite copied it)
         }
         closeBtn.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
-        closeBtn.setPadding(dp(8), dp(8), dp(8), dp(8));
-        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dp(44), dp(44));
+        closeBtn.setPadding(dp(4), dp(4), dp(4), dp(4));
+        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dp(54), dp(54));
         closeBtn.setLayoutParams(closeLp);
         closeBtn.setOnClickListener(v -> dismiss());
 
@@ -216,7 +225,7 @@ public class FloatingOdoOverlay {
         inputContainer.setPadding(dp(16), dp(4), dp(16), dp(4));
 
         // EditText
-        EditText odoInput = new EditText(context);
+        odoInput = new EditText(context);
         odoInput.setText(currentOdo > 0 ? String.format("%.1f", currentOdo) : "");
         odoInput.setHint("0.0");
         odoInput.setHintTextColor(Color.parseColor("#444455"));
@@ -348,7 +357,8 @@ public class FloatingOdoOverlay {
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+                | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         );
         params.gravity = Gravity.CENTER;
@@ -357,7 +367,17 @@ public class FloatingOdoOverlay {
         params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
                 | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE;
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+
         overlayView = root;
+        
+        // Hide navigation and status bar, extend into cutout areas
+        overlayView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+
         windowManager.addView(overlayView, params);
         isShowing = true;
 

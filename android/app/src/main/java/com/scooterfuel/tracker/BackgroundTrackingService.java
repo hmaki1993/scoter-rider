@@ -42,18 +42,6 @@ public class BackgroundTrackingService extends Service {
     private int lastBroadcastedSpeed = -1;
     private long lastBroadcastTime = 0;
     
-    // --- Tap / Shake Detection ---
-    private SensorManager sensorManager;
-    private Sensor accelerometer;
-    private long lastTapTime = 0;
-    private int tapCount = 0;
-    private static final float TAP_THRESHOLD = 3.5f; // Delta magnitude threshold for a back tap
-    private static final int TAP_WINDOW_MS = 1500; // 1.5 seconds to complete 3 taps
-    private static final int TAP_COOLDOWN_MS = 200; // Cooldown between individual taps to avoid double counting
-    private static final int TAPS_REQUIRED = 3;
-    
-    private float last_x = 0, last_y = 0, last_z = 0;
-    
     // --- Floating Overlay ---
     private FloatingOdoOverlay floatingOverlay;
 
@@ -72,13 +60,6 @@ public class BackgroundTrackingService extends Service {
         IntentFilter filter = new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION);
         registerReceiver(gpsReceiver, filter);
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        if (sensorManager != null) {
-            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            // SENSOR_DELAY_GAME for better responsiveness during shakes
-            sensorManager.registerListener(shakeListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-        }
-        
         // Initialize floating overlay
         floatingOverlay = new FloatingOdoOverlay(this);
     }
@@ -86,6 +67,11 @@ public class BackgroundTrackingService extends Service {
     @SuppressLint("MissingPermission")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && "ACTION_SHOW_SYNC_CARD".equals(intent.getAction())) {
+            triggerQuickSyncAction();
+            return START_STICKY; // Don't re-setup notifications
+        }
+
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, 0, notificationIntent,
@@ -196,17 +182,18 @@ public class BackgroundTrackingService extends Service {
                         // Dynamic threshold: Allow ~150km/h max travel during gaps (41.6m/s)
                         float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 41.6f);
                         
-                        // We do NOT penalize large time gaps (timeDeltaMs) because Android/OPPO aggressively 
-                        // throttle background GPS. A 5-minute gap is normal, and we MUST count the distance 
-                        // covered during that gap as long as the speed wasn't mathematically impossible.
                         if (distanceMeters < maxAllowedDistance) {
-                            float distKm = (distanceMeters / 1000.0f);
-                            accumulatedDistanceKm += distKm;
+                            if (currentSpeedKmh >= 8.0f) {
+                                float distKm = (distanceMeters / 1000.0f);
+                                accumulatedDistanceKm += distKm;
+                                
+                                // --- LIVE BACKGROUND NATIVE UPDATES ---
+                                updateNativeStats(distKm);
+                            } else {
+                                android.util.Log.d("FuelTracker", "Walking/Slow speed detected natively: " + currentSpeedKmh + " km/h. Ignoring distance.");
+                            }
                             
-                            // --- LIVE BACKGROUND NATIVE UPDATES ---
-                            updateNativeStats(distKm);
-                            
-                            // Anchor point is only updated when we register valid movement
+                            // Anchor point is only updated when we register valid movement (or ignored movement due to low speed)
                             lastLocation = location;
                         } else {
                             // If it's an impossible teleport jump, just reset anchor
@@ -221,55 +208,6 @@ public class BackgroundTrackingService extends Service {
             }
         }
 
-    };
-
-    private final SensorEventListener shakeListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                float x = event.values[0];
-                float y = event.values[1];
-                float z = event.values[2];
-
-                if (last_x == 0 && last_y == 0 && last_z == 0) {
-                    last_x = x; last_y = y; last_z = z;
-                    return;
-                }
-
-                float dx = Math.abs(x - last_x);
-                float dy = Math.abs(y - last_y);
-                float dz = Math.abs(z - last_z);
-
-                // BACK TAP DETECTION: Z-axis must heavily dominate.
-                // If the phone is shaken left/right (X-axis), dx will be large, so we reject it.
-                // We require dz to be at least 3 times larger than both dx and dy.
-                boolean isBackTap = dz > TAP_THRESHOLD && dz > dx * 3.0f && dz > dy * 3.0f;
-                
-                if (isBackTap) {
-                    long now = System.currentTimeMillis();
-                    if (now - lastTapTime > TAP_COOLDOWN_MS) {
-                        if (now - lastTapTime < TAP_WINDOW_MS) {
-                            tapCount++;
-                        } else {
-                            tapCount = 1;
-                        }
-                        lastTapTime = now;
-
-                        if (tapCount >= TAPS_REQUIRED) {
-                            tapCount = 0;
-                            triggerQuickSyncAction();
-                        }
-                    }
-                }
-
-                last_x = x;
-                last_y = y;
-                last_z = z;
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     };
 
     private void triggerQuickSyncAction() {
@@ -576,9 +514,6 @@ public class BackgroundTrackingService extends Service {
         super.onDestroy();
         if (locationManager != null) {
             locationManager.removeUpdates(locationListener);
-        }
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(shakeListener);
         }
         try {
             unregisterReceiver(gpsReceiver);

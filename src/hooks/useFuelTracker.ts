@@ -514,9 +514,6 @@ export const useFuelTracker = () => {
       return; // Stop here if user didn't grant mandatory permissions
     }
 
-    if (fuelState.activeRideStartTime == null) {
-      setFuelState(prev => ({ ...prev, activeRideStartTime: Date.now() }));
-    }
     await gpsStartTracking();
   };
 

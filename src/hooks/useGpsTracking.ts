@@ -558,7 +558,11 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
                 if (bearingOk) {
                   // ✅ Accept this segment
-                  onDistanceUpdate(dist, currentKmh);
+                  if (isLikelyRiding) {
+                    onDistanceUpdate(dist, currentKmh);
+                  } else {
+                    console.log('[GPS] Walking/Slow movement detected (speed: ' + currentKmh.toFixed(1) + ' km/h). Ignoring distance.');
+                  }
                   lastBearingRef.current = bearing;
 
                   // Move accepted reference to current position
