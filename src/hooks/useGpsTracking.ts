@@ -95,6 +95,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
   const lastBearingRef = useRef<number | null>(null);
   // Track consecutive still readings to avoid counting drift while stopped
   const stillCountRef = useRef(0);
+  // ── Walking filter: rolling speed history ──
+  // Keep last N speed readings to require SUSTAINED riding speed before counting distance
+  const speedHistoryRef = useRef<number[]>([]);
+  const SPEED_HISTORY_SIZE = 5;         // how many readings to keep
+  const MIN_RIDING_READINGS = 3;        // how many must be above threshold
+  const MIN_RIDING_SPEED_KMH = 10;      // minimum km/h to be considered "riding" (walking max ~7)
 
   const onDistanceUpdateRef = useRef(onDistanceUpdate);
   const onTrackingErrorRef = useRef(onTrackingError);
@@ -237,13 +243,26 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
               ? '📍 الـ GPS مقفول خالص يا ريس. افتحه الأول من السيتنج عشان أقدر أحسبلك المشوار.'
               : '📍 GPS is completely disabled. Enable it first to grant permissions.';
             onTrackingErrorRef.current({ message: msg, action: 'openGPS' });
-            import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+            import('@capacitor/local-notifications').then(async ({ LocalNotifications }) => {
+              try {
+                await LocalNotifications.createChannel({
+                  id: 'gps_alert_heads_up_v1',
+                  name: 'GPS Critical Alerts',
+                  description: 'High priority alerts for GPS status',
+                  importance: 5,
+                  visibility: 1,
+                  vibration: true,
+                });
+              } catch (e) {
+                console.log('Error creating channel', e);
+              }
               LocalNotifications.schedule({
                 notifications: [
                   {
                     title: currentLang === 'ar' ? "تم إيقاف تتبع الـ GPS" : "GPS Tracking Stopped",
                     body: currentLang === 'ar' ? "الـ GPS مقفول. برجاء تشغيله للمتابعة." : "GPS is disabled. Please turn it back on to continue tracking.",
                     id: 1001,
+                    channelId: 'gps_alert_heads_up_v1',
                     schedule: { at: new Date(Date.now() + 100) },
                   }
                 ]
@@ -268,6 +287,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           lastAcceptedRef.current = null;
           Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
           localStorage.removeItem('last_gps_position');
+          // Reset native distance counter to 0: JS already counted foreground distance,
+          // so native should only accumulate from NOW (background-only distance)
+          try {
+            const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+            alarmPlugin.resetNativeDistance().catch(() => {});
+          } catch (e) {}
           // Fix Double Tracking: Stop JS watcher so it doesn't run concurrently with Native Service
           if (watchId.current !== null) {
             try { Geolocation.clearWatch({ id: watchId.current }).catch(() => {}); } catch(e) {}
@@ -287,6 +312,11 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           Preferences.remove({ key: 'last_gps_position' }).catch(() => {});
         });
         localStorage.removeItem('last_gps_position');
+        // Reset native distance counter to 0: JS already counted foreground distance
+        try {
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          alarmPlugin.resetNativeDistance().catch(() => {});
+        } catch (e) {}
         // Fix Double Tracking: Stop JS watcher so it doesn't run concurrently with Native Service
         if (watchId.current !== null) {
           try { Geolocation.clearWatch({ id: watchId.current }).catch(() => {}); } catch(e) {}
@@ -452,6 +482,16 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             stillCountRef.current = 0;
           }
 
+          // ── Update speed history buffer for walking filter ──
+          const history = speedHistoryRef.current;
+          history.push(currentKmh);
+          if (history.length > SPEED_HISTORY_SIZE) {
+            history.shift(); // keep only the latest N readings
+          }
+          // Count how many recent readings are at riding speed
+          const ridingReadings = history.filter(s => s >= MIN_RIDING_SPEED_KMH).length;
+          const isLikelyRiding = ridingReadings >= MIN_RIDING_READINGS;
+
           const finalDisplaySpeed = Math.round(currentKmh);
           setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
 
@@ -473,10 +513,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             let timeDiffMs = 0;
             if (isValidTimestamp) {
               timeDiffMs = Math.max(1, currTimestamp - prevTimestamp);
-              if (timeDiffMs < 60000) {
-                const hours = timeDiffMs / (1000 * 60 * 60);
-                calculatedKmh = dist / hours;
-              }
+              const hours = timeDiffMs / (1000 * 60 * 60);
+              calculatedKmh = dist / hours;
             }
 
             // Use native speed primarily, fall back to calculated
@@ -500,14 +538,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 lastBearingRef.current = null;
               }
               // ── GUARD 3: Minimum distance 5m to count ──
-              // ── GUARD 4: Must be moving ≥ 8 km/h (scooter speed minimum, avoids walking/brisk walking ~5-7 km/h) ──
-              // ── GUARD 5: Must not be in a "still" streak ──
-              else if (
-                dist > 0.005 &&            // at least 5m moved
-                currentKmh >= 8 &&          // avoids counting when walking on foot
-                stillCountRef.current < 3   // not standing still for multiple readings
-              ) {
-                // ── GUARD 6: Bearing consistency check ──
+              else if (dist > 0.005) {
+                // ── GUARD 4: Bearing consistency check ──
                 const bearing = calculateBearing(
                   refPoint.latitude, refPoint.longitude,
                   smoothLat, smoothLon
@@ -603,6 +635,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
     kalmanLon.current = null;
     lastBearingRef.current = null;
     stillCountRef.current = 0;
+    speedHistoryRef.current = [];
   };
 
   return { isTracking, isStarting, currentSpeed, gpsUpdateCount, lastGpsTime, startTracking, stopTracking };

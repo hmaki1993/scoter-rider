@@ -4,6 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.scooterfuel.tracker',
   appName: 'Fuel Tracker',
   webDir: 'dist',
+  backgroundColor: '#0a0a0c',
   android: {
     useLegacyBridge: true,
     allowMixedContent: true
@@ -16,6 +17,9 @@ const config: CapacitorConfig = {
     },
     SplashScreen: {
       launchShowDuration: 1000
+    },
+    Keyboard: {
+      resize: 'none'
     }
   },
   /*

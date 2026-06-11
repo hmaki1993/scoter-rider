@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFuelTracker } from './hooks/useFuelTracker';
-import { AlertTriangle, User, Camera, Smartphone, Fuel, X, Sun, Moon, Droplet, Navigation } from 'lucide-react';
+import { AlertTriangle, User, Camera, Smartphone, Fuel, X, Sun, Moon, Droplet, Navigation, Shield, Bell, MapPin, Layers } from 'lucide-react';
 import { translations } from './translations';
 import { App as CapApp } from '@capacitor/app';
 import gsap from 'gsap';
@@ -59,33 +59,9 @@ function App() {
   const [showPhotoZoom, setShowPhotoZoom] = useState(false);
   const [showTripAdjustModal, setShowTripAdjustModal] = useState(false);
   const [showOilAdjustModal, setShowOilAdjustModal] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
 
-  // ── Shake to open Refuel ──────────────────────────────────────────────
-  useEffect(() => {
-    let lastShakeTime = 0;
-    const SHAKE_THRESHOLD = 25; // m/s² — needs a good shake
-    const SHAKE_COOLDOWN = 2000; // 2 sec between shakes
-
-    const handleMotion = (e: DeviceMotionEvent) => {
-      const acc = e.accelerationIncludingGravity;
-      if (!acc) return;
-      
-      const force = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
-      const now = Date.now();
-      
-      if (force > SHAKE_THRESHOLD && now - lastShakeTime > SHAKE_COOLDOWN) {
-        lastShakeTime = now;
-        // Haptic feedback
-        import('@capacitor/haptics').then(({ Haptics }) => Haptics.vibrate()).catch(() => {
-          if (navigator.vibrate) navigator.vibrate(100);
-        });
-        setShowRefuel(true);
-      }
-    };
-
-    window.addEventListener('devicemotion', handleMotion);
-    return () => window.removeEventListener('devicemotion', handleMotion);
-  }, []);
+  // Shake-to-refuel removed: was triggering falsely from scooter vibration
 
   const [tripBase, setTripBase] = useState<number | null>(null);
 
@@ -172,6 +148,20 @@ function App() {
           @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         `}</style>
       </div>
+    );
+  }
+
+  if (!tracker.userProfile) {
+    return (
+      <OnboardingModal
+        tracker={tracker}
+        setTripBase={setTripBase}
+        onComplete={(profile) => {
+          tracker.updateUserProfile(profile);
+          // Show permissions modal AFTER onboarding, don't request permissions yet
+          setTimeout(() => setShowPermissions(true), 500);
+        }}
+      />
     );
   }
 
@@ -437,7 +427,7 @@ function App() {
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer',
-              marginTop: '-8px',
+              marginTop: '-12px',
               transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'}
@@ -446,11 +436,11 @@ function App() {
             {/* Circular Premium Gradient Ring Border */}
             <div
               style={{
-                width: '46px',
-                height: '46px',
+                width: '60px',
+                height: '60px',
                 borderRadius: '50%',
                 padding: '2px',
-                background: 'linear-gradient(135deg, var(--accent-secondary, #ff5e00) 0%, #ff8f00 50%, #ffcc00 100%)',
+                background: 'var(--accent-secondary, #ff5e00)',
                 boxShadow: tracker.settings.isLightMode
                   ? '0 3px 8px rgba(0, 0, 0, 0.12)'
                   : '0 4px 12px rgba(0, 0, 0, 0.50)',
@@ -485,8 +475,8 @@ function App() {
                   />
                 ) : (
                   <div style={{
-                    width: '24px',
-                    height: '24px',
+                    width: '32px',
+                    height: '32px',
                     backgroundColor: 'var(--accent-secondary, #ff5e00)',
                     WebkitMaskImage: 'url(/icon-scooter.png)',
                     maskImage: 'url(/icon-scooter.png)',
@@ -508,9 +498,9 @@ function App() {
                 gap: '5px',
                 marginTop: '2px'
               }}>
-                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '8px', opacity: 0.8 }}>•</span>
+                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '16px', lineHeight: 1 }}>•</span>
                 <span style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 900,
                   fontFamily: "'Orbitron', sans-serif",
                   color: 'var(--text-primary)',
@@ -525,7 +515,7 @@ function App() {
                 }}>
                   {tracker.userProfile.vehicleType}
                 </span>
-                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '8px', opacity: 0.8 }}>•</span>
+                <span style={{ color: 'var(--accent-secondary, #ff5e00)', fontSize: '16px', lineHeight: 1 }}>•</span>
               </div>
             )}
           </div>
@@ -614,11 +604,11 @@ function App() {
           <div
             style={{
               display: 'flex',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              gap: '16px',
+              gap: '12px',
               width: '100%',
-              padding: '8px 12px 0 12px',
+              padding: '0',
               background: 'transparent'
             }}
           >
@@ -629,7 +619,7 @@ function App() {
               style={{
                 position: 'relative',
                 margin: 0,
-                minWidth: '90px',
+                flex: 1,
                 justifyContent: 'center',
                 borderRadius: '10px',
                 background: 'transparent',
@@ -653,7 +643,7 @@ function App() {
               style={{
                 position: 'relative',
                 margin: 0,
-                minWidth: '90px',
+                flex: 1,
                 justifyContent: 'center',
                 borderRadius: '10px',
                 background: 'transparent',
@@ -685,7 +675,7 @@ function App() {
                   style={{
                     position: 'relative',
                     margin: 0,
-                    minWidth: '90px',
+                    flex: 1,
                     justifyContent: 'center',
                     borderRadius: '10px',
                     background: 'transparent',
@@ -1010,13 +1000,13 @@ function App() {
       )}
 
       {/* MODALS */}
-      {!tracker.userProfile && (
-        <OnboardingModal
+      {showPermissions && (
+        <PermissionsModal
           tracker={tracker}
-          setTripBase={setTripBase}
-          onComplete={(profile) => {
-            tracker.updateUserProfile(profile);
-            setTimeout(() => tracker.requestAllPermissions(), 800);
+          onAllGranted={() => {
+            setShowPermissions(false);
+            // All permissions granted, start tracking
+            setTimeout(() => tracker.startTracking(false), 400);
           }}
         />
       )}
@@ -1075,6 +1065,282 @@ function App() {
   </>
   );
 }
+
+// ── Premium Permissions Modal ────────────────────────────────────────────────
+const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGranted: () => void }) => {
+  const lang = (tracker.settings.language in translations) ? tracker.settings.language as keyof typeof translations : 'ar';
+  const isAr = lang === 'ar';
+  const accent = tracker.settings.accentColor || '#326144';
+  const isLight = tracker.settings.isLightMode;
+
+  type PermStep = 'location' | 'notifications' | 'overlay';
+  const [currentStep, setCurrentStep] = useState<PermStep>('location');
+  const [checking, setChecking] = useState(false);
+  const [animIn, setAnimIn] = useState(true);
+
+  const STEPS: Record<PermStep, {
+    icon: React.ReactNode;
+    title: string;
+    titleAr: string;
+    desc: string;
+    descAr: string;
+    gradient: string;
+  }> = {
+    location: {
+      icon: <MapPin size={38} color="#fff" strokeWidth={1.8} />,
+      title: 'Location Access',
+      titleAr: 'صلاحية الموقع',
+      desc: 'We need GPS access to track your scooter\'s distance and calculate fuel consumption accurately.',
+      descAr: 'محتاجين صلاحية الـ GPS عشان نتتبع المسافة ونحسبلك البنزين بدقة.',
+      gradient: 'linear-gradient(135deg, #1a73e8, #0d47a1)',
+    },
+    notifications: {
+      icon: <Bell size={38} color="#fff" strokeWidth={1.8} />,
+      title: 'Notifications',
+      titleAr: 'الإشعارات',
+      desc: 'Allow notifications so we can alert you when fuel is running low — even when the app is in the background.',
+      descAr: 'سمحلنا بالإشعارات عشان نقدر ننبهك لما البنزين يقرب يخلص حتى لو الأبلكيشن في الخلفية.',
+      gradient: 'linear-gradient(135deg, #ff9500, #ff6b00)',
+    },
+    overlay: {
+      icon: <Layers size={38} color="#fff" strokeWidth={1.8} />,
+      title: 'Display Over Apps',
+      titleAr: 'الظهور فوق التطبيقات',
+      desc: 'This lets the quick-sync card appear over other apps when you tap the back of your phone.',
+      descAr: 'ده عشان كارد المزامنة السريعة يظهر فوق أي تطبيق لما تخبط على ظهر الموبايل.',
+      gradient: 'linear-gradient(135deg, #af52de, #7b2cbf)',
+    },
+  };
+
+  const step = STEPS[currentStep];
+
+  const requestCurrentPermission = async () => {
+    setChecking(true);
+    try {
+      const { registerPlugin } = await import('@capacitor/core');
+
+      if (currentStep === 'location') {
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location !== 'granted') {
+          const res = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
+          if (res.location !== 'granted') {
+            setChecking(false);
+            return; // Stay on this card
+          }
+        }
+        // Move to next
+        setAnimIn(false);
+        setTimeout(() => {
+          setCurrentStep('notifications');
+          setAnimIn(true);
+        }, 300);
+
+      } else if (currentStep === 'notifications') {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
+        }
+        // Move to next
+        setAnimIn(false);
+        setTimeout(() => {
+          setCurrentStep('overlay');
+          setAnimIn(true);
+        }, 300);
+
+      } else if (currentStep === 'overlay') {
+        try {
+          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const check = await alarmPlugin.checkOverlayPermission();
+          if (!check?.granted) {
+            await alarmPlugin.requestOverlayPermission();
+            // User needs to come back after enabling, so we'll re-check
+            setChecking(false);
+            return;
+          }
+        } catch (e) {
+          // If overlay check fails, just proceed
+        }
+        // All done!
+        onAllGranted();
+      }
+    } catch (e) {
+      console.warn('[Permissions] Error:', e);
+    }
+    setChecking(false);
+  };
+
+  // Re-check overlay when app becomes active again (user returns from settings)
+  useEffect(() => {
+    if (currentStep !== 'overlay') return;
+    const checkOverlay = async () => {
+      try {
+        const { registerPlugin } = await import('@capacitor/core');
+        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        const check = await alarmPlugin.checkOverlayPermission();
+        if (check?.granted) {
+          onAllGranted();
+        }
+      } catch (e) {}
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkOverlay();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Also check with App listener
+    let listener: any;
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('appStateChange', (state) => {
+        if (state.isActive) checkOverlay();
+      }).then(l => { listener = l; });
+    });
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      listener?.remove();
+    };
+  }, [currentStep]);
+
+  const pageBg = isLight ? '#f0f2f5' : '#0a0a0c';
+  const cardBg = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.05)';
+  const cardBdr = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)';
+  const textClr = isLight ? '#12121c' : '#ffffff';
+  const subClr = isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)';
+  const stepNum = currentStep === 'location' ? 1 : currentStep === 'notifications' ? 2 : 3;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: pageBg, zIndex: 1100,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '24px',
+    }}>
+      {/* Step indicator */}
+      <div style={{
+        display: 'flex', gap: '8px', marginBottom: '32px', alignItems: 'center',
+      }}>
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{
+            width: i === stepNum ? '28px' : '10px',
+            height: '10px',
+            borderRadius: '5px',
+            background: i === stepNum ? accent : (isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)'),
+            transition: 'all 0.4s cubic-bezier(.4,0,.2,1)',
+          }} />
+        ))}
+      </div>
+
+      {/* Permission Card */}
+      <div style={{
+        width: '100%', maxWidth: '360px',
+        borderRadius: '24px',
+        background: cardBg,
+        border: `1px solid ${cardBdr}`,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        overflow: 'hidden',
+        boxShadow: isLight
+          ? '0 8px 32px rgba(0,0,0,0.08)'
+          : '0 8px 40px rgba(0,0,0,0.5)',
+        opacity: animIn ? 1 : 0,
+        transform: animIn ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
+        transition: 'all 0.4s cubic-bezier(.4,0,.2,1)',
+      }}>
+        {/* Icon header */}
+        <div style={{
+          background: step.gradient,
+          padding: '32px 24px 28px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Decorative circles */}
+          <div style={{
+            position: 'absolute', top: '-20px', right: '-20px',
+            width: '100px', height: '100px', borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: '-30px', left: '-10px',
+            width: '80px', height: '80px', borderRadius: '50%',
+            background: 'rgba(255,255,255,0.05)',
+          }} />
+
+          <div style={{
+            width: '72px', height: '72px', borderRadius: '20px',
+            background: 'rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(255,255,255,0.2)',
+          }}>
+            {step.icon}
+          </div>
+
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+            <div style={{
+              fontSize: '10px', fontWeight: 800, color: 'rgba(255,255,255,0.7)',
+              letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px',
+            }}>
+              {isAr ? `خطوة ${stepNum} من 3` : `STEP ${stepNum} OF 3`}
+            </div>
+            <h2 style={{
+              margin: 0, fontSize: '22px', fontWeight: 900, color: '#fff',
+              fontFamily: "'Orbitron', sans-serif", letterSpacing: '0.5px',
+            }}>
+              {isAr ? step.titleAr : step.title}
+            </h2>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px' }}>
+          <p style={{
+            margin: '0 0 24px', fontSize: '14px', lineHeight: 1.7,
+            color: subClr, textAlign: 'center', fontWeight: 500,
+            direction: isAr ? 'rtl' : 'ltr',
+          }}>
+            {isAr ? step.descAr : step.desc}
+          </p>
+
+          <button
+            onClick={requestCurrentPermission}
+            disabled={checking}
+            style={{
+              width: '100%', padding: '16px', borderRadius: '14px',
+              background: accent, border: 'none', cursor: 'pointer',
+              fontSize: '15px', fontWeight: 800, color: '#fff',
+              fontFamily: "'Orbitron', sans-serif",
+              letterSpacing: '1px', textTransform: 'uppercase',
+              opacity: checking ? 0.6 : 1,
+              transition: 'all 0.2s',
+              boxShadow: `0 4px 20px ${accent}44`,
+            }}
+          >
+            {checking
+              ? (isAr ? '...جاري التحقق' : 'CHECKING...')
+              : (isAr ? 'سماح' : 'ALLOW')
+            }
+          </button>
+
+          <div style={{
+            marginTop: '16px', textAlign: 'center',
+            fontSize: '11px', color: subClr, fontWeight: 600,
+            direction: isAr ? 'rtl' : 'ltr',
+          }}>
+            <Shield size={12} style={{ verticalAlign: 'middle', marginRight: '4px', opacity: 0.5 }} />
+            {isAr
+              ? 'بياناتك آمنة ومش بنشاركها مع حد'
+              : 'Your data stays private and is never shared'
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Onboarding Modal Component
 const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, onComplete: (profile: any) => void, setTripBase: (v: number) => void }) => {
@@ -1136,10 +1402,7 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
         setTripBase(val);
       }, 500);
     }
-    // Auto-start tracking after setup
-    setTimeout(() => {
-      tracker.startTracking(false);
-    }, 600);
+    // Tracking will auto-start after permissions are granted
   };
 
   /* ─── colour helpers ─── */
@@ -1159,36 +1422,58 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
 
       {/* ── HERO HEADER ── */}
       <div style={{
-        background: accentColor,
+        background: isLightMode 
+          ? 'linear-gradient(180deg, #ffffff 0%, #f7f9fb 100%)' 
+          : 'linear-gradient(180deg, #111116 0%, #0a0a0d 100%)',
+        borderBottom: `1px solid ${isLightMode ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)'}`,
         position: 'relative',
-        paddingBottom: '0',
+        padding: '30px 24px 20px',
+        overflow: 'hidden',
       }}>
         <input type="file" accept="image/*" ref={fileInputRef} style={{ display:'none' }} onChange={handleFileChange} />
 
-        {/* Dark overlay for depth */}
+        {/* Brand Accent Ambient Glow */}
         <div style={{
-          position:'absolute', inset:0,
-          background:'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 100%)',
-          pointerEvents:'none'
+          position: 'absolute',
+          top: '-60px',
+          right: '-60px',
+          width: '220px',
+          height: '220px',
+          borderRadius: '50%',
+          background: accentColor,
+          opacity: isLightMode ? 0.12 : 0.22,
+          filter: 'blur(50px)',
+          pointerEvents: 'none',
         }} />
 
-        {/* Top bar: scooter + app name */}
+        {/* Top bar: logo */}
         <div style={{
-          display:'flex', alignItems:'center', justifyContent:'center',
-          gap:'8px', padding:'18px 20px 0', position:'relative', zIndex:1
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          marginBottom: '28px',
+          position: 'relative',
+          zIndex: 1,
+          opacity: 0.75
         }}>
           <div style={{
-            width:'22px', height:'22px',
-            background:'rgba(255,255,255,0.9)',
-            WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
-            WebkitMaskSize:'contain', maskSize:'contain',
-            WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
-            WebkitMaskPosition:'center', maskPosition:'center'
+            width: '14px',
+            height: '14px',
+            background: isLightMode ? '#000000' : '#ffffff',
+            WebkitMaskImage: 'url(/icon-scooter.png)', maskImage: 'url(/icon-scooter.png)',
+            WebkitMaskSize: 'contain', maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center', maskPosition: 'center',
+            opacity: 0.8
           }} />
           <span style={{
-            fontSize:'11px', fontWeight:800, color:'rgba(255,255,255,0.85)',
-            letterSpacing:'3px', textTransform:'uppercase',
-            fontFamily:"'Orbitron', sans-serif"
+            fontSize: '9px',
+            fontWeight: 800,
+            color: isLightMode ? '#000000' : '#ffffff',
+            letterSpacing: '4px',
+            textTransform: 'uppercase',
+            fontFamily: "'Orbitron', sans-serif"
           }}>
             FUEL TRACKER
           </span>
@@ -1196,52 +1481,75 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
 
         {/* Main content: avatar left + text right */}
         <div style={{
-          display:'flex', alignItems:'center', gap:'16px',
-          padding:'16px 22px 22px', position:'relative', zIndex:1
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px',
+          position: 'relative',
+          zIndex: 1
         }}>
-          {/* Avatar */}
+          {/* Avatar Squircle with Premium Glassmorphism */}
           <div
             onClick={handlePhotoClick}
             style={{
-              width:'70px', height:'70px', borderRadius:'18px',
-              background:'rgba(0,0,0,0.3)',
-              border:'2.5px solid rgba(255,255,255,0.85)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              cursor:'pointer', overflow:'hidden', flexShrink:0,
+              position: 'relative',
+              width: '66px',
+              height: '66px',
+              borderRadius: '20px',
+              background: isLightMode ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)',
+              border: `2px solid ${brightLabel}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              overflow: 'hidden',
+              flexShrink: 0,
+              boxShadow: isLightMode 
+                ? '0 6px 16px rgba(0, 0, 0, 0.04)' 
+                : '0 8px 24px rgba(0, 0, 0, 0.3)',
+              transition: 'all 0.3s ease',
             }}
           >
-            {photo
-              ? <img src={photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-              : <User size={28} color="rgba(255,255,255,0.9)" strokeWidth={1.5} />
-            }
+            {photo ? (
+              <img src={photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                <Camera size={22} color={brightLabel} strokeWidth={2.0} />
+                <span style={{ 
+                  fontSize: '8px', 
+                  fontWeight: 800, 
+                  color: brightLabel, 
+                  letterSpacing: '1px',
+                  fontFamily: "'Orbitron', sans-serif"
+                }}>ADD</span>
+              </div>
+            )}
           </div>
 
-          {/* Text */}
-          <div style={{ textAlign:'left' }}>
+          {/* Text Content */}
+          <div style={{ textAlign: 'left', flex: 1 }}>
             <h1 style={{
-              margin:'0 0 4px', fontSize:'22px', fontWeight:900,
-              fontFamily:"'Orbitron', sans-serif",
-              color:'#ffffff', letterSpacing:'0.5px',
-              textTransform:'uppercase', lineHeight:1.1,
-              textShadow:'0 2px 10px rgba(0,0,0,0.3)'
+              margin: '0 0 4px',
+              fontSize: '20px',
+              fontWeight: 800,
+              fontFamily: "'Orbitron', sans-serif",
+              color: isLightMode ? '#111116' : '#ffffff',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              lineHeight: 1.2,
             }}>
-              {t('welcomeRider')}
+              {t('welcomeRider').replace('🛵', '').trim()}
             </h1>
             <p style={{
-              margin:0, fontSize:'12px',
-              color:'rgba(255,255,255,0.72)', fontWeight:600,
-              letterSpacing:'0.5px'
+              margin: 0,
+              fontSize: '11px',
+              color: isLightMode ? '#666' : 'rgba(255, 255, 255, 0.5)',
+              fontWeight: 500,
+              lineHeight: 1.3,
             }}>
               {t('setupProfile')}
             </p>
           </div>
         </div>
-
-        {/* Wave bottom edge */}
-        <svg viewBox="0 0 375 24" style={{ display:'block', width:'100%', height:'24px', marginBottom:'-1px' }}
-             preserveAspectRatio="none">
-          <path d="M0,0 C120,24 255,24 375,0 L375,24 L0,24 Z" fill={pageBg} />
-        </svg>
       </div>
 
       {/* ── FORM ── */}
@@ -1258,9 +1566,9 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
                       borderRadius:'14px', padding:'0',
                       overflow:'hidden',
                       boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'8px' }}>
-            <User size={16} color={brightLabel} strokeWidth={2.5} />
-            <span style={{ fontSize:'11px', fontWeight:800, color:brightLabel,
+          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <User size={12} color={brightLabel} strokeWidth={2.0} />
+            <span style={{ fontSize:'10px', fontWeight:800, color:brightLabel,
                            textTransform:'uppercase', letterSpacing:'1.5px',
                            fontFamily:"'Orbitron', sans-serif" }}>
               {t('riderName')}
@@ -1282,9 +1590,9 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
                       borderLeft:`3px solid ${brightLabel}`,
                       borderRadius:'14px', overflow:'hidden',
                       boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'8px' }}>
-            <Smartphone size={16} color={brightLabel} strokeWidth={2.5} />
-            <span style={{ fontSize:'11px', fontWeight:800, color:brightLabel,
+          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <Smartphone size={12} color={brightLabel} strokeWidth={2.0} />
+            <span style={{ fontSize:'10px', fontWeight:800, color:brightLabel,
                            textTransform:'uppercase', letterSpacing:'1.5px',
                            fontFamily:"'Orbitron', sans-serif" }}>
               {t('phoneNumber')}
@@ -1306,14 +1614,14 @@ const OnboardingModal = ({ tracker, onComplete, setTripBase }: { tracker: any, o
                       borderLeft:`3px solid ${brightLabel}`,
                       borderRadius:'14px', overflow:'hidden',
                       boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'8px' }}>
-            <div style={{ width:'16px', height:'16px', flexShrink:0,
+          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
+            <div style={{ width:'12px', height:'12px', flexShrink:0,
                           background:brightLabel,
                           WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
                           WebkitMaskSize:'contain', maskSize:'contain',
                           WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
                           WebkitMaskPosition:'center', maskPosition:'center' }} />
-            <span style={{ fontSize:'11px', fontWeight:800, color:brightLabel,
+            <span style={{ fontSize:'10px', fontWeight:800, color:brightLabel,
                            textTransform:'uppercase', letterSpacing:'1.5px',
                            fontFamily:"'Orbitron', sans-serif" }}>
               {t('vehicleType')}
@@ -2000,12 +2308,9 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
   );
 
   const currentPrice = tracker.settings.fuelPricePerLiter || 14.5;
-  // Store what's already in the tank so we only add the DIFFERENCE on submit
-  const [baseRemainingLiters] = useState(tracker.fuelState.estimatedFuelLiters);
-  const remainingEGP = Math.max(0, baseRemainingLiters * currentPrice);
-  const initialValue = remainingEGP > 0 ? remainingEGP.toFixed(1).replace(/\.0$/, '') : '';
 
-  const [inputValue, setInputValue] = useState(initialValue);
+  // Input starts EMPTY — user types the AMOUNT they are ADDING (not total)
+  const [inputValue, setInputValue] = useState('');
   const [inputMode, setInputMode] = useState<'currency' | 'liters'>('currency');
 
   const handleModeSwitch = (newMode: 'currency' | 'liters') => {
@@ -2032,19 +2337,15 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
     if (!odometerVal && odometerVal !== 0) return;
     const price = tracker.settings.fuelPricePerLiter || 14.5;
     
-    // Calculate total liters the input represents
-    let totalLiters: number;
+    // Calculate liters being ADDED from the input
+    let addedLiters: number;
     if (inputMode === 'currency') {
-      totalLiters = Number(inputValue) / price;
+      addedLiters = Number(inputValue) / price;
     } else {
-      totalLiters = Number(inputValue);
+      addedLiters = Number(inputValue);
     }
     
-    // Only add the DIFFERENCE (new fuel on top of what was already in tank)
-    const addedLiters = totalLiters - baseRemainingLiters;
-    
     if (addedLiters < 0.01) {
-      // Nothing new added or value decreased → just close, don't double
       onClose();
       return;
     }
@@ -2263,8 +2564,7 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
           {inputValue && Number(inputValue) > 0 && (() => {
             const price = tracker.settings.fuelPricePerLiter || 14.5;
             const val = Number(inputValue);
-            const totalL = inputMode === 'currency' ? val / price : val;
-            const addedL = totalL - baseRemainingLiters;
+            const addedL = inputMode === 'currency' ? val / price : val;
             return (
               <div style={{
                 textAlign: 'center',
@@ -2275,16 +2575,11 @@ function RefuelModal({ tracker, onClose, setConfirmDialog }: { tracker: any, onC
               }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
                   {inputMode === 'currency' ? (
-                    <>= {totalL.toFixed(2)} L</>
+                    <>= {addedL.toFixed(2)} L</>
                   ) : (
                     <>= {Number((val * price).toFixed(1))} EGP</>
                   )}
                 </span>
-                {addedL > 0.01 && (
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-color)', marginLeft: '6px' }}>
-                    (+{addedL.toFixed(2)} L {tracker.settings.language === 'ar' ? 'جديد' : 'new'})
-                  </span>
-                )}
               </div>
             );
           })()}

@@ -117,8 +117,8 @@ export const useFuelTracker = () => {
     currentSpeed,
     gpsUpdateCount,
     lastGpsTime,
-    startTracking,
-    stopTracking
+    startTracking: gpsStartTracking,
+    stopTracking: gpsStopTracking
   } = useGpsTracking({
     settings,
     initialOdo: fuelState.lastOdo,
@@ -159,10 +159,8 @@ export const useFuelTracker = () => {
         const channelId = `fuel_alert_v14_premium`;
         
         // ── Permissions & Cleanup ──────────────────────────────────────────
-        const status = await LocalNotifications.checkPermissions();
-        if (status.display !== 'granted') {
-          await LocalNotifications.requestPermissions();
-        }
+        // We no longer request permissions here on mount.
+        // It is handled gracefully in the Onboarding/Permissions flow.
 
         try {
           const existing = await LocalNotifications.listChannels();
@@ -266,6 +264,29 @@ export const useFuelTracker = () => {
           if (!state.isActive) {
             // App going to background, ensure state is saved
             localStorage.setItem('fuel_state', JSON.stringify(fuelStateRef.current));
+          } else {
+            // App came back to foreground — check if overlay synced ODO
+            if (isAndroidPlatform()) {
+              try {
+                const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+                const res = await alarmPlugin.checkOverlaySync();
+                if (res && res.pending && res.odo > 0) {
+                  const newOdo = res.odo;
+                  setFuelState(prev => {
+                    const diff = newOdo - prev.lastOdo;
+                    const fuelAdj = diff / (settingsRef.current.avgConsumption || 21.4);
+                    return {
+                      ...prev,
+                      lastOdo: newOdo,
+                      estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - fuelAdj)
+                    };
+                  });
+                  console.log('[FuelTracker] Overlay sync applied: ODO =', newOdo);
+                }
+              } catch (e) {
+                console.warn('[FuelTracker] Overlay sync check failed:', e);
+              }
+            }
           }
         });
       } catch (e) {}
@@ -314,7 +335,7 @@ export const useFuelTracker = () => {
           const lang = (settings.language in translations) ? settings.language : 'ar';
           const display = currentKmFloor.toString();
           
-          // ── STEP 1: DROP NOTIFICATION FIRST (Pre-imported, High Importance) ──
+          // ── STEP 1: DROP NOTIFICATION (uses phone's default alarm sound via channel) ──
           LocalNotifications.schedule({
             notifications: [{
               title: (translations[lang] as any)?.lowFuelAlertTitle,
@@ -329,9 +350,6 @@ export const useFuelTracker = () => {
               priority: 2,
             } as any]
           }).catch(console.warn);
-
-          // ── STEP 2: Trigger Alarm Sound/Vibration Immediately ──
-          playWarningSound(true); 
         }
         lastNotifiedKmRef.current = currentKmFloor;
       }
@@ -423,33 +441,40 @@ export const useFuelTracker = () => {
 
   const updateUserProfile = (profile: Partial<UserProfile>) => setUserProfile(prev => ({ name: '', phone: '', vehicleType: '', registeredAt: new Date().toISOString(), ...prev, ...profile }));
 
-  const requestAllPermissions = async () => {
-    if (!isAndroidPlatform()) return;
+  const requestAllPermissions = async (): Promise<boolean> => {
+    if (!isAndroidPlatform()) return true;
     try {
       // ── Step 1: Notifications ──────────────────────────────────────────────
       const { LocalNotifications } = await import('@capacitor/local-notifications');
       const notifPerm = await LocalNotifications.checkPermissions();
-      console.log('[FuelTracker] Notification permission status:', notifPerm.display);
       if (notifPerm.display !== 'granted') {
-        const result = await LocalNotifications.requestPermissions();
-        console.log('[FuelTracker] Notification permission result:', result.display);
+        await LocalNotifications.requestPermissions();
       }
 
       // ── Step 2: Fine Location (GPS) ────────────────────────────────────────
-      // Must specify permissions array to trigger the actual system dialog
       const locPerm = await Geolocation.checkPermissions();
-      console.log('[FuelTracker] Location permission status:', locPerm.location);
       if (locPerm.location !== 'granted') {
-        // Explicitly request fine + coarse location
         const locResult = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
-        console.log('[FuelTracker] Location permission result:', locResult.location);
         if (locResult.location !== 'granted') {
-          console.warn('[FuelTracker] GPS permission was not granted by user');
+          return false;
         }
       }
-      // Background location is handled by BackgroundGeolocation native plugin when tracking starts
+
+      // ── Step 3: Overlay Permission ────────────────────────────────────────
+      try {
+        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        const overlayCheck = await alarmPlugin.checkOverlayPermission();
+        if (!overlayCheck?.granted) {
+          await alarmPlugin.requestOverlayPermission();
+          return false;
+        }
+      } catch (e) {
+        console.warn('[FuelTracker] Overlay permission request failed:', e);
+      }
+      return true;
     } catch (e) {
       console.warn('[FuelTracker] requestAllPermissions error:', e);
+      return true;
     }
   };
 
@@ -481,6 +506,22 @@ export const useFuelTracker = () => {
     }
 
     // Removed window.location.reload() for a smooth React state reset
+  };
+
+  const startTracking = async () => {
+    const hasPerms = await requestAllPermissions();
+    if (!hasPerms) {
+      return; // Stop here if user didn't grant mandatory permissions
+    }
+
+    if (fuelState.activeRideStartTime == null) {
+      setFuelState(prev => ({ ...prev, activeRideStartTime: Date.now() }));
+    }
+    await gpsStartTracking();
+  };
+
+  const stopTracking = () => {
+    gpsStopTracking();
   };
 
   // ── Derived UI values ─────────────────────────────────────────────────────

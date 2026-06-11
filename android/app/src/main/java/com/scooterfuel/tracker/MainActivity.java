@@ -478,6 +478,18 @@ public class MainActivity extends BridgeActivity {
         }
 
         @PluginMethod
+        public void resetNativeDistance(PluginCall call) {
+            try {
+                Context context = getContext();
+                android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                prefs.edit().putFloat("native_gps_distance", 0.0f).apply();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
         public void getWidgetSettings(PluginCall call) {
             try {
                 Context context = getContext();
@@ -585,6 +597,52 @@ public class MainActivity extends BridgeActivity {
 
                 context.sendBroadcast(intent);
                 call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+        @PluginMethod
+        public void checkOverlayPermission(PluginCall call) {
+            com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                ret.put("granted", Settings.canDrawOverlays(getContext()));
+            } else {
+                ret.put("granted", true);
+            }
+            call.resolve(ret);
+        }
+
+        @PluginMethod
+        public void requestOverlayPermission(PluginCall call) {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    Intent intent = new Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getContext().getPackageName())
+                    );
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    getContext().startActivity(intent);
+                }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void checkOverlaySync(PluginCall call) {
+            try {
+                SharedPreferences prefs = getContext().getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                boolean pending = prefs.getBoolean("overlay_sync_pending", false);
+                com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
+                ret.put("pending", pending);
+                if (pending) {
+                    float odo = prefs.getFloat("overlay_sync_odo", 0);
+                    ret.put("odo", (double) odo);
+                    // Clear the flag
+                    prefs.edit().putBoolean("overlay_sync_pending", false).apply();
+                }
+                call.resolve(ret);
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }

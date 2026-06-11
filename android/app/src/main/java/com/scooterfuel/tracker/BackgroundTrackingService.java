@@ -42,15 +42,20 @@ public class BackgroundTrackingService extends Service {
     private int lastBroadcastedSpeed = -1;
     private long lastBroadcastTime = 0;
     
-    // --- Tap Detection ---
+    // --- Tap / Shake Detection ---
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private long lastTapTime = 0;
     private int tapCount = 0;
-    private static final float TAP_THRESHOLD = 18.0f; // High threshold to ignore scooter idle
-    private static final int TAP_WINDOW_MS = 1500;
-    private static final int TAP_COOLDOWN_MS = 150;
-    private float lastZ = 0;
+    private static final float TAP_THRESHOLD = 3.5f; // Delta magnitude threshold for a back tap
+    private static final int TAP_WINDOW_MS = 1500; // 1.5 seconds to complete 3 taps
+    private static final int TAP_COOLDOWN_MS = 200; // Cooldown between individual taps to avoid double counting
+    private static final int TAPS_REQUIRED = 3;
+    
+    private float last_x = 0, last_y = 0, last_z = 0;
+    
+    // --- Floating Overlay ---
+    private FloatingOdoOverlay floatingOverlay;
 
     @Nullable
     @Override
@@ -70,8 +75,12 @@ public class BackgroundTrackingService extends Service {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            sensorManager.registerListener(tapListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+            // SENSOR_DELAY_GAME for better responsiveness during shakes
+            sensorManager.registerListener(shakeListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
+        
+        // Initialize floating overlay
+        floatingOverlay = new FloatingOdoOverlay(this);
     }
 
     @SuppressLint("MissingPermission")
@@ -182,12 +191,15 @@ public class BackgroundTrackingService extends Service {
                     }
 
                     // --- 2. Distance Accumulation (Smoothed) ---
-                    // Only accumulate if we moved at least 15 meters to prevent micro-jitter zig-zags
-                    if (distanceMeters >= 15.0f) {
-                        // Dynamic threshold: Allow ~120km/h max travel during gaps (33m/s)
-                        float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 33.3f);
+                    // Accumulate if moved at least 10 meters (reduced from 15m to catch slow traffic)
+                    if (distanceMeters >= 10.0f) {
+                        // Dynamic threshold: Allow ~150km/h max travel during gaps (41.6m/s)
+                        float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 41.6f);
                         
-                        if (distanceMeters < maxAllowedDistance && timeDeltaMs < 60000) {
+                        // We do NOT penalize large time gaps (timeDeltaMs) because Android/OPPO aggressively 
+                        // throttle background GPS. A 5-minute gap is normal, and we MUST count the distance 
+                        // covered during that gap as long as the speed wasn't mathematically impossible.
+                        if (distanceMeters < maxAllowedDistance) {
                             float distKm = (distanceMeters / 1000.0f);
                             accumulatedDistanceKm += distKm;
                             
@@ -196,8 +208,8 @@ public class BackgroundTrackingService extends Service {
                             
                             // Anchor point is only updated when we register valid movement
                             lastLocation = location;
-                        } else if (timeDeltaMs >= 60000) {
-                            // If it's a huge time gap (teleport), just reset anchor
+                        } else {
+                            // If it's an impossible teleport jump, just reset anchor
                             lastLocation = location;
                         }
                     }
@@ -211,31 +223,48 @@ public class BackgroundTrackingService extends Service {
 
     };
 
-    private final SensorEventListener tapListener = new SensorEventListener() {
+    private final SensorEventListener shakeListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                float x = event.values[0];
+                float y = event.values[1];
                 float z = event.values[2];
-                float deltaZ = Math.abs(z - lastZ);
-                lastZ = z;
 
-                long now = System.currentTimeMillis();
-                if (deltaZ > TAP_THRESHOLD) {
-                    if (now - lastTapTime < TAP_WINDOW_MS) {
-                        if (now - lastTapTime > TAP_COOLDOWN_MS) {
+                if (last_x == 0 && last_y == 0 && last_z == 0) {
+                    last_x = x; last_y = y; last_z = z;
+                    return;
+                }
+
+                float dx = Math.abs(x - last_x);
+                float dy = Math.abs(y - last_y);
+                float dz = Math.abs(z - last_z);
+
+                // BACK TAP DETECTION: Z-axis must heavily dominate.
+                // If the phone is shaken left/right (X-axis), dx will be large, so we reject it.
+                // We require dz to be at least 3 times larger than both dx and dy.
+                boolean isBackTap = dz > TAP_THRESHOLD && dz > dx * 3.0f && dz > dy * 3.0f;
+                
+                if (isBackTap) {
+                    long now = System.currentTimeMillis();
+                    if (now - lastTapTime > TAP_COOLDOWN_MS) {
+                        if (now - lastTapTime < TAP_WINDOW_MS) {
                             tapCount++;
-                            lastTapTime = now;
+                        } else {
+                            tapCount = 1;
                         }
-                    } else {
-                        tapCount = 1;
                         lastTapTime = now;
-                    }
 
-                    if (tapCount >= 3) {
-                        tapCount = 0;
-                        triggerQuickSyncAction();
+                        if (tapCount >= TAPS_REQUIRED) {
+                            tapCount = 0;
+                            triggerQuickSyncAction();
+                        }
                     }
                 }
+
+                last_x = x;
+                last_y = y;
+                last_z = z;
             }
         }
 
@@ -248,42 +277,48 @@ public class BackgroundTrackingService extends Service {
         Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         if (v != null) {
             if (Build.VERSION.SDK_INT >= 26) {
-                v.vibrate(VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE));
+                // Double-pulse vibration for clear feedback
+                long[] pattern = { 0, 100, 80, 100 };
+                v.vibrate(VibrationEffect.createWaveform(pattern, -1));
             } else {
-                v.vibrate(150);
+                v.vibrate(200);
             }
         }
 
-        // --- NEW: URGENT HEADS-UP NOTIFICATION (To bypass background restrictions) ---
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.putExtra("widget_action", "open_sync_odo");
+        // Try to show floating overlay (works even with app in background)
+        if (floatingOverlay != null && floatingOverlay.canDrawOverlays()) {
+            if (!floatingOverlay.isShowing()) {
+                floatingOverlay.show();
+            }
+        } else {
+            // Fallback: Open app with sync intent (when overlay permission not granted)
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            intent.putExtra("widget_action", "open_sync_odo");
 
-        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
-                this, 100, intent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-        );
+            PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
+                    this, 100, intent,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            );
 
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm != null) {
-            Notification notification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
-                    .setContentTitle("?? SYNC ODOMETER")
-                    .setContentText("Triple-tap detected! Tap to update mileage.")
-                    .setSmallIcon(android.R.drawable.ic_menu_edit)
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
-                    .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setFullScreenIntent(fullScreenPendingIntent, true) // Forces it to pop up!
-                    .setAutoCancel(true)
-                    .setColor(0xFF00F0FF)
-                    .build();
-
-            nm.notify(1111, notification);
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                Notification notification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+                        .setContentTitle("🔄 SYNC ODOMETER")
+                        .setContentText("Shake detected! Tap to update mileage.")
+                        .setSmallIcon(android.R.drawable.ic_menu_edit)
+                        .setPriority(NotificationCompat.PRIORITY_MAX)
+                        .setCategory(NotificationCompat.CATEGORY_ALARM)
+                        .setFullScreenIntent(fullScreenPendingIntent, true)
+                        .setAutoCancel(true)
+                        .setColor(0xFF00F0FF)
+                        .build();
+                nm.notify(1111, notification);
+            }
+            try {
+                startActivity(intent);
+            } catch (Exception e) {}
         }
-
-        // Still try to start activity (might work if device is unlocked)
-        try {
-            startActivity(intent);
-        } catch (Exception e) {}
     }
 
     private final BroadcastReceiver gpsReceiver = new BroadcastReceiver() {
@@ -543,12 +578,17 @@ public class BackgroundTrackingService extends Service {
             locationManager.removeUpdates(locationListener);
         }
         if (sensorManager != null) {
-            sensorManager.unregisterListener(tapListener);
+            sensorManager.unregisterListener(shakeListener);
         }
         try {
             unregisterReceiver(gpsReceiver);
         } catch (IllegalArgumentException e) {
             // Already unregistered
+        }
+        // Dismiss floating overlay
+        if (floatingOverlay != null) {
+            floatingOverlay.dismiss();
+            floatingOverlay = null;
         }
     }
 
