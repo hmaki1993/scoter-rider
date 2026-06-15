@@ -269,7 +269,7 @@ public class FloatingAddFuelOverlay {
         odoInput.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         odoInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         odoInput.setBackground(null);
-        odoInput.setPadding(0, dp(4), 0, 0);
+        odoInput.setPadding(0, dp(4), 0, dp(4));
         LinearLayout.LayoutParams odoLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         odoInput.setLayoutParams(odoLp);
         
@@ -325,7 +325,7 @@ public class FloatingAddFuelOverlay {
         fuelInput.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         fuelInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         fuelInput.setBackground(null);
-        fuelInput.setPadding(0, 0, 0, 0);
+        fuelInput.setPadding(0, dp(4), 0, dp(4));
         costInputRow.addView(fuelInput, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         
         // Switch Container
@@ -476,39 +476,44 @@ public class FloatingAddFuelOverlay {
         saveBtnContainer.setOnClickListener(v -> {
             String odoStr = odoInput.getText().toString();
             String fuelStr = fuelInput.getText().toString();
-            if (odoStr.isEmpty() || fuelStr.isEmpty()) return;
+            if (odoStr.isEmpty()) return;
             
             try {
                 float newOdo = Float.parseFloat(odoStr);
-                float val = Float.parseFloat(fuelStr);
-                float addedEGP = isEgpMode ? val : (val * pricePerL);
-                float liters = addedEGP / pricePerL;
                 
-                long ts = System.currentTimeMillis();
-                String logsJson = prefs.getString("fuel_logs", "[]");
-                org.json.JSONArray logs = new org.json.JSONArray(logsJson);
-                
-                org.json.JSONObject newLog = new org.json.JSONObject();
-                newLog.put("id", java.util.UUID.randomUUID().toString());
-                newLog.put("timestamp", ts);
-                newLog.put("liters", liters);
-                newLog.put("cost", addedEGP);
-                newLog.put("odo", newOdo);
-                newLog.put("isFullTank", false); // Native quick sync defaults to partial
-                
-                logs.put(newLog);
-                
-                // We also need to update ODO stats and widget text, and JS sync flags!
-                prefs.edit()
-                     .putString("fuel_logs", logs.toString())
-                     .putFloat("latest_odo_raw", newOdo)
-                     .putString("latest_odo", String.format(java.util.Locale.US, "ODO: %.0f", newOdo))
-                     .putFloat("latest_fuelLiters_raw", tankHasLiters + liters)
-                     .putString("latest_litersLeft", String.format(java.util.Locale.US, "%.1f L", tankHasLiters + liters))
-                     .putFloat("fuel_warning_last_odo", 0.0f) // reset warning
-                     .putBoolean("overlay_sync_pending", true)
-                     .putFloat("overlay_sync_odo", newOdo)
-                     .apply();
+                SharedPreferences.Editor editor = prefs.edit();
+
+                if (!fuelStr.isEmpty()) {
+                    float val = Float.parseFloat(fuelStr);
+                    float addedEGP = isEgpMode ? val : (val * pricePerL);
+                    float liters = addedEGP / pricePerL;
+                    
+                    long ts = System.currentTimeMillis();
+                    String logsJson = prefs.getString("fuel_logs", "[]");
+                    org.json.JSONArray logs = new org.json.JSONArray(logsJson);
+                    
+                    org.json.JSONObject newLog = new org.json.JSONObject();
+                    newLog.put("id", java.util.UUID.randomUUID().toString());
+                    newLog.put("timestamp", ts);
+                    newLog.put("liters", liters);
+                    newLog.put("cost", addedEGP);
+                    newLog.put("odo", newOdo);
+                    newLog.put("isFullTank", false); // Native quick sync defaults to partial
+                    
+                    logs.put(newLog);
+                    
+                    editor.putString("fuel_logs", logs.toString())
+                          .putFloat("latest_fuelLiters_raw", tankHasLiters + liters)
+                          .putString("latest_litersLeft", String.format(java.util.Locale.US, "%.1f L", tankHasLiters + liters))
+                          .putFloat("fuel_warning_last_odo", 0.0f); // reset warning
+                }
+
+                // Update ODO stats and JS sync flags universally
+                editor.putFloat("latest_odo_raw", newOdo)
+                      .putString("latest_odo", String.format(java.util.Locale.US, "ODO: %.0f", newOdo))
+                      .putBoolean("overlay_sync_pending", true)
+                      .putFloat("overlay_sync_odo", newOdo)
+                      .apply();
                 
                 // Vibrate
                 Vibrator vib = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);

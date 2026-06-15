@@ -3,6 +3,9 @@ import { useFuelTracker } from './hooks/useFuelTracker';
 import { AlertTriangle, User, Camera, Smartphone, Fuel, X, Sun, Moon, Droplet, Navigation, Shield, Bell, MapPin, Layers } from 'lucide-react';
 import { translations } from './translations';
 import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
+import { AlarmPlugin } from './AlarmPlugin';
 import gsap from 'gsap';
 import './index.css';
 
@@ -47,6 +50,16 @@ function App() {
         root.style.setProperty('--glass-bg', 'rgba(255,255,255,0.03)');
         root.style.setProperty('--glass-border', 'rgba(255,255,255,0.08)');
       }
+      
+      // Update Native Status Bar
+      if (Capacitor.isNativePlatform()) {
+        try {
+          StatusBar.setStyle({ style: isLight ? Style.Light : Style.Dark });
+          StatusBar.setBackgroundColor({ color: isLight ? '#ffffff' : '#0a0a0c' });
+        } catch (e) {
+          console.warn('[App] StatusBar error:', e);
+        }
+      }
     }
   }, [tracker.settings.accentColor, tracker.settings.isLightMode, tracker.isWarning, tracker.isDanger]);
 
@@ -72,6 +85,27 @@ function App() {
           if (res.value) setTripBase(Number(res.value));
         });
       });
+
+      // Startup strict permission check
+      const checkAll = async () => {
+        try {
+          // no-op
+          // AlarmPlugin is already registered at module level
+          const { Geolocation } = await import('@capacitor/geolocation');
+          const { LocalNotifications } = await import('@capacitor/local-notifications');
+          
+          let needsPerms = false;
+          if ((await Geolocation.checkPermissions()).location !== 'granted') needsPerms = true;
+          if ((await LocalNotifications.checkPermissions()).display !== 'granted') needsPerms = true;
+
+          if (!(await AlarmPlugin.checkOverlayPermission())?.granted) needsPerms = true;
+
+          if (needsPerms) {
+            setShowPermissions(true);
+          }
+        } catch(e) {}
+      };
+      checkAll();
     }
   }, [tracker.isDataLoaded]);
 
@@ -79,22 +113,15 @@ function App() {
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void, isDanger?: boolean}>({ isOpen: false, message: '', onConfirm: () => {} });
   const closeConfirm = () => setConfirmDialog(p => ({ ...p, isOpen: false }));
 
-  // Initial Entrance Animation
-  useEffect(() => {
-    if (appRef.current) {
-      gsap.fromTo(
-        appRef.current.children,
-        { y: 50, opacity: 0, scale: 0.95 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.8, stagger: 0.1, ease: "power4.out" }
-      );
-    }
+  // Initial Entrance Animation removed by request
 
+  useEffect(() => {
     // --- Widget Action Handling (Deep Link from Widget Buttons) ---
     const handleWidgetAction = async () => {
       try {
-        const { registerPlugin } = await import('@capacitor/core');
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-        const res = await alarmPlugin.getWidgetAction();
+        // no-op
+        // AlarmPlugin is already registered at module level
+        const res = await AlarmPlugin.getWidgetAction();
         
         console.log('[App] Checking widget action...', res);
         
@@ -280,9 +307,7 @@ function App() {
                     e.currentTarget.style.boxShadow = '0 8px 20px rgba(239, 68, 68, 0.35), inset 0 2px 0 rgba(255,255,255,0.2)';
                   }}
                   onClick={() => {
-                    import('@capacitor/core').then(({ registerPlugin }) => {
-                      registerPlugin<any>('AlarmPlugin').openLocationSettings().catch(() => {});
-                    });
+                      AlarmPlugin.openLocationSettings().catch(() => {});
                   }}
                 >
                   {tracker.settings.language === 'ar' ? 'تفعيل الموقع الجغرافي' : 'ENABLE LOCATION'}
@@ -436,37 +461,29 @@ function App() {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            {/* Circular Premium Gradient Ring Border */}
+            {/* Scooter Frame - Matching Control Button Style */}
             <div
               style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '24px',
-                padding: '2px',
-                background: 'var(--accent-secondary, #ff5e00)',
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: tracker.settings.isLightMode 
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,240,245,0.95))'
+                  : 'linear-gradient(135deg, rgba(20,20,25,0.9), rgba(30,30,35,0.95))',
+                borderLeft: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'}`,
+                borderRight: `1.5px solid ${tracker.settings.isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'}`,
+                borderBottom: '2.5px solid var(--accent-secondary, #ff5e00)',
+                borderTop: '2.5px solid var(--accent-secondary, #ff5e00)',
                 boxShadow: tracker.settings.isLightMode
-                  ? '0 3px 8px rgba(0, 0, 0, 0.12)'
-                  : '0 4px 12px rgba(0, 0, 0, 0.50)',
+                  ? '0 4px 12px rgba(0, 0, 0, 0.05)'
+                  : '0 4px 20px rgba(0, 0, 0, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                overflow: 'hidden'
               }}
             >
-              {/* Inner container to crop image/icon */}
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '24px',
-                  background: tracker.settings.isLightMode ? '#ffffff' : '#141417',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxSizing: 'border-box'
-                }}
-              >
                 {tracker.userProfile.photoUrl ? (
                   <img 
                     src={tracker.userProfile.photoUrl} 
@@ -477,21 +494,15 @@ function App() {
                     }} 
                   />
                 ) : (
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    backgroundColor: 'var(--accent-secondary, #ff5e00)',
-                    WebkitMaskImage: 'url(/icon-scooter.png)',
-                    maskImage: 'url(/icon-scooter.png)',
-                    WebkitMaskSize: 'contain',
-                    maskSize: 'contain',
-                    WebkitMaskRepeat: 'no-repeat',
-                    maskRepeat: 'no-repeat',
-                    WebkitMaskPosition: 'center',
-                    maskPosition: 'center'
-                  }} />
+                  <img 
+                    src="/app-icon.png" 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover' 
+                    }} 
+                  />
                 )}
-              </div>
             </div>
             {/* Flat & Clean Minimalist Model Text with side bullet highlights */}
             {tracker.userProfile.vehicleType && (
@@ -679,12 +690,14 @@ function App() {
             {/* Budget Remaining Pill */}
             {(() => {
               const lastLog = tracker.logs?.[0];
-              const pricePerLiter = tracker.settings.fuelPricePerLiter || 14.5;
-              const pricePaid = (lastLog?.pricePaid && lastLog.pricePaid > 0) ? lastLog.pricePaid : (lastLog?.litersAdded ?? 0) * pricePerLiter;
-              const litersAtRefuel = lastLog ? (lastLog.fuelBeforeRefuel ?? 0) + lastLog.litersAdded : 0;
-              const litersConsumed = Math.max(0, litersAtRefuel - tracker.fuelState.estimatedFuelLiters);
+              const pricePerLiter = Number(tracker.settings.fuelPricePerLiter) || 14.5;
+              const pricePaid = (lastLog?.pricePaid && lastLog.pricePaid > 0) ? Number(lastLog.pricePaid) : (Number(lastLog?.litersAdded) || 0) * pricePerLiter;
+              const litersAtRefuel = lastLog ? (Number(lastLog.fuelBeforeRefuel) || 0) + (Number(lastLog.litersAdded) || 0) : 0;
+              const estimatedFuel = Number(tracker.fuelState.estimatedFuelLiters) || 0;
+              const litersConsumed = Math.max(0, litersAtRefuel - estimatedFuel);
               const costConsumed = litersConsumed * pricePerLiter;
-              const remaining = Math.max(0, pricePaid - costConsumed);
+              let remaining = Math.max(0, pricePaid - costConsumed);
+              if (Number.isNaN(remaining)) remaining = 0;
               return (
                 <div
                   className="elite-status-pill-static"
@@ -1118,6 +1131,7 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
       descAr: 'سمحلنا بالإشعارات عشان نقدر ننبهك لما البنزين يقرب يخلص حتى لو الأبلكيشن في الخلفية.',
       gradient: 'linear-gradient(135deg, #ff9500, #ff6b00)',
     },
+
     overlay: {
       icon: <Layers size={38} color="#fff" strokeWidth={1.8} />,
       title: 'Display Over Apps',
@@ -1130,10 +1144,39 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
 
   const step = STEPS[currentStep];
 
+  useEffect(() => {
+    // Auto-advance if already granted
+    const autoCheck = async () => {
+      try {
+        // no-op
+        // AlarmPlugin is already registered
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+
+        if (currentStep === 'location') {
+          if ((await Geolocation.checkPermissions()).location === 'granted') advance('notifications');
+        } else if (currentStep === 'notifications') {
+          if ((await LocalNotifications.checkPermissions()).display === 'granted') advance('overlay');
+        } else if (currentStep === 'overlay') {
+          if ((await AlarmPlugin.checkOverlayPermission())?.granted) onAllGranted();
+        }
+      } catch (e) {}
+    };
+    autoCheck();
+  }, [currentStep]);
+
+  const advance = (next: PermStep) => {
+    setAnimIn(false);
+    setTimeout(() => {
+      setCurrentStep(next);
+      setAnimIn(true);
+    }, 300);
+  };
+
   const requestCurrentPermission = async () => {
     setChecking(true);
     try {
-      const { registerPlugin } = await import('@capacitor/core');
+      // no-op
 
       if (currentStep === 'location') {
         const { Geolocation } = await import('@capacitor/geolocation');
@@ -1142,15 +1185,10 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
           const res = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
           if (res.location !== 'granted') {
             setChecking(false);
-            return; // Stay on this card
+            return;
           }
         }
-        // Move to next
-        setAnimIn(false);
-        setTimeout(() => {
-          setCurrentStep('notifications');
-          setAnimIn(true);
-        }, 300);
+        advance('notifications');
 
       } else if (currentStep === 'notifications') {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
@@ -1158,27 +1196,18 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
         if (perm.display !== 'granted') {
           await LocalNotifications.requestPermissions();
         }
-        // Move to next
-        setAnimIn(false);
-        setTimeout(() => {
-          setCurrentStep('overlay');
-          setAnimIn(true);
-        }, 300);
+        advance('overlay');
 
       } else if (currentStep === 'overlay') {
         try {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-          const check = await alarmPlugin.checkOverlayPermission();
+          // AlarmPlugin is already registered
+          const check = await AlarmPlugin.checkOverlayPermission();
           if (!check?.granted) {
-            await alarmPlugin.requestOverlayPermission();
-            // User needs to come back after enabling, so we'll re-check
+            await AlarmPlugin.requestOverlayPermission();
             setChecking(false);
             return;
           }
-        } catch (e) {
-          // If overlay check fails, just proceed
-        }
-        // All done!
+        } catch (e) {}
         onAllGranted();
       }
     } catch (e) {
@@ -1187,14 +1216,15 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
     setChecking(false);
   };
 
+
   // Re-check overlay when app becomes active again (user returns from settings)
   useEffect(() => {
     if (currentStep !== 'overlay') return;
     const checkOverlay = async () => {
       try {
-        const { registerPlugin } = await import('@capacitor/core');
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-        const check = await alarmPlugin.checkOverlayPermission();
+        // no-op
+        // AlarmPlugin is already registered
+        const check = await AlarmPlugin.checkOverlayPermission();
         if (check?.granted) {
           onAllGranted();
         }
@@ -1212,7 +1242,9 @@ const PermissionsModal = ({ tracker, onAllGranted }: { tracker: any, onAllGrante
     let listener: any;
     import('@capacitor/app').then(({ App }) => {
       App.addListener('appStateChange', (state) => {
-        if (state.isActive) checkOverlay();
+        if (state.isActive) {
+           if (currentStep === 'overlay') checkOverlay();
+        }
       }).then(l => { listener = l; });
     });
 
@@ -1367,14 +1399,14 @@ function OnboardingModal({ tracker, onComplete, setTripBase }: { tracker: any, o
   const [vehicleType, setVehicleType] = useState('');
   const [fuelPrice, setFuelPrice] = useState('22');
   const [odoReading, setOdoReading] = useState('');
+  const [lastOilOdo, setLastOilOdo] = useState('');
+  const [oilChangeInterval, setOilChangeInterval] = useState('1000');
   const [isLightMode, setIsLightMode] = useState(false);
   const [accentColor, setAccentColor] = useState(tracker.settings.accentColor || '#326144');
   const [photo, setPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handlePhotoClick = () => {
-    fileInputRef.current?.click();
-  };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1405,7 +1437,8 @@ function OnboardingModal({ tracker, onComplete, setTripBase }: { tracker: any, o
       accentSecondary: selectedTheme?.secondary || '#ff5e00',
       isLightMode,
       fuelPricePerLiter: Number(fuelPrice) || 22,
-      lastOilChangeOdo: odoReading && Number(odoReading) > 0 ? Number(odoReading) : 0,
+      lastOilChangeOdo: lastOilOdo ? Number(lastOilOdo) : (odoReading && Number(odoReading) > 0 ? Number(odoReading) : 0),
+      oilChangeInterval: Number(oilChangeInterval) || 1000,
     });
     if (odoReading && Number(odoReading) > 0) {
       setTimeout(() => {
@@ -1425,146 +1458,69 @@ function OnboardingModal({ tracker, onComplete, setTripBase }: { tracker: any, o
   const cardBg   = isLightMode ? '#ffffff'          : 'rgba(255,255,255,0.06)';
   const cardBdr  = isLightMode ? '#e8e8ee'          : 'rgba(255,255,255,0.12)';
   const pageBg   = isLightMode ? '#f0f2f5'          : '#111115';
-  const labelClr = isLightMode ? '#7b7b8a'          : 'rgba(255,255,255,0.45)';
   const textClr  = isLightMode ? '#12121c'          : '#ffffff';
-  // Bright label color: use the exact theme color chosen by the user
-  const brightLabel = accentColor;
 
   return (
-    <div style={{ position:'fixed', inset:0, background:pageBg, zIndex:1000,
+    <div className={isLightMode ? 'app-light' : ''} style={{ position:'fixed', inset:0, background:pageBg, zIndex:1000,
                   display:'flex', flexDirection:'column', overflow:'auto' }}>
 
       {/* ── HERO HEADER ── */}
       <div style={{
-        background: isLightMode 
-          ? 'linear-gradient(180deg, #ffffff 0%, #f7f9fb 100%)' 
-          : 'linear-gradient(180deg, #111116 0%, #0a0a0d 100%)',
-        borderBottom: `1px solid ${isLightMode ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)'}`,
         position: 'relative',
-        padding: '30px 24px 20px',
+        padding: 'calc(env(safe-area-inset-top, 40px) + 20px) 24px 20px',
         overflow: 'hidden',
         flexShrink: 0,
       }}>
         <input type="file" accept="image/*" ref={fileInputRef} style={{ display:'none' }} onChange={handleFileChange} />
 
-        {/* Brand Accent Ambient Glow */}
-        <div style={{
-          position: 'absolute',
-          top: '-60px',
-          right: '-60px',
-          width: '220px',
-          height: '220px',
-          borderRadius: '50%',
-          background: accentColor,
-          opacity: isLightMode ? 0.12 : 0.22,
-          filter: 'blur(50px)',
-          pointerEvents: 'none',
-        }} />
+
 
         {/* Top bar: logo */}
         <div style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px',
-          marginBottom: '28px',
+          marginBottom: '0',
           position: 'relative',
           zIndex: 1,
-          opacity: 0.75
         }}>
           <div style={{
-            width: '14px',
-            height: '14px',
-            background: isLightMode ? '#000000' : '#ffffff',
-            WebkitMaskImage: 'url(/icon-scooter.png)', maskImage: 'url(/icon-scooter.png)',
-            WebkitMaskSize: 'contain', maskSize: 'contain',
-            WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
-            WebkitMaskPosition: 'center', maskPosition: 'center',
-            opacity: 0.8
-          }} />
-          <span style={{
-            fontSize: '9px',
-            fontWeight: 800,
-            color: isLightMode ? '#000000' : '#ffffff',
-            letterSpacing: '4px',
-            textTransform: 'uppercase',
-            fontFamily: "'Orbitron', sans-serif"
+            position: 'relative',
+            padding: '4px',
+            background: isLightMode 
+              ? 'linear-gradient(135deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.01) 100%)' 
+              : 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)',
+            borderRadius: '50%',
+            boxShadow: isLightMode 
+              ? '0 8px 24px rgba(0,0,0,0.08)' 
+              : '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.1)',
           }}>
-            FUEL TRACKER
-          </span>
-        </div>
-
-        {/* Main content: avatar left + text right */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px',
-          position: 'relative',
-          zIndex: 1
-        }}>
-          {/* Avatar Squircle with Premium Glassmorphism */}
-          <div
-            onClick={handlePhotoClick}
-            style={{
-              position: 'relative',
-              width: '66px',
-              height: '66px',
-              borderRadius: '20px',
-              background: isLightMode ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)',
-              border: `2px solid ${brightLabel}`,
+            <div style={{
+              width: '110px',
+              height: '110px',
+              borderRadius: '50%',
+              overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              overflow: 'hidden',
-              flexShrink: 0,
-              boxShadow: isLightMode 
-                ? '0 6px 16px rgba(0, 0, 0, 0.04)' 
-                : '0 8px 24px rgba(0, 0, 0, 0.3)',
-              transition: 'all 0.3s ease',
-            }}
-          >
-            {photo ? (
-              <img src={photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                <Camera size={22} color={brightLabel} strokeWidth={2.0} />
-                <span style={{ 
-                  fontSize: '8px', 
-                  fontWeight: 800, 
-                  color: brightLabel, 
-                  letterSpacing: '1px',
-                  fontFamily: "'Orbitron', sans-serif"
-                }}>ADD</span>
-              </div>
-            )}
-          </div>
-
-          {/* Text Content */}
-          <div style={{ textAlign: 'left', flex: 1 }}>
-            <h1 style={{
-              margin: '0 0 4px',
-              fontSize: '20px',
-              fontWeight: 800,
-              fontFamily: "'Orbitron', sans-serif",
-              color: isLightMode ? '#111116' : '#ffffff',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-              lineHeight: 1.2,
+              justifyContent: 'center'
             }}>
-              {t('welcomeRider').replace('🛵', '').trim()}
-            </h1>
-            <p style={{
-              margin: 0,
-              fontSize: '11px',
-              color: isLightMode ? '#666' : 'rgba(255, 255, 255, 0.5)',
-              fontWeight: 500,
-              lineHeight: 1.3,
-            }}>
-              {t('setupProfile')}
-            </p>
+              <img 
+                src="/app-icon.png" 
+                style={{ 
+                  height: '100%', 
+                  width: '100%',
+                  objectFit: 'cover',
+                  transform: 'scale(1.15)', // zooms in to cut off outer background
+                  display: 'block'
+                }} 
+                alt="App Logo"
+              />
+            </div>
           </div>
         </div>
+
+
       </div>
 
       {/* ── FORM ── */}
@@ -1574,140 +1530,119 @@ function OnboardingModal({ tracker, onComplete, setTripBase }: { tracker: any, o
                  display:'flex', flexDirection:'column', gap:'16px' }}
       >
 
-        {/* Name */}
-        <div style={{ background:cardBg,
-                      border:`1.5px solid ${cardBdr}`,
-                      borderLeft:`3px solid ${brightLabel}`,
-                      borderRadius:'14px', padding:'0',
-                      overflow:'hidden',
-                      boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <User size={12} color={brightLabel} strokeWidth={2.0} />
-            <span style={{ fontSize:'10px', fontWeight:800, color:brightLabel,
-                           textTransform:'uppercase', letterSpacing:'1.5px',
-                           fontFamily:"'Orbitron', sans-serif" }}>
-              {t('riderName')}
-            </span>
+        {/* Section 1: PROFILE */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <img src="/programmer.png" alt="user" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+            <label className="fusion-label" style={{ margin: 0, color: 'var(--accent-secondary)', fontWeight: '700' }}>
+              {t('userProfile') || 'USER PROFILE'}
+            </label>
           </div>
-          <input
-            required type="text" value={name}
-            onChange={e=>{ const v=e.target.value; setName(v.charAt(0).toUpperCase()+v.slice(1)); }}
-            placeholder="Ahmed…"
-            style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'6px 16px 14px', fontSize:'22px', fontWeight:800,
-                     fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
-          />
-        </div>
-
-        {/* Phone */}
-        <div style={{ background:cardBg,
-                      border:`1.5px solid ${cardBdr}`,
-                      borderLeft:`3px solid ${brightLabel}`,
-                      borderRadius:'14px', overflow:'hidden',
-                      boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <Smartphone size={12} color={brightLabel} strokeWidth={2.0} />
-            <span style={{ fontSize:'10px', fontWeight:800, color:brightLabel,
-                           textTransform:'uppercase', letterSpacing:'1.5px',
-                           fontFamily:"'Orbitron', sans-serif" }}>
-              {t('phoneNumber')}
-            </span>
-          </div>
-          <input
-            type="tel" value={phone}
-            onChange={e=>setPhone(e.target.value.replace(/\D/g,''))}
-            placeholder="01XXXXXXXXX"
-            style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'6px 16px 14px', fontSize:'22px', fontWeight:800,
-                     fontFamily:"'Rajdhani', sans-serif", color:textClr, boxSizing:'border-box' }}
-          />
-        </div>
-
-        {/* Vehicle */}
-        <div style={{ background:cardBg,
-                      border:`1.5px solid ${cardBdr}`,
-                      borderLeft:`3px solid ${brightLabel}`,
-                      borderRadius:'14px', overflow:'hidden',
-                      boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ padding:'12px 16px 0', display:'flex', alignItems:'center', gap:'6px' }}>
-            <div style={{ width:'12px', height:'12px', flexShrink:0,
-                          background:brightLabel,
-                          WebkitMaskImage:'url(/icon-scooter.png)', maskImage:'url(/icon-scooter.png)',
-                          WebkitMaskSize:'contain', maskSize:'contain',
-                          WebkitMaskRepeat:'no-repeat', maskRepeat:'no-repeat',
-                          WebkitMaskPosition:'center', maskPosition:'center' }} />
-            <span style={{ fontSize:'10px', fontWeight:800, color:brightLabel,
-                           textTransform:'uppercase', letterSpacing:'1.5px',
-                           fontFamily:"'Orbitron', sans-serif" }}>
-              {t('vehicleType')}
-            </span>
-          </div>
-          <input
-            type="text" value={vehicleType}
-            onChange={e=>setVehicleType(e.target.value.toUpperCase())}
-            placeholder="SCOOTER / MOTORCYCLE"
-            style={{ width:'100%', background:'none', border:'none', outline:'none',
-                     padding:'6px 16px 14px', fontSize:'22px', fontWeight:800,
-                     fontFamily:"'Rajdhani', sans-serif", color:textClr,
-                     textTransform:'uppercase', boxSizing:'border-box' }}
-          />
-        </div>
-
-        {/* Fuel Price + Odo */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-          {/* Fuel Price */}
-          <div style={{ background:cardBg,
-                        border:`1.5px solid ${cardBdr}`,
-                        borderLeft:`3px solid ${brightLabel}`,
-                        borderRadius:'14px', padding:'12px 14px',
-                        boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
-                           color:brightLabel, textTransform:'uppercase', letterSpacing:'1.5px',
-                           marginBottom:'8px', fontFamily:"'Orbitron', sans-serif" }}>
-              {t('fuelPrice')}
-            </span>
-            <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="fusion-input-group">
+              <User size={23} strokeWidth={2.8} color="var(--accent-secondary)" style={{ opacity: 1 }} />
+              <input className="fusion-input" value={name} onChange={(e) => { const v=e.target.value; setName(v.charAt(0).toUpperCase()+v.slice(1)); }} placeholder="Ahmed…" required />
+            </div>
+            <div className="fusion-input-group">
+              <Smartphone size={23} strokeWidth={2.8} color="var(--accent-secondary)" style={{ opacity: 1 }} />
               <input
-                type="number" step="0.5" value={fuelPrice}
-                onChange={e=>setFuelPrice(e.target.value)}
-                style={{ flex:1, background:'none', border:'none', outline:'none',
-                         fontSize:'28px', fontWeight:900,
-                         fontFamily:"'Orbitron', sans-serif",
-                         color:brightLabel, width:'100%' }}
+                type="tel"
+                className="fusion-input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="01XXXXXXXXX"
               />
-              <span style={{ fontSize:'13px', fontWeight:800, color:labelClr }}>EGP</span>
+            </div>
+            <div className="fusion-input-group">
+              <div className="themed-icon" style={{
+                width: '23px',
+                height: '23px',
+                opacity: 1,
+                WebkitMaskImage: 'url(/icon-scooter.png)',
+                maskImage: 'url(/icon-scooter.png)'
+              }} />
+              <input className="fusion-input" value={vehicleType} onChange={(e) => setVehicleType(e.target.value.toUpperCase())} placeholder="SCOOTER / MOTORCYCLE" />
             </div>
           </div>
+        </div>
 
-          {/* Odometer */}
-          <div style={{ background:cardBg,
-                        border:`1.5px solid ${cardBdr}`,
-                        borderLeft:`3px solid ${brightLabel}`,
-                        borderRadius:'14px', padding:'12px 14px',
-                        boxShadow: isLightMode ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 10px rgba(0,0,0,0.2)' }}>
-            <span style={{ display:'block', fontSize:'10px', fontWeight:800,
-                           color:brightLabel, textTransform:'uppercase', letterSpacing:'1.5px',
-                           marginBottom:'8px', fontFamily:"'Orbitron', sans-serif" }}>
-              {t('odoReading')}
-            </span>
-            <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
+        {/* Section 2: SPECS */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <img src="/motorcycle.png" alt="vehicle" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+            <label className="fusion-label" style={{ margin: 0, color: 'var(--accent-secondary)', fontWeight: '700' }}>
+              {t('vehicleSpecs') || 'VEHICLE SPECS'}
+            </label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '16px' }}>
+            <div className="fusion-input-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('fuelPrice')}
+              </span>
               <input
-                type="number" step="0.1" value={odoReading}
-                onChange={e=>setOdoReading(e.target.value)}
-                placeholder="0"
-                style={{ flex:1, background:'none', border:'none', outline:'none',
-                         fontSize:'28px', fontWeight:900,
-                         fontFamily:"'Orbitron', sans-serif",
-                         color:textClr, width:'100%' }}
+                type="number" step="0.5"
+                className="fusion-input"
+                style={{ width: '100%', fontSize: '18px', fontWeight: '800', fontFamily: "'Orbitron', sans-serif" }}
+                value={fuelPrice}
+                onChange={(e) => setFuelPrice(e.target.value)}
               />
-              <span style={{ fontSize:'13px', fontWeight:800, color:labelClr }}>KM</span>
+            </div>
+            {/* Odometer */}
+            <div className="fusion-input-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('odoReading')}
+              </span>
+              <input
+                type="number"
+                className="fusion-input"
+                style={{ width: '100%', fontSize: '18px', fontWeight: '800', fontFamily: "'Orbitron', sans-serif" }}
+                value={odoReading}
+                onChange={(e) => setOdoReading(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: MAINTENANCE */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <img src="/mechanic.png" alt="mechanic" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+            <label className="fusion-label" style={{ margin: 0, color: 'var(--accent-secondary)', fontWeight: '700' }}>
+              {t('maintenance') || 'MAINTENANCE'}
+            </label>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="fusion-input-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('oilChangeInterval') || 'OIL CHANGE INTERVAL (KM)'}
+              </span>
+              <input
+                type="number"
+                className="fusion-input"
+                style={{ width: '100%', fontSize: '18px', fontWeight: '800', fontFamily: "'Orbitron', sans-serif" }}
+                value={oilChangeInterval}
+                onChange={(e) => setOilChangeInterval(e.target.value)}
+              />
+            </div>
+            <div className="fusion-input-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('lastOilChangeOdo') || 'LAST OIL CHANGE ODO'}
+              </span>
+              <input
+                type="number"
+                className="fusion-input"
+                style={{ width: '100%', fontSize: '18px', fontWeight: '800', fontFamily: "'Orbitron', sans-serif" }}
+                value={lastOilOdo}
+                onChange={(e) => setLastOilOdo(e.target.value.replace(/\D/g, ''))}
+                placeholder={odoReading || '0'}
+              />
             </div>
           </div>
         </div>
 
         {/* Dark / Light toggle */}
         <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
-                      borderRadius:'14px', padding:'12px 16px',
+                      borderRadius:'14px', padding:'12px 16px', marginBottom: '32px',
                       display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
             {isLightMode
@@ -1729,32 +1664,34 @@ function OnboardingModal({ tracker, onComplete, setTripBase }: { tracker: any, o
           </div>
         </div>
 
-        {/* Theme colours */}
-        <div style={{ background:cardBg, border:`1.5px solid ${cardBdr}`,
-                      borderRadius:'14px', padding:'12px 16px' }}>
-          <span style={{ display:'block', fontSize:'10px', fontWeight:800,
-                         color:labelClr, textTransform:'uppercase', letterSpacing:'1px',
-                         marginBottom:'12px' }}>
-            THEME COLOR
-          </span>
-          <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
-            {THEME_COLORS.map(theme=>(
-              <div
-                key={theme.hex}
-                onClick={()=>setAccentColor(theme.hex)}
-                style={{
-                  width:'34px', height:'34px', borderRadius:'50%',
-                  background:theme.hex,
-                  border: accentColor===theme.hex
-                    ? `3px solid ${textClr}`
-                    : '2px solid transparent',
-                  cursor:'pointer', transition:'all 0.2s',
-                  transform: accentColor===theme.hex ? 'scale(1.2)' : 'scale(1)',
-                }}
-              />
-            ))}
+        {/* Section 4: THEME */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <img src="/paint.png" alt="theme" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+            <label className="fusion-label" style={{ margin: 0, color: 'var(--accent-secondary)', fontWeight: '700' }}>
+              {t('appTheme') || 'APP THEME'}
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'nowrap', justifyContent: 'center', padding: '4px 0' }}>
+            {THEME_COLORS.map((tColors) => {
+              const isActive = accentColor === tColors.hex;
+              const isDarkDot = tColors.hex === '#ffcc00' || tColors.hex === '#5ac8fa';
+              return (
+                <div
+                  key={tColors.name}
+                  onClick={() => setAccentColor(tColors.hex)}
+                  className={`theme-dot-btn ${isActive ? 'active' : ''}`}
+                  style={{
+                    background: tColors.secondary === tColors.hex ? tColors.hex : `linear-gradient(135deg, ${tColors.hex}, ${tColors.secondary})`,
+                  }}
+                >
+                  {isActive && <div className={`theme-dot-indicator ${isDarkDot ? 'dark-dot' : ''}`} />}
+                </div>
+              );
+            })}
           </div>
         </div>
+
 
         {/* Submit */}
         <button

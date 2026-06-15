@@ -112,7 +112,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
         float radius = 180f;
         android.graphics.RectF rect = new android.graphics.RectF(cx - radius, cy - radius, cx + radius, cy + radius);
 
-        int activeColor = speed > 80 ? android.graphics.Color.parseColor("#ff3366") : themeColor;
+        int activeColor = themeColor;
 
         // 1. Background Arc (Dim)
         android.graphics.Paint arcPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);

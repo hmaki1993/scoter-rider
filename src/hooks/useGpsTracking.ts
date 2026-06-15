@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
-import { registerPlugin } from '@capacitor/core';
+import { AlarmPlugin } from '../AlarmPlugin';
 import { translations } from '../translations';
 import type { FuelSettings } from './useFuelTracker';
 
@@ -96,8 +96,10 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
   // Track consecutive still readings to avoid counting drift while stopped
   const stillCountRef = useRef(0);
   // ── Traffic Mode Logic State ──
-  const lastHighSpeedTimeRef = useRef(0);
-  const stopStartTimeRef = useRef(0);
+  const isScooterModeRef = useRef(true);
+  const scooterModeConfirmCountRef = useRef(0);
+  const walkingDurationStartRef = useRef(0);
+  const pendingDistanceKmRef = useRef(0.0);
 
   const onDistanceUpdateRef = useRef(onDistanceUpdate);
   const onTrackingErrorRef = useRef(onTrackingError);
@@ -108,6 +110,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
   useEffect(() => { onTrackingStartRef.current = onTrackingStart; }, [onTrackingStart]);
 
   useEffect(() => { settingsRef.current = settings; }, [settings]);
+
+
 
   useEffect(() => {
     let appStateListener: any = null;
@@ -137,8 +141,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
         // 1. Recover native distance
         if (stillTracking) {
           try {
-            const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-            const res = await alarmPlugin.getNativeDistance();
+
+            const res = await AlarmPlugin.getNativeDistance();
             if (res && res.distanceKm && res.distanceKm > 0) {
               onDistanceUpdateRef.current(res.distanceKm, 0);
             }
@@ -149,8 +153,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
         // 2. GPS status recovery check
         try {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-          const status = await alarmPlugin.checkGPS();
+
+          const status = await AlarmPlugin.checkGPS();
           if (status && status.enabled) {
             onTrackingErrorRef.current(null);
           } else {
@@ -199,8 +203,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
       // Recover accumulated distance if app was killed while tracking
       if (wasTracking) {
         try {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-          const res = await alarmPlugin.getNativeDistance();
+          // AlarmPlugin is already registered at module level
+          const res = await AlarmPlugin.getNativeDistance();
           if (res && res.distanceKm && res.distanceKm > 0) {
             onDistanceUpdateRef.current(res.distanceKm, 0);
           }
@@ -216,8 +220,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
       try {
         const isAndroid = (window as any).Capacitor?.getPlatform() === 'android';
         if (isAndroid) {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-          const status = await alarmPlugin.checkGPS();
+
+          const status = await AlarmPlugin.checkGPS();
           if (status && !status.enabled) {
             const currentLang = settingsRef.current.language as 'en' | 'ar';
             const msg = currentLang === 'ar' 
@@ -231,8 +235,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
       }
 
       try {
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-        gpsListener = await alarmPlugin.addListener('gpsStateChanged', (data: any) => {
+
+        gpsListener = await AlarmPlugin.addListener('gpsStateChanged', (data: any) => {
           if (!data.enabled) {
             console.warn('[GpsTracking] GPS disabled detected via broadcast!');
             const currentLang = settingsRef.current.language as 'en' | 'ar';
@@ -287,8 +291,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           // Reset native distance counter to 0: JS already counted foreground distance,
           // so native should only accumulate from NOW (background-only distance)
           try {
-            const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-            alarmPlugin.resetNativeDistance().catch(() => {});
+
+            AlarmPlugin.resetNativeDistance().catch(() => {});
           } catch (e) {}
           // Fix Double Tracking: Stop JS watcher so it doesn't run concurrently with Native Service
           if (watchId.current !== null) {
@@ -311,8 +315,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
         localStorage.removeItem('last_gps_position');
         // Reset native distance counter to 0: JS already counted foreground distance
         try {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-          alarmPlugin.resetNativeDistance().catch(() => {});
+
+          AlarmPlugin.resetNativeDistance().catch(() => {});
         } catch (e) {}
         // Fix Double Tracking: Stop JS watcher so it doesn't run concurrently with Native Service
         if (watchId.current !== null) {
@@ -364,7 +368,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
         // Permissions
         if (isAndroid) {
           try {
-            const AlarmPlugin = registerPlugin<any>('AlarmPlugin');
+
             const gpsStatus = await AlarmPlugin.checkGPS();
             if (!gpsStatus || !gpsStatus.enabled) {
               onTrackingError({ message: translations[lang].gpsDisabledErrorInner, action: 'openGPS' });
@@ -440,8 +444,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           setGpsUpdateCount(prev => prev + 1);
           setLastGpsTime(new Date().toLocaleTimeString());
 
-          // ── GUARD 1: Accuracy filter — reject readings worse than 50m ──
-          const MAX_GPS_ACCURACY = 50;
+          // ── GUARD 1: Accuracy filter — reject readings worse than 100m ──
+          const MAX_GPS_ACCURACY = 100;
           if (pos.coords.accuracy && pos.coords.accuracy > MAX_GPS_ACCURACY) {
             console.log('[GPS] Skipping low accuracy reading:', pos.coords.accuracy.toFixed(0) + 'm');
             return; // Don't even update lastPosition with bad data
@@ -479,29 +483,58 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             stillCountRef.current = 0;
           }
 
-          // ── Traffic Mode Logic ──
-          if (currentKmh >= 10.0) {
-            lastHighSpeedTimeRef.current = currTimestamp;
-            stopStartTimeRef.current = 0;
-          } else if (currentKmh < 1.0) {
-            if (stopStartTimeRef.current === 0) {
-              stopStartTimeRef.current = currTimestamp;
-            } else if (currTimestamp - stopStartTimeRef.current > 20000) {
-              lastHighSpeedTimeRef.current = 0; // Stopped for 20+ seconds, clear high speed memory
+          // ── Smart Activity Recognition (Scooter vs Walk) ──
+          // First, calculate distance and speed from last accepted point
+          let activeSpeed = currentKmh;
+          const refPoint = lastAcceptedRef.current;
+          let distFromRef = 0;
+          
+          if (refPoint) {
+            const prevTimestamp = refPoint.timestamp;
+            const isValidTimestamp = prevTimestamp > 0 && currTimestamp > prevTimestamp;
+            distFromRef = calculateDistance(refPoint.latitude, refPoint.longitude, useLat, useLon);
+            if (isValidTimestamp) {
+              // const timeDiffMs = Math.max(1, currTimestamp - prevTimestamp);
+              // calculatedKmhFromRef = distFromRef / (timeDiffMs / (1000 * 60 * 60));
+            }
+          }
+          
+          activeSpeed = currentKmh;
+
+          if (activeSpeed >= 8.0) {
+            scooterModeConfirmCountRef.current += 1;
+            if (scooterModeConfirmCountRef.current >= 4) {
+              isScooterModeRef.current = true;
+              walkingDurationStartRef.current = 0;
+              if (pendingDistanceKmRef.current > 0.0) {
+                onDistanceUpdateRef.current(pendingDistanceKmRef.current, currentKmh);
+                pendingDistanceKmRef.current = 0.0;
+              }
             }
           } else {
-            stopStartTimeRef.current = 0;
+            scooterModeConfirmCountRef.current = 0;
+            isScooterModeRef.current = false;
+            
+            if (activeSpeed >= 1.0) {
+              if (walkingDurationStartRef.current === 0) {
+                walkingDurationStartRef.current = currTimestamp;
+              } else if (currTimestamp - walkingDurationStartRef.current >= 45000) {
+                pendingDistanceKmRef.current = 0.0;
+              }
+            } else {
+              // Pause timer when stopped
+              if (walkingDurationStartRef.current !== 0 && currTimestamp > 0) {
+                // Just use the time since last location update (roughly 1000ms if watchPosition is 1hz)
+                // We don't have prevTimestamp here, but we know location updates are ~1s apart
+                walkingDurationStartRef.current += 1000;
+              }
+            }
           }
-
-          const isTrafficMode = (lastHighSpeedTimeRef.current > 0 && (currTimestamp - lastHighSpeedTimeRef.current) < 180000); // 3 minutes
-          const requiredSpeed = isTrafficMode ? 2.0 : 10.0;
 
           const finalDisplaySpeed = Math.round(currentKmh);
           setCurrentSpeed(finalDisplaySpeed > 0 ? finalDisplaySpeed : 0);
 
           // ── Distance calculation using ACCEPTED reference point ──
-          const refPoint = lastAcceptedRef.current;
-
           if (refPoint) {
             const prevTimestamp = refPoint.timestamp;
             const isValidTimestamp = prevTimestamp > 0 && currTimestamp > prevTimestamp;
@@ -528,7 +561,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
             // ── GUARD 2: Time-based max distance (120 km/h max) ──
             if (timeDiffMs > 0) {
-              const maxAllowedDist = (timeDiffMs / 1000) * (120 / 3600);
+              const maxAllowedDist = Math.max(0.150, (timeDiffMs / 1000) * (120 / 3600));
 
               if (dist > maxAllowedDist) {
                 console.warn('[GPS] Jump detected (dist=' + (dist*1000).toFixed(0) + 'm, max=' + (maxAllowedDist*1000).toFixed(0) + 'm), resetting.');
@@ -561,11 +594,15 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 }
 
                 if (bearingOk) {
-                  // ✅ Accept this segment
-                  if (currentKmh >= requiredSpeed) {
-                    onDistanceUpdate(dist, currentKmh);
+                  if (activeSpeed >= 1.0) {
+                    if (isScooterModeRef.current) {
+                      onDistanceUpdateRef.current(dist, currentKmh);
+                    } else {
+                      pendingDistanceKmRef.current += dist;
+                      if (pendingDistanceKmRef.current > 0.5) pendingDistanceKmRef.current = 0.5;
+                    }
                   } else {
-                    console.log(`[GPS] Ignoring distance. Speed: ${currentKmh.toFixed(1)} km/h (req: ${requiredSpeed})`);
+                    console.log(`[GPS] Ignoring distance. Speed: ${currentKmh.toFixed(1)} km/h, Calc: ${calculatedKmh.toFixed(1)} km/h`);
                   }
                   lastBearingRef.current = bearing;
 
@@ -604,8 +641,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
       await requestWakeLock();
 
       try {
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-        await alarmPlugin.startBackgroundTracking();
+
+        await AlarmPlugin.startBackgroundTracking();
       } catch {}
 
     } catch (e) {
@@ -630,8 +667,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
     }
 
     try {
-      const alarmPlugin = registerPlugin<any>('AlarmPlugin');
-      await alarmPlugin.stopBackgroundTracking();
+
+      await AlarmPlugin.stopBackgroundTracking();
     } catch {}
 
     setCurrentSpeed(0);
@@ -640,8 +677,6 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
     lastPositionRef.current = null;
     lastAcceptedRef.current = null;
     kalmanLat.current = null;
-    lastHighSpeedTimeRef.current = 0;
-    stopStartTimeRef.current = 0;
   };
 
   return { isTracking, isStarting, currentSpeed, gpsUpdateCount, lastGpsTime, startTracking, stopTracking };

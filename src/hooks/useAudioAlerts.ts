@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { registerPlugin } from '@capacitor/core';
+
+import { AlarmPlugin } from '../AlarmPlugin';
 
 // ── Global Audio Singleton ───────────────────────────────────────────
 let globalAudioCtx: AudioContext | null = null;
@@ -155,7 +156,7 @@ export const stopTone = () => {
   }
   
   try {
-    registerPlugin<any>('AlarmPlugin').stopAlarm().catch(() => {});
+    AlarmPlugin.stopAlarm().catch(() => {});
   } catch (e) { /* ignore */ }
 };
 
@@ -169,7 +170,7 @@ export function useAudioAlerts() {
 
     playTone(tone || 'Digital', customTones, audioCtxRef, activeAudioRef, true);
 
-    registerPlugin<any>('AlarmPlugin').startVibration().catch(() => {
+    AlarmPlugin.startVibration().catch(() => {
       if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800, 500, 400, 200, 400, 200, 800]);
     });
 

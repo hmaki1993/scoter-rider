@@ -636,6 +636,8 @@ public class MainActivity extends BridgeActivity {
             call.resolve(ret);
         }
 
+    
+
         @PluginMethod
         public void requestOverlayPermission(PluginCall call) {
             try {

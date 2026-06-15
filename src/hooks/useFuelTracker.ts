@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { translations } from '../translations';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Geolocation } from '@capacitor/geolocation';
-import { registerPlugin } from '@capacitor/core';
+
+import { AlarmPlugin } from '../AlarmPlugin';
 import { useAudioAlerts, playTone, stopTone } from './useAudioAlerts';
 import { useGpsTracking } from './useGpsTracking';
 
@@ -123,13 +124,17 @@ export const useFuelTracker = () => {
     settings,
     initialOdo: fuelState.lastOdo,
     onDistanceUpdate: (dist, _speedKmh) => {
-      const consumed = dist / (settingsRef.current.avgConsumption || 21.4);
-      setFuelState(prev => ({
-        ...prev,
-        estimatedFuelLiters: Math.max(0, prev.estimatedFuelLiters - consumed),
-        lastOdo: prev.lastOdo + dist,
-        totalGpsDistance: prev.totalGpsDistance + dist,
-      }));
+      const consumed = (Number(dist) || 0) / (Number(settingsRef.current.avgConsumption) || 21.4);
+      setFuelState(prev => {
+        const currentFuel = Number(prev.estimatedFuelLiters) || 0;
+        const newFuel = Math.max(0, currentFuel - consumed);
+        return {
+          ...prev,
+          estimatedFuelLiters: Number.isNaN(newFuel) ? 0 : newFuel,
+          lastOdo: (Number(prev.lastOdo) || 0) + (Number(dist) || 0),
+          totalGpsDistance: (Number(prev.totalGpsDistance) || 0) + (Number(dist) || 0),
+        };
+      });
     },
     onTrackingError: (err) => {
       setTrackingError(err);
@@ -199,7 +204,7 @@ export const useFuelTracker = () => {
         const listener = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
           if (action.actionId === 'silence') {
             setIsMuted(true);
-            registerPlugin<any>('AlarmPlugin').stopAlarm().catch(() => {});
+            AlarmPlugin.stopAlarm().catch(() => {});
             LocalNotifications.removeAllDeliveredNotifications();
           }
         });
@@ -246,7 +251,7 @@ export const useFuelTracker = () => {
         
         // --- Fetch TRUE native widget design state ---
         if (isAndroidPlatform()) {
-          const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+          const alarmPlugin = AlarmPlugin;
           const widgetStats = await alarmPlugin.getWidgetSettings();
           if (widgetStats && widgetStats.accentColor) {
             setSettings(prev => {
@@ -290,7 +295,7 @@ export const useFuelTracker = () => {
             // App came back to foreground — check if overlay synced ODO
             if (isAndroidPlatform()) {
               try {
-                const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+                const alarmPlugin = AlarmPlugin;
                 const res = await alarmPlugin.checkOverlaySync();
                 if (res && res.pending && res.odo > 0) {
                   const newOdo = res.odo;
@@ -351,7 +356,7 @@ export const useFuelTracker = () => {
     // --- LIVE SYNC TO NATIVE SHRED PREFS (For Widget & BG Service) ---
     if (isAndroidPlatform()) {
       try {
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        const alarmPlugin = AlarmPlugin;
         alarmPlugin.syncStateToNative({
           trip: fuelState.totalGpsDistance,
           fuelLiters: fuelState.estimatedFuelLiters,
@@ -506,14 +511,18 @@ export const useFuelTracker = () => {
 
       // ── Step 3: Overlay Permission ────────────────────────────────────────
       try {
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        const alarmPlugin = AlarmPlugin;
         const overlayCheck = await alarmPlugin.checkOverlayPermission();
         if (!overlayCheck?.granted) {
           await alarmPlugin.requestOverlayPermission();
           return false;
         }
+
+        // ── Step 4: Physical Activity Permission (for Pedometer) ─────────────
+
+
       } catch (e) {
-        console.warn('[FuelTracker] Overlay permission request failed:', e);
+        console.warn('[FuelTracker] Plugin permission request failed:', e);
       }
       return true;
     } catch (e) {
@@ -540,7 +549,7 @@ export const useFuelTracker = () => {
     // Clear Native Background Service / Widget Data
     if (isAndroidPlatform()) {
       try {
-        const alarmPlugin = registerPlugin<any>('AlarmPlugin');
+        const alarmPlugin = AlarmPlugin;
         await alarmPlugin.syncStateToNative({
           trip: 0, fuelLiters: 0, odo: 0, range: "0 KM", fuelPercent: 0
         });
@@ -590,7 +599,7 @@ export const useFuelTracker = () => {
       // Immediately push to native widget
       if (isAndroidPlatform()) {
         try {
-          registerPlugin<any>('AlarmPlugin').updateWidgetDesign({
+          AlarmPlugin.updateWidgetDesign({
             accentColor: updated.widgetAccentColor,
             opacity: updated.widgetOpacity
           }).catch(() => {});
@@ -608,7 +617,7 @@ export const useFuelTracker = () => {
       const pricePerLiter = settings.fuelPricePerLiter || 14.5;
       const budgetRemaining = Math.max(0, fuelState.estimatedFuelLiters * pricePerLiter);
 
-      registerPlugin<any>('AlarmPlugin').updateWidgetStats({
+      AlarmPlugin.updateWidgetStats({
         speed: Math.round(currentSpeed || 0),
         range: `${rangeRemainingKm.toFixed(1)} KM`,
         fuelPercent: Math.round(fuelPercentage),

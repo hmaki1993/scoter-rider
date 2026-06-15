@@ -41,6 +41,10 @@ public class BackgroundTrackingService extends Service {
     private float accumulatedDistanceKm = 0.0f;
     private int lastBroadcastedSpeed = -1;
     private long lastBroadcastTime = 0;
+    private boolean isScooterMode = true;
+    private int scooterModeConfirmCount = 0;
+    private long walkingDurationStart = 0;
+    private float pendingDistanceKm = 0.0f;
     private long lastHighSpeedTime = 0;
     private long stopStartTime = 0;
     
@@ -66,6 +70,7 @@ public class BackgroundTrackingService extends Service {
         // Initialize floating overlay
         floatingOverlay = new FloatingOdoOverlay(this);
         floatingAddFuelOverlay = new FloatingAddFuelOverlay(this);
+
     }
 
     @SuppressLint("MissingPermission")
@@ -151,7 +156,7 @@ public class BackgroundTrackingService extends Service {
         }
     }
 
-    private static final float MAX_ACCURACY_METERS = 50.0f; // Relaxed filter to avoid losing distance when phone is in pocket
+    private static final float MAX_ACCURACY_METERS = 100.0f; // Relaxed filter to avoid losing distance when phone is in pocket
 
     private final LocationListener locationListener = new LocationListener() {
         @Override
@@ -185,45 +190,55 @@ public class BackgroundTrackingService extends Service {
                         lastBroadcastTime = now;
                     }
 
-                    // --- Traffic Mode Logic ---
-                    if (currentSpeedKmh >= 10.0f) {
-                        lastHighSpeedTime = now;
-                        stopStartTime = 0;
-                    } else if (currentSpeedKmh < 1.0f) {
-                        if (stopStartTime == 0) {
-                            stopStartTime = now;
-                        } else if (now - stopStartTime > 20000) {
-                            // Stopped for 20+ seconds, clear high speed memory
-                            lastHighSpeedTime = 0;
+                    // Use currentSpeedKmh for activity recognition because calculatedSpeedKmh can spike
+                    float activeSpeed = currentSpeedKmh;
+
+                    // --- Smart Activity Recognition (Scooter vs Walk) ---
+                    if (activeSpeed >= 8.0f) {
+                        scooterModeConfirmCount++;
+                        if (scooterModeConfirmCount >= 4) {
+                            isScooterMode = true;
+                            walkingDurationStart = 0;
+                            if (pendingDistanceKm > 0.0f) {
+                                accumulatedDistanceKm += pendingDistanceKm;
+                                updateNativeStats(pendingDistanceKm);
+                                pendingDistanceKm = 0.0f;
+                            }
                         }
                     } else {
-                        stopStartTime = 0;
+                        scooterModeConfirmCount = 0;
+                        isScooterMode = false;
+                        
+                        if (activeSpeed >= 1.0f) {
+                            if (walkingDurationStart == 0) {
+                                walkingDurationStart = now;
+                            } else if (now - walkingDurationStart >= 45000) {
+                                pendingDistanceKm = 0.0f;
+                            }
+                        } else {
+                            // Pause timer when stopped
+                            if (walkingDurationStart != 0) {
+                                walkingDurationStart += timeDeltaMs;
+                            }
+                        }
                     }
-                    
-                    boolean isTrafficMode = (lastHighSpeedTime > 0 && (now - lastHighSpeedTime) < 180000); // 3 minutes
-                    float requiredSpeed = isTrafficMode ? 2.0f : 10.0f;
 
                     // --- 2. Distance Accumulation (Smoothed) ---
-                    // Accumulate if moved at least 10 meters (reduced from 15m to catch slow traffic)
-                    if (distanceMeters >= 10.0f) {
-                        // Dynamic threshold: Allow ~150km/h max travel during gaps (41.6m/s)
+                    if (distanceMeters >= 5.0f) {
                         float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 41.6f);
-                        
                         if (distanceMeters < maxAllowedDistance) {
-                            if (currentSpeedKmh >= requiredSpeed) {
+                            if (activeSpeed >= 1.0f) {
                                 float distKm = (distanceMeters / 1000.0f);
-                                accumulatedDistanceKm += distKm;
-                                
-                                // --- LIVE BACKGROUND NATIVE UPDATES ---
-                                updateNativeStats(distKm);
-                            } else {
-                                android.util.Log.d("FuelTracker", "Walking/Slow speed detected natively: " + currentSpeedKmh + " km/h (req: " + requiredSpeed + "). Ignoring distance.");
+                                if (isScooterMode) {
+                                    accumulatedDistanceKm += distKm;
+                                    updateNativeStats(distKm);
+                                } else {
+                                    pendingDistanceKm += distKm;
+                                    if (pendingDistanceKm > 0.5f) pendingDistanceKm = 0.5f;
+                                }
                             }
-                            
-                            // Anchor point is only updated when we register valid movement (or ignored movement due to low speed)
                             lastLocation = location;
                         } else {
-                            // If it's an impossible teleport jump, just reset anchor
                             lastLocation = location;
                         }
                     }
@@ -322,7 +337,7 @@ public class BackgroundTrackingService extends Service {
         float newLiters = Math.max(0, currentLiters - consumedLiters);
         float newOil = Math.max(0, nextOilKm - distKm);
         float newTrip = currentTrip + distKm;
-        float newOdo = currentOdo > 0 ? (currentOdo + distKm) : 0;
+        float newOdo = currentOdo >= 0 ? (currentOdo + distKm) : 0;
 
         // Recalculate Range & Budget
         float newRange = newLiters * kmPerLiter;
@@ -331,7 +346,7 @@ public class BackgroundTrackingService extends Service {
         
         // Budget logic matching React: Remaining = (Current L / Tank L) * Total Paid (approx)
         // For background simplicity, we'll use: Remaining L * Price (Better for live updates)
-        float newBudget = newLiters * 14.5f; // Using default price fallback
+        float newBudget = newLiters * fuelPrice; // Use dynamic fuel price instead of hardcoded 14.5f
 
         // 3. Save for Widget & JS
         editor.putFloat("latest_fuelLiters_raw", newLiters);
