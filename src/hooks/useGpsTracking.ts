@@ -97,7 +97,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
   const stillCountRef = useRef(0);
   // ── Traffic Mode Logic State ──
   const isScooterModeRef = useRef(true);
-  const scooterModeConfirmCountRef = useRef(0);
+  const scooterModeStartTimeRef = useRef(0);
   const walkingDurationStartRef = useRef(0);
   const pendingDistanceKmRef = useRef(0.0);
 
@@ -502,8 +502,9 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           activeSpeed = currentKmh;
 
           if (activeSpeed >= 8.0) {
-            scooterModeConfirmCountRef.current += 1;
-            if (scooterModeConfirmCountRef.current >= 4) {
+            if (scooterModeStartTimeRef.current === 0) {
+              scooterModeStartTimeRef.current = currTimestamp;
+            } else if (currTimestamp - scooterModeStartTimeRef.current >= 4000) {
               isScooterModeRef.current = true;
               walkingDurationStartRef.current = 0;
               if (pendingDistanceKmRef.current > 0.0) {
@@ -512,7 +513,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
               }
             }
           } else {
-            scooterModeConfirmCountRef.current = 0;
+            scooterModeStartTimeRef.current = 0;
             isScooterModeRef.current = false;
             
             if (activeSpeed >= 1.0) {

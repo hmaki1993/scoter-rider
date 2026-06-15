@@ -42,7 +42,7 @@ public class BackgroundTrackingService extends Service {
     private int lastBroadcastedSpeed = -1;
     private long lastBroadcastTime = 0;
     private boolean isScooterMode = true;
-    private int scooterModeConfirmCount = 0;
+    private long scooterModeStartTime = 0;
     private long walkingDurationStart = 0;
     private float pendingDistanceKm = 0.0f;
     private long lastHighSpeedTime = 0;
@@ -195,8 +195,9 @@ public class BackgroundTrackingService extends Service {
 
                     // --- Smart Activity Recognition (Scooter vs Walk) ---
                     if (activeSpeed >= 8.0f) {
-                        scooterModeConfirmCount++;
-                        if (scooterModeConfirmCount >= 4) {
+                        if (scooterModeStartTime == 0) {
+                            scooterModeStartTime = now;
+                        } else if (now - scooterModeStartTime >= 4000) {
                             isScooterMode = true;
                             walkingDurationStart = 0;
                             if (pendingDistanceKm > 0.0f) {
@@ -206,7 +207,7 @@ public class BackgroundTrackingService extends Service {
                             }
                         }
                     } else {
-                        scooterModeConfirmCount = 0;
+                        scooterModeStartTime = 0;
                         isScooterMode = false;
                         
                         if (activeSpeed >= 1.0f) {

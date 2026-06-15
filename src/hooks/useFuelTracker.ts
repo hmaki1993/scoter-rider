@@ -623,7 +623,7 @@ export const useFuelTracker = () => {
         fuelPercent: Math.round(fuelPercentage),
         litersLeft: `${fuelState.estimatedFuelLiters.toFixed(1)} L`,
         emptyAt: `EMPTY: ${runOutOdo.toFixed(1)} KM`,
-        oilLeft: `OIL: ${Math.max(0, kmUntilNextOilChange).toFixed(0)}`,
+        oilLeft: `OIL: ${Math.ceil(Math.max(0, kmUntilNextOilChange)).toFixed(0)}`,
         trip: `TRIP: ${tripValue.toFixed(1)}`,
         budget: `${budgetRemaining.toFixed(0)} EGP`,
         fuelLitersRaw: fuelState.estimatedFuelLiters,

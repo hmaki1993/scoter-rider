@@ -464,8 +464,8 @@ function App() {
             {/* Scooter Frame - Matching Control Button Style */}
             <div
               style={{
-                width: '64px',
-                height: '64px',
+                width: '76px',
+                height: '76px',
                 borderRadius: '16px',
                 background: tracker.settings.isLightMode 
                   ? 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,240,245,0.95))'
@@ -658,7 +658,7 @@ function App() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: '1.2' }}>
                 <span style={{ fontSize: '7px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.8px', textTransform: 'uppercase', fontFamily: "'Orbitron', sans-serif" }}>OIL</span>
                 <span style={{ fontSize: '12px', fontWeight: 900, color: tracker.kmUntilNextOilChange <= 100 ? 'var(--danger-color)' : 'var(--text-primary)', fontFamily: "'Orbitron', sans-serif" }}>
-                  {Math.max(0, tracker.kmUntilNextOilChange).toFixed(0)}
+                  {tracker.kmUntilNextOilChange > 0 ? Math.ceil(tracker.kmUntilNextOilChange).toFixed(0) : 0} <span style={{ fontSize: '11px' }}>KM</span>
                 </span>
               </div>
             </div>
