@@ -25,6 +25,14 @@
             android:layout_height="match_parent"
             android:padding="6dp">
 
+            <!-- CENTER ROW (SPEED GAUGE) - Placed first to act as background for text if needed -->
+            <ImageView
+                android:id="@+id/widget_gauge_img"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_centerInParent="true"
+                android:scaleType="fitCenter" />
+
         <!-- TOP ROW - THREE PILLS - No background, floating labels -->
         <LinearLayout
             android:id="@+id/top_row"
@@ -131,18 +139,6 @@
             android:layout_marginTop="-4dp"
             android:layout_marginEnd="-4dp"
             android:src="@drawable/ic_more_vert" />
-
-        <!-- CENTER ROW (SPEED GAUGE) -->
-
-        <ImageView
-            android:id="@+id/widget_gauge_img"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_below="@+id/top_row"
-            android:layout_above="@+id/bottom_row"
-            android:layout_marginTop="2dp"
-            android:layout_marginBottom="-16dp"
-            android:scaleType="fitCenter" />
 
         <!-- BOTTOM ROW -->
         <LinearLayout
