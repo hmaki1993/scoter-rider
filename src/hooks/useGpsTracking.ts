@@ -487,12 +487,12 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
           // First, calculate distance and speed from last accepted point
           let activeSpeed = currentKmh;
           const refPoint = lastAcceptedRef.current;
-          let distFromRef = 0;
+          
           
           if (refPoint) {
             const prevTimestamp = refPoint.timestamp;
             const isValidTimestamp = prevTimestamp > 0 && currTimestamp > prevTimestamp;
-            distFromRef = calculateDistance(refPoint.latitude, refPoint.longitude, useLat, useLon);
+            
             if (isValidTimestamp) {
               // const timeDiffMs = Math.max(1, currTimestamp - prevTimestamp);
               // calculatedKmhFromRef = distFromRef / (timeDiffMs / (1000 * 60 * 60));
