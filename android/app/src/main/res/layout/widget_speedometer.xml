@@ -2,21 +2,28 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="6dp">
 
-    <!-- DYNAMIC BACKGROUND (Preserves rounded corners + allows Opacity) -->
-    <ImageView
-        android:id="@+id/widget_bg_image"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/widget_background"
-        android:scaleType="fitXY" />
-
-    <!-- CONTENT CONTAINER WITH PADDING -->
+    <!-- CLICKABLE INNER AREA -->
     <RelativeLayout
+        android:id="@+id/widget_click_area"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="16dp">
+        android:layout_height="match_parent">
+
+        <!-- DYNAMIC BACKGROUND -->
+        <ImageView
+            android:id="@+id/widget_bg_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/widget_background"
+            android:scaleType="fitXY" />
+
+        <!-- CONTENT CONTAINER -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="6dp">
 
         <!-- TOP ROW - THREE PILLS - No background, floating labels -->
         <LinearLayout
@@ -133,7 +140,7 @@
             android:layout_height="match_parent"
             android:layout_below="@+id/top_row"
             android:layout_above="@+id/bottom_row"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="2dp"
             android:layout_marginBottom="-16dp"
             android:scaleType="fitCenter" />
 
@@ -253,5 +260,4 @@
                 android:gravity="center" />
         </FrameLayout>
     </RelativeLayout>
-
 </RelativeLayout>

@@ -26,7 +26,7 @@ public class SpeedometerWidget extends AppWidgetProvider {
         android.content.Intent mainIntent = new android.content.Intent(context, MainActivity.class);
         android.app.PendingIntent pendingIntent = android.app.PendingIntent.getActivity(context, 0, mainIntent,
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.widget_root, pendingIntent);
+        views.setOnClickPendingIntent(com.scooterfuel.tracker.R.id.widget_click_area, pendingIntent);
 
         // Settings Button -> Open Native Widget Settings Dialog
         android.content.Intent configIntent = new android.content.Intent(context, WidgetSettingsActivity.class);
@@ -108,8 +108,8 @@ public class SpeedometerWidget extends AppWidgetProvider {
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
 
         float cx = 270f;
-        float cy = 220f; // Shifted UP to prevent overlap with bottom text data
-        float radius = 180f;
+        float cy = 230f; // Shifted UP to prevent overlap with bottom text data
+        float radius = 215f;
         android.graphics.RectF rect = new android.graphics.RectF(cx - radius, cy - radius, cx + radius, cy + radius);
 
         int activeColor = themeColor;
