@@ -194,34 +194,27 @@ public class BackgroundTrackingService extends Service {
                     float activeSpeed = currentSpeedKmh;
 
                     // --- Smart Activity Recognition (Scooter vs Walk) ---
-                    if (activeSpeed >= 8.0f) {
-                        if (scooterModeStartTime == 0) {
-                            scooterModeStartTime = now;
-                        } else if (now - scooterModeStartTime >= 4000) {
-                            isScooterMode = true;
-                            walkingDurationStart = 0;
-                            if (pendingDistanceKm > 0.0f) {
-                                accumulatedDistanceKm += pendingDistanceKm;
-                                updateNativeStats(pendingDistanceKm);
-                                pendingDistanceKm = 0.0f;
-                            }
+                    if (activeSpeed >= 6.0f) {
+                        isScooterMode = true;
+                        walkingDurationStart = 0;
+                        if (pendingDistanceKm > 0.0f) {
+                            accumulatedDistanceKm += pendingDistanceKm;
+                            updateNativeStats(pendingDistanceKm);
+                            pendingDistanceKm = 0.0f;
+                        }
+                    } else if (activeSpeed >= 1.0f) {
+                        // Moving slowly (could be walking or heavy traffic)
+                        if (walkingDurationStart == 0) {
+                            walkingDurationStart = now;
+                        } else if (now - walkingDurationStart >= 90000) {
+                            // 90 seconds of CONTINUOUS slow movement without stopping
+                            isScooterMode = false;
+                            pendingDistanceKm = 0.0f;
                         }
                     } else {
-                        scooterModeStartTime = 0;
-                        isScooterMode = false;
-                        
-                        if (activeSpeed >= 1.0f) {
-                            if (walkingDurationStart == 0) {
-                                walkingDurationStart = now;
-                            } else if (now - walkingDurationStart >= 45000) {
-                                pendingDistanceKm = 0.0f;
-                            }
-                        } else {
-                            // Pause timer when stopped
-                            if (walkingDurationStart != 0) {
-                                walkingDurationStart += timeDeltaMs;
-                            }
-                        }
+                        // Stopped. In traffic we stop often, while walking is usually continuous.
+                        // Reset the walking timer so we stay in scooter mode in stop-and-go traffic.
+                        walkingDurationStart = 0;
                     }
 
                     // --- 2. Distance Accumulation (Smoothed) ---
