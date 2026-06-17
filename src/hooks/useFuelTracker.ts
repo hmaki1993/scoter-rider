@@ -356,7 +356,13 @@ export const useFuelTracker = () => {
 
   // ── Persist state & Sync to Native Widget ────────────────────────────────
   useEffect(() => { localStorage.setItem('scooter_user_profile', JSON.stringify(userProfile)); }, [userProfile]);
-  useEffect(() => { localStorage.setItem('fuel_settings', JSON.stringify(settings)); }, [settings]);
+  useEffect(() => { 
+    localStorage.setItem('fuel_settings', JSON.stringify(settings)); 
+    // Sync to Capacitor Preferences so that they survive app close and are in sync with native
+    import('@capacitor/preferences').then(({ Preferences }) => {
+      Preferences.set({ key: 'fuel_settings', value: JSON.stringify(settings) }).catch(() => {});
+    }).catch(() => {});
+  }, [settings]);
   useEffect(() => { 
     localStorage.setItem('fuel_state', JSON.stringify(fuelState)); 
     // --- LIVE SYNC TO NATIVE SHRED PREFS (For Widget & BG Service) ---
@@ -370,11 +376,16 @@ export const useFuelTracker = () => {
           odo: fuelState.lastOdo,
           range: (isFinite(rawRange) ? rawRange.toFixed(1) : "0.0") + " KM",
           fuelPercent: settings.tankCapacity > 0 ? Math.round((fuelState.estimatedFuelLiters / settings.tankCapacity) * 100) : 0,
-          distanceMultiplier: settings.distanceMultiplier ?? 1.0
+          distanceMultiplier: settings.distanceMultiplier ?? 1.0,
+          consumptionRate: settings.avgConsumption,
+          tankCapacity: settings.tankCapacity,
+          warningThreshold: settings.warningThreshold,
+          language: settings.language,
+          fuelPrice: settings.fuelPricePerLiter
         }).catch(() => {});
       } catch (e) { /* ignore */ }
     }
-  }, [fuelState, settings.avgConsumption, settings.tankCapacity, settings.distanceMultiplier]);
+  }, [fuelState, settings.avgConsumption, settings.tankCapacity, settings.distanceMultiplier, settings.fuelPricePerLiter, settings.warningThreshold, settings.language]);
   useEffect(() => { localStorage.setItem('fuel_logs', JSON.stringify(logs)); }, [logs]);
 
   // ── Low-Fuel Alerts ───────────────────────────────────────────────────────
