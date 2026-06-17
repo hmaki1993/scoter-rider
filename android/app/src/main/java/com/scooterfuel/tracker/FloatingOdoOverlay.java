@@ -43,7 +43,7 @@ public class FloatingOdoOverlay {
     private final Context context;
     private WindowManager windowManager;
     private View overlayView;
-    private boolean isShowing = false;
+    private volatile boolean isShowing = false;
     private EditText odoInput;
 
     public FloatingOdoOverlay(Context context) {
@@ -134,7 +134,7 @@ public class FloatingOdoOverlay {
 
         SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
         float currentOdo = prefs.getFloat("latest_odo_raw", 0.0f);
-        String lang = prefs.getString("fuel_settings_language", "ar");
+        String lang = prefs.getString("setting_language", "en");
 
         // ── Root container (full screen dimmed background) ──
         FrameLayout root = new FrameLayout(context);
@@ -457,9 +457,11 @@ public class FloatingOdoOverlay {
         }
 
         // Also store a flag so the JS side picks up the new ODO on next resume
-        editor.putFloat("overlay_sync_odo", newOdo);
-        editor.putBoolean("overlay_sync_pending", true);
-        editor.apply();
+        // Use a fresh editor since the previous one was already committed
+        SharedPreferences.Editor syncEditor = prefs.edit();
+        syncEditor.putFloat("overlay_sync_odo", newOdo);
+        syncEditor.putBoolean("overlay_sync_pending", true);
+        syncEditor.apply();
     }
 
     private void addSpacer(LinearLayout parent, int heightPx) {

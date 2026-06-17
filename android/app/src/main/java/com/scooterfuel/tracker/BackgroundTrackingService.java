@@ -31,6 +31,7 @@ import androidx.annotation.Nullable;
 
 public class BackgroundTrackingService extends Service {
 
+    private static final Object lock = new Object();
     private static final String CHANNEL_ID = "FuelTrackerChannel";
     private static final String ALERT_CHANNEL_ID = "FuelTrackerAlerts";
     private static final int NOTIFICATION_ID = 8888;
@@ -65,7 +66,11 @@ public class BackgroundTrackingService extends Service {
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         
         IntentFilter filter = new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION);
-        registerReceiver(gpsReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            registerReceiver(gpsReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(gpsReceiver, filter);
+        }
 
         // Initialize floating overlay
         floatingOverlay = new FloatingOdoOverlay(this);
@@ -76,15 +81,8 @@ public class BackgroundTrackingService extends Service {
     @SuppressLint("MissingPermission")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && "ACTION_SHOW_SYNC_CARD".equals(intent.getAction())) {
-            triggerQuickSyncAction();
-            return START_STICKY; // Don't re-setup notifications
-        }
-        
-        if (intent != null && "ACTION_SHOW_ADD_FUEL_CARD".equals(intent.getAction())) {
-            triggerQuickAddFuelAction();
-            return START_STICKY;
-        }
+        // Always call startForeground() first to prevent ForegroundServiceDidNotStartInTimeException
+        createNotificationChannel();
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -113,7 +111,7 @@ public class BackgroundTrackingService extends Service {
                 .build();
 
         SharedPreferences prefsFg = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
-        String langFg = prefsFg.getString("fuel_settings_language", "ar");
+        String langFg = prefsFg.getString("setting_language", "ar");
         String fgTitle = langFg.equals("ar") ? "🛵 متتبع الوقود — نشط" : "🛵 Fuel Tracker — Active";
         String fgBody  = langFg.equals("ar") ? "جارٍ رصد المشوار وحساب الوقود بدقة عالية." : "Monitoring your ride & calculating fuel consumption in real time.";
 
@@ -131,6 +129,17 @@ public class BackgroundTrackingService extends Service {
             startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
         } else {
             startForeground(NOTIFICATION_ID, notification);
+        }
+
+        // Handle overlay actions AFTER startForeground
+        if (intent != null && "ACTION_SHOW_SYNC_CARD".equals(intent.getAction())) {
+            triggerQuickSyncAction();
+            return START_STICKY;
+        }
+        
+        if (intent != null && "ACTION_SHOW_ADD_FUEL_CARD".equals(intent.getAction())) {
+            triggerQuickAddFuelAction();
+            return START_STICKY;
         }
 
         startLocationTracking();
@@ -180,6 +189,17 @@ public class BackgroundTrackingService extends Service {
                         currentSpeedKmh = (distanceMeters / 1000.0f) / hours;
                     }
 
+                    // Calculate speed from distance as well, for more reliable activity recognition.
+                    // GPS speed sensor often reports 0 at low speeds (< 5 km/h), causing
+                    // the app to ignore real movement in heavy traffic.
+                    float calculatedSpeedKmh = 0.0f;
+                    {
+                        float calcHours = timeDeltaMs / (1000.0f * 60.0f * 60.0f);
+                        if (calcHours > 0) {
+                            calculatedSpeedKmh = (distanceMeters / 1000.0f) / calcHours;
+                        }
+                    }
+
                     int currentSpeedInt = Math.round(currentSpeedKmh >= 3.0f ? currentSpeedKmh : 0);
                     long now = System.currentTimeMillis();
                     
@@ -190,8 +210,8 @@ public class BackgroundTrackingService extends Service {
                         lastBroadcastTime = now;
                     }
 
-                    // Use currentSpeedKmh for activity recognition because calculatedSpeedKmh can spike
-                    float activeSpeed = currentSpeedKmh;
+                    // Use the higher of GPS speed and calculated speed for activity recognition
+                    float activeSpeed = Math.max(currentSpeedKmh, calculatedSpeedKmh);
 
                     // --- Smart Activity Recognition (Scooter vs Walk) ---
                     if (activeSpeed >= 6.0f) {
@@ -221,21 +241,25 @@ public class BackgroundTrackingService extends Service {
                     if (distanceMeters >= 5.0f) {
                         float maxAllowedDistance = Math.max(150.0f, (timeDeltaMs / 1000.0f) * 41.6f);
                         if (distanceMeters < maxAllowedDistance) {
-                            if (activeSpeed >= 1.0f) {
-                                float distKm = (distanceMeters / 1000.0f);
-                                if (isScooterMode) {
-                                    accumulatedDistanceKm += distKm;
-                                    updateNativeStats(distKm);
-                                } else {
-                                    pendingDistanceKm += distKm;
-                                    if (pendingDistanceKm > 0.5f) pendingDistanceKm = 0.5f;
-                                }
+                            SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+                            float multiplier = prefs.getFloat("distance_multiplier", 1.0f);
+                            float distKm = (distanceMeters / 1000.0f) * multiplier;
+                            // When in confirmed scooter mode, always count distance.
+                            // The 5m minimum guard already prevents GPS drift.
+                            // GPS speed sensors report 0 at low speeds, which was
+                            // causing 1-2 km loss per trip in heavy traffic.
+                            if (isScooterMode) {
+                                accumulatedDistanceKm += distKm;
+                                updateNativeStats(distKm);
+                            } else if (activeSpeed >= 1.0f) {
+                                pendingDistanceKm += distKm;
+                                if (pendingDistanceKm > 0.5f) pendingDistanceKm = 0.5f;
                             }
-                            lastLocation = location;
-                        } else {
-                            lastLocation = location;
                         }
                     }
+                    // Always update lastLocation to prevent small movements
+                    // accumulating into a jump that exceeds maxAllowedDistance
+                    lastLocation = location;
                 } else {
                     lastLocation = location;
                 }
@@ -310,13 +334,28 @@ public class BackgroundTrackingService extends Service {
         }
     };
 
+    /**
+     * Atomically reads and resets the native GPS distance accumulator.
+     * Must be called from MainActivity instead of doing separate read/reset.
+     */
+    public static float getNativeDistanceAndReset(Context ctx) {
+        synchronized (lock) {
+            SharedPreferences prefs = ctx.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
+            float dist = prefs.getFloat("native_gps_distance", 0.0f);
+            prefs.edit().putFloat("native_gps_distance", 0.0f).apply();
+            return dist;
+        }
+    }
+
     private void updateNativeStats(float distKm) {
         SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
 
-        // 1. Update general unread distance for JS sync
-        float currentStored = prefs.getFloat("native_gps_distance", 0.0f);
-        editor.putFloat("native_gps_distance", currentStored + distKm);
+        // 1. Update general unread distance for JS sync (synchronized to prevent race with getNativeDistanceAndReset)
+        synchronized (lock) {
+            float currentStored = prefs.getFloat("native_gps_distance", 0.0f);
+            editor.putFloat("native_gps_distance", currentStored + distKm);
+        }
 
         // 2. Performance Physics (Calculations - MATCHING REACT KM/L LOGIC)
         float kmPerLiter = prefs.getFloat("setting_consumption", 21.4f); // KM per Liter
@@ -384,7 +423,7 @@ public class BackgroundTrackingService extends Service {
 
     private void showFuelNotificationNative(int kmRemaining) {
         SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
-        String lang = prefs.getString("fuel_settings_language", "ar");
+        String lang = prefs.getString("setting_language", "ar");
         
         String title = lang.equals("ar") ? "⛽ تحذير — الوقود على وشك النفاد" : "⛽ Critical Fuel Warning";
         String body = lang.equals("ar") ?
@@ -494,7 +533,7 @@ public class BackgroundTrackingService extends Service {
 
     private void showGpsDisabledNotification() {
         SharedPreferences prefs = getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
-        String lang = prefs.getString("fuel_settings_language", "ar");
+        String lang = prefs.getString("setting_language", "ar");
 
         String title = lang.equals("ar") ? "📍 تحذير — خدمة الموقع معطّلة" : "📍 Location Services Disabled";
         String body = lang.equals("ar") ?

@@ -9,7 +9,9 @@ import android.os.Build;
 public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+        String action = intent.getAction();
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action)
+                || "android.intent.action.QUICKBOOT_POWERON".equals(action)) {
             SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
             // Check if tracking was active before reboot (using the same key as JS)
             // Note: We'll need to make sure the JS 'was_tracking' is synced to SharedPreferences or use a native flag.

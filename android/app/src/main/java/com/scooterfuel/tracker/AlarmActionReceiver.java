@@ -24,9 +24,13 @@ public class AlarmActionReceiver extends BroadcastReceiver {
                 nm.cancel(7777);
                 nm.cancel(9999);
             }
-            if (MainActivity.instance != null && MainActivity.instance.getBridge() != null) {
-                MainActivity.instance.getBridge().getWebView().post(() -> {
-                    MainActivity.instance.getBridge().triggerWindowJSEvent("stopFuelAlarmEvent");
+            MainActivity activity = MainActivity.getInstance();
+            if (activity != null && activity.getBridge() != null) {
+                activity.getBridge().getWebView().post(() -> {
+                    MainActivity activityInner = MainActivity.getInstance();
+                    if (activityInner != null && activityInner.getBridge() != null) {
+                        activityInner.getBridge().triggerWindowJSEvent("stopFuelAlarmEvent");
+                    }
                 });
             }
         } else if ("SYNC_ODO_ACTION".equals(action)) {
@@ -39,13 +43,19 @@ public class AlarmActionReceiver extends BroadcastReceiver {
                         SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
                         
                         // Update SharedPrefs for Native & JS Bridge
-                        prefs.edit().putFloat("latest_odo_raw", newOdo).apply();
-                        prefs.edit().putString("latest_odo", String.format("ODO: %.0f", newOdo)).apply();
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.putFloat("latest_odo_raw", newOdo);
+                        editor.putString("latest_odo", String.format("ODO: %.0f", newOdo));
+                        editor.apply();
                         
                         // Trigger JS update if app is alive
-                        if (MainActivity.instance != null && MainActivity.instance.getBridge() != null) {
-                            MainActivity.instance.getBridge().getWebView().post(() -> {
-                                MainActivity.instance.getBridge().triggerWindowJSEvent("nativeOdoUpdate", "{ \"odo\": " + newOdo + " }");
+                        MainActivity activity = MainActivity.getInstance();
+                        if (activity != null && activity.getBridge() != null) {
+                            activity.getBridge().getWebView().post(() -> {
+                                MainActivity activityInner = MainActivity.getInstance();
+                                if (activityInner != null && activityInner.getBridge() != null) {
+                                    activityInner.getBridge().triggerWindowJSEvent("nativeOdoUpdate", "{ \"odo\": " + newOdo + " }");
+                                }
                             });
                         }
 

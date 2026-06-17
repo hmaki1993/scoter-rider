@@ -41,9 +41,7 @@ public class FloatingAddFuelOverlay {
     private final Context context;
     private WindowManager windowManager;
     private View overlayView;
-    private boolean isShowing = false;
-    private EditText litersInput;
-    private EditText costInput;
+    private volatile boolean isShowing = false;
     private boolean isFullTank = true;
 
     public FloatingAddFuelOverlay(Context context) {
@@ -81,8 +79,7 @@ public class FloatingAddFuelOverlay {
         Handler handler = new Handler(Looper.getMainLooper());
         handler.post(() -> {
             try {
-                if (litersInput != null) litersInput.clearFocus();
-                if (costInput != null) costInput.clearFocus();
+                if (fuelInput != null) fuelInput.clearFocus();
 
                 // Start animations immediately
                 overlayView.animate()
@@ -289,7 +286,11 @@ public class FloatingAddFuelOverlay {
         // ── Input 2: Fuel Cost Complex Box ──
         LinearLayout inputGroup2 = new LinearLayout(context);
         inputGroup2.setOrientation(LinearLayout.VERTICAL);
-        inputGroup2.setBackground(groupBg);
+        GradientDrawable groupBg2 = new GradientDrawable();
+        groupBg2.setColor(Color.parseColor("#111115"));
+        groupBg2.setCornerRadius(dp(16));
+        groupBg2.setStroke(dp(2), Color.parseColor("#2a2a2a"));
+        inputGroup2.setBackground(groupBg2);
         inputGroup2.setPadding(dp(16), dp(16), dp(16), dp(16));
 
         // Row 1: Labels
@@ -529,7 +530,9 @@ public class FloatingAddFuelOverlay {
                 android.content.Intent updateIntent = new android.content.Intent(context, SpeedometerWidget.class);
                 updateIntent.setAction(SpeedometerWidget.ACTION_UPDATE_STATS);
                 context.sendBroadcast(updateIntent);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                android.util.Log.e("FuelTracker", "Error saving fuel data", e);
+            }
         });
 
         resetBtnContainer.setOnClickListener(v -> {
@@ -603,8 +606,8 @@ public class FloatingAddFuelOverlay {
         card.startAnimation(inAnim);
 
         // Focus input and show keyboard
-        litersInput.requestFocus();
-        litersInput.selectAll();
+        fuelInput.requestFocus();
+        fuelInput.selectAll();
     }
 
     private void addSpacer(LinearLayout layout, int height) {

@@ -2644,6 +2644,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
   const hasMovedRef = useRef(false);
 
   const [price, setPrice] = useState((tracker.settings.fuelPricePerLiter || 14.5).toString());
+  const [multiplier, setMultiplier] = useState((tracker.settings.distanceMultiplier || 1.0).toString());
   const [threshold] = useState((tracker.settings.warningThreshold || 15).toString());
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -2837,7 +2838,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
               {t('vehicleSpecs') || 'VEHICLE SPECS'}
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="fusion-input-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
               <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {t('fuelPrice')}
@@ -2850,6 +2851,22 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
                 onChange={(e) => setPrice(e.target.value)}
               />
             </div>
+            <div className="fusion-input-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('distanceMultiplier')}
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                className="fusion-input"
+                style={{ width: '100%', fontSize: '18px', fontWeight: '800', fontFamily: "'Orbitron', sans-serif" }}
+                value={multiplier}
+                onChange={(e) => setMultiplier(e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', opacity: 0.8, marginTop: '-8px', marginBottom: '16px', lineHeight: '1.4' }}>
+            {t('distanceMultiplierDesc')}
           </div>
         </div>
 
@@ -2937,6 +2954,7 @@ function SettingsModal({ tracker, onClose }: { tracker: any, onClose: () => void
                 fuelPricePerLiter: Number(price),
                 warningThreshold: Number(threshold),
                 isLightMode: tracker.settings.isLightMode,
+                distanceMultiplier: Number(multiplier) || 1.0,
               });
               onClose();
             }}

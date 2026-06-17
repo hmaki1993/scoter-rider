@@ -32,14 +32,14 @@
         <service
             android:name=".BackgroundTrackingService"
             android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="location"
         />
 
         <service
             android:name="de.appplant.cordova.plugin.background.ForegroundService"
             android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="location"
         />
 

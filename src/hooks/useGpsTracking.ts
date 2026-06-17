@@ -97,7 +97,6 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
   const stillCountRef = useRef(0);
   // ── Traffic Mode Logic State ──
   const isScooterModeRef = useRef(true);
-  const scooterModeStartTimeRef = useRef(0);
   const walkingDurationStartRef = useRef(0);
   const pendingDistanceKmRef = useRef(0.0);
 
@@ -483,53 +482,45 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             stillCountRef.current = 0;
           }
 
-          // ── Smart Activity Recognition (Scooter vs Walk) ──
-          // First, calculate distance and speed from last accepted point
-          let activeSpeed = currentKmh;
           const refPoint = lastAcceptedRef.current;
-          
-          
+
+          // ── Calculate speed from distance for more reliable activity recognition ──
+          // GPS speed sensor often reports 0 at low speeds (< 5 km/h), causing
+          // the app to ignore real movement in heavy traffic.
+          let activeSpeed = currentKmh;
           if (refPoint) {
-            const prevTimestamp = refPoint.timestamp;
-            const isValidTimestamp = prevTimestamp > 0 && currTimestamp > prevTimestamp;
-            
-            if (isValidTimestamp) {
-              // const timeDiffMs = Math.max(1, currTimestamp - prevTimestamp);
-              // calculatedKmhFromRef = distFromRef / (timeDiffMs / (1000 * 60 * 60));
+            const refTimestamp = refPoint.timestamp;
+            if (refTimestamp > 0 && currTimestamp > refTimestamp) {
+              const refDist = calculateDistance(refPoint.latitude, refPoint.longitude, useLat, useLon);
+              const refTimeDiffMs = Math.max(1, currTimestamp - refTimestamp);
+              const refCalcKmh = refDist / (refTimeDiffMs / (1000 * 60 * 60));
+              // Use whichever is higher: GPS native speed or distance-calculated speed
+              // This prevents GPS speed underreporting from dropping real movement
+              activeSpeed = Math.max(currentKmh, refCalcKmh);
             }
           }
-          
-          activeSpeed = currentKmh;
 
-          if (activeSpeed >= 8.0) {
-            if (scooterModeStartTimeRef.current === 0) {
-              scooterModeStartTimeRef.current = currTimestamp;
-            } else if (currTimestamp - scooterModeStartTimeRef.current >= 4000) {
-              isScooterModeRef.current = true;
-              walkingDurationStartRef.current = 0;
-              if (pendingDistanceKmRef.current > 0.0) {
-                onDistanceUpdateRef.current(pendingDistanceKmRef.current, currentKmh);
-                pendingDistanceKmRef.current = 0.0;
-              }
+          // ── Smart Activity Recognition (Scooter vs Walk) ──
+          if (activeSpeed >= 6.0) {
+            isScooterModeRef.current = true;
+            walkingDurationStartRef.current = 0;
+            if (pendingDistanceKmRef.current > 0.0) {
+              onDistanceUpdateRef.current(pendingDistanceKmRef.current * (settingsRef.current.distanceMultiplier ?? 1.0), currentKmh);
+              pendingDistanceKmRef.current = 0.0;
+            }
+          } else if (activeSpeed >= 1.0) {
+            // Moving slowly (could be walking or heavy traffic)
+            if (walkingDurationStartRef.current === 0) {
+              walkingDurationStartRef.current = currTimestamp;
+            } else if (currTimestamp - walkingDurationStartRef.current >= 90000) {
+              // 90 seconds of CONTINUOUS slow movement without stopping
+              isScooterModeRef.current = false;
+              pendingDistanceKmRef.current = 0.0;
             }
           } else {
-            scooterModeStartTimeRef.current = 0;
-            isScooterModeRef.current = false;
-            
-            if (activeSpeed >= 1.0) {
-              if (walkingDurationStartRef.current === 0) {
-                walkingDurationStartRef.current = currTimestamp;
-              } else if (currTimestamp - walkingDurationStartRef.current >= 45000) {
-                pendingDistanceKmRef.current = 0.0;
-              }
-            } else {
-              // Pause timer when stopped
-              if (walkingDurationStartRef.current !== 0 && currTimestamp > 0) {
-                // Just use the time since last location update (roughly 1000ms if watchPosition is 1hz)
-                // We don't have prevTimestamp here, but we know location updates are ~1s apart
-                walkingDurationStartRef.current += 1000;
-              }
-            }
+            // Stopped. In traffic we stop often, while walking is usually continuous.
+            // Reset the walking timer so we stay in scooter mode in stop-and-go traffic.
+            walkingDurationStartRef.current = 0;
           }
 
           const finalDisplaySpeed = Math.round(currentKmh);
@@ -595,13 +586,15 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                 }
 
                 if (bearingOk) {
-                  if (activeSpeed >= 1.0) {
-                    if (isScooterModeRef.current) {
-                      onDistanceUpdateRef.current(dist, currentKmh);
-                    } else {
-                      pendingDistanceKmRef.current += dist;
-                      if (pendingDistanceKmRef.current > 0.5) pendingDistanceKmRef.current = 0.5;
-                    }
+                  // When in confirmed scooter mode, always count distance.
+                  // The 5m minimum guard already prevents GPS drift from being counted.
+                  // GPS speed sensors often report 0 at low speeds (< 5 km/h),
+                  // which was causing 1-2 km loss per trip in heavy traffic.
+                  if (isScooterModeRef.current) {
+                    onDistanceUpdateRef.current(dist * (settingsRef.current.distanceMultiplier ?? 1.0), currentKmh);
+                  } else if (activeSpeed >= 1.0) {
+                    pendingDistanceKmRef.current += dist;
+                    if (pendingDistanceKmRef.current > 0.5) pendingDistanceKmRef.current = 0.5;
                   } else {
                     console.log(`[GPS] Ignoring distance. Speed: ${currentKmh.toFixed(1)} km/h, Calc: ${calculatedKmh.toFixed(1)} km/h`);
                   }
@@ -625,8 +618,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
 
           // Always update lastPosition for persistence
           const posToSave: SavedPosition = {
-            latitude: smoothLat,
-            longitude: smoothLon,
+            latitude: useLat,
+            longitude: useLon,
             timestamp: currTimestamp,
             accuracy
           };
@@ -678,6 +671,7 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
     lastPositionRef.current = null;
     lastAcceptedRef.current = null;
     kalmanLat.current = null;
+    kalmanLon.current = null;
   };
 
   return { isTracking, isStarting, currentSpeed, gpsUpdateCount, lastGpsTime, startTracking, stopTracking };

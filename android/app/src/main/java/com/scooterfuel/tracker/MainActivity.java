@@ -17,11 +17,16 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import java.lang.ref.WeakReference;
 
 public class MainActivity extends BridgeActivity {
     public Ringtone currentRingtone;
     public static String pendingWidgetAction = null;
-    public static MainActivity instance;
+    private static WeakReference<MainActivity> instanceRef;
+
+    public static MainActivity getInstance() {
+        return instanceRef != null ? instanceRef.get() : null;
+    }
 
     public void triggerStopEvent() {
         if (bridge != null) {
@@ -31,11 +36,20 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        instance = this;
+        instanceRef = new WeakReference<>(this);
         registerPlugin(AlarmPlugin.class);
         super.onCreate(savedInstanceState);
         
         handleIntent(getIntent());
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (instanceRef != null) {
+            instanceRef.clear();
+            instanceRef = null;
+        }
     }
 
     @Override
@@ -371,6 +385,10 @@ public class MainActivity extends BridgeActivity {
                 if (call.hasOption("fuelPercent")) {
                     editor.putInt("latest_fuelPercent", call.getInt("fuelPercent"));
                 }
+                if (call.hasOption("distanceMultiplier")) {
+                    float mult = call.getFloat("distanceMultiplier").floatValue();
+                    editor.putFloat("distance_multiplier", mult);
+                }
 
                 editor.apply();
 
@@ -462,12 +480,7 @@ public class MainActivity extends BridgeActivity {
         @PluginMethod
         public void getNativeDistance(PluginCall call) {
             try {
-                Context context = getContext();
-                android.content.SharedPreferences prefs = context.getSharedPreferences("FuelTrackerPrefs", Context.MODE_PRIVATE);
-                float dist = prefs.getFloat("native_gps_distance", 0.0f);
-                
-                // Reset it immediately after reading it
-                prefs.edit().putFloat("native_gps_distance", 0.0f).apply();
+                float dist = BackgroundTrackingService.getNativeDistanceAndReset(getContext());
 
                 com.getcapacitor.JSObject ret = new com.getcapacitor.JSObject();
                 ret.put("distanceKm", (double) dist);
@@ -583,7 +596,7 @@ public class MainActivity extends BridgeActivity {
                 intent.putExtra("oilLeft", oilLeft);
                 intent.putExtra("trip", trip);
                 intent.putExtra("budget", budget);
-                intent.putExtra("odoText", odo);
+                intent.putExtra("odo", odo);
 
                 context.sendBroadcast(intent);
                 call.resolve();
@@ -614,7 +627,7 @@ public class MainActivity extends BridgeActivity {
                 intent.putExtra("oilLeft", prefs.getString("latest_oilLeft", "OIL: 0"));
                 intent.putExtra("trip", prefs.getString("latest_trip", "TRIP: 0"));
                 intent.putExtra("budget", prefs.getString("latest_budget", "0 EGP"));
-                intent.putExtra("odoText", prefs.getString("latest_odo", "ODO: 0"));
+                intent.putExtra("odo", prefs.getString("latest_odo", "ODO: 0"));
 
                 intent.putExtra("accentColor", WidgetStore.getColor(context));
                 intent.putExtra("opacity", WidgetStore.getOpacity(context));

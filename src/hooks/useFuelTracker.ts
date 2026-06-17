@@ -25,6 +25,7 @@ export interface FuelSettings {
   lastOilChangeOdo: number;
   widgetAccentColor: string;
   widgetOpacity: number;
+  distanceMultiplier: number;
 }
 
 export interface UserProfile {
@@ -68,6 +69,7 @@ const DEFAULT_SETTINGS: FuelSettings = {
   lastOilChangeOdo: 0,
   widgetAccentColor: '#00f0ff',
   widgetOpacity: 100,
+  distanceMultiplier: 1.0,
 };
 
 
@@ -82,7 +84,8 @@ function isAndroidPlatform() {
 export const useFuelTracker = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('scooter_user_profile');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) { try { return JSON.parse(saved); } catch (e) { console.error('Corrupt scooter_user_profile, resetting', e); localStorage.removeItem('scooter_user_profile'); } }
+    return null;
   });
   const [settings, setSettings] = useState<FuelSettings>(() => {
     const saved = localStorage.getItem('fuel_settings');
@@ -98,11 +101,13 @@ export const useFuelTracker = () => {
   });
   const [fuelState, setFuelState] = useState<FuelState>(() => {
     const saved = localStorage.getItem('fuel_state');
-    return saved ? JSON.parse(saved) : { estimatedFuelLiters: 0, lastOdo: 0, totalGpsDistance: 0 };
+    if (saved) { try { return JSON.parse(saved); } catch (e) { console.error('Corrupt fuel_state, resetting', e); localStorage.removeItem('fuel_state'); } }
+    return { estimatedFuelLiters: 0, lastOdo: 0, totalGpsDistance: 0 };
   });
   const [logs, setLogs] = useState<RefuelLog[]>(() => {
     const saved = localStorage.getItem('fuel_logs');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) { try { return JSON.parse(saved); } catch (e) { console.error('Corrupt fuel_logs, resetting', e); localStorage.removeItem('fuel_logs'); } }
+    return [];
   });
 
   const [trackingError, setTrackingError] = useState<{ message: string; action?: 'openGPS' | 'openSettings' } | null>(null);
@@ -301,6 +306,7 @@ export const useFuelTracker = () => {
                   const newOdo = res.odo;
                   setFuelState(prev => {
                     const diff = newOdo - prev.lastOdo;
+                    if (diff < 0) return prev;
                     const fuelAdj = diff / (settingsRef.current.avgConsumption || 21.4);
                     return {
                       ...prev,
@@ -357,16 +363,18 @@ export const useFuelTracker = () => {
     if (isAndroidPlatform()) {
       try {
         const alarmPlugin = AlarmPlugin;
+        const rawRange = fuelState.estimatedFuelLiters * settings.avgConsumption;
         alarmPlugin.syncStateToNative({
           trip: fuelState.totalGpsDistance,
           fuelLiters: fuelState.estimatedFuelLiters,
           odo: fuelState.lastOdo,
-          range: (fuelState.estimatedFuelLiters * settings.avgConsumption).toFixed(1) + " KM",
-          fuelPercent: settings.tankCapacity > 0 ? Math.round((fuelState.estimatedFuelLiters / settings.tankCapacity) * 100) : 0
+          range: (isFinite(rawRange) ? rawRange.toFixed(1) : "0.0") + " KM",
+          fuelPercent: settings.tankCapacity > 0 ? Math.round((fuelState.estimatedFuelLiters / settings.tankCapacity) * 100) : 0,
+          distanceMultiplier: settings.distanceMultiplier ?? 1.0
         }).catch(() => {});
       } catch (e) { /* ignore */ }
     }
-  }, [fuelState, settings.avgConsumption, settings.tankCapacity]);
+  }, [fuelState, settings.avgConsumption, settings.tankCapacity, settings.distanceMultiplier]);
   useEffect(() => { localStorage.setItem('fuel_logs', JSON.stringify(logs)); }, [logs]);
 
   // ── Low-Fuel Alerts ───────────────────────────────────────────────────────
@@ -478,7 +486,7 @@ export const useFuelTracker = () => {
     setFuelState(prev => {
       const diff = odo - prev.lastOdo;
       // Calculate fuel adjustment based on the odometer shift (positive or negative)
-      const fuelAdjustment = diff / settings.avgConsumption;
+      const fuelAdjustment = diff / (settingsRef.current.avgConsumption || 21.4);
       
       return { 
         ...prev, 
@@ -579,7 +587,7 @@ export const useFuelTracker = () => {
   const runOutOdo = fuelState.lastOdo + rangeRemainingKm;
   const isWarning = rangeRemainingKm <= settings.warningThreshold;
   const isDanger = rangeRemainingKm <= 10;
-  const fuelPercentage = Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100);
+  const fuelPercentage = settings.tankCapacity > 0 ? Math.max(0, (fuelState.estimatedFuelLiters / settings.tankCapacity) * 100) : 0;
   const kmSinceOilChange = Math.max(0, fuelState.lastOdo - settings.lastOilChangeOdo);
   const kmUntilNextOilChange = Math.max(0, settings.oilChangeInterval - kmSinceOilChange);
 
