@@ -475,16 +475,14 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             currentKmh = nativeSpeed * 3.6;
           }
 
-          // ── Track if we're standing still ──
-          if (currentKmh < 3) {
+          // ── Track if we're truly stationary (not just slow in traffic) ──
+          // Only count as "still" when speed is below 1.5 km/h.
+          // This prevents incorrectly blocking distance in heavy traffic (2-5 km/h).
+          // Walking detection is handled separately by walkingDurationStartRef.
+          if (currentKmh < 1.5) {
             stillCountRef.current++;
           } else {
             stillCountRef.current = 0;
-          }
-
-          // If still for more than 1 minute (assuming ~5s update interval), exit scooter mode
-          if (stillCountRef.current >= 12) {
-            isScooterModeRef.current = false;
           }
 
           const refPoint = lastAcceptedRef.current;
@@ -542,13 +540,17 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
               useLat, useLon
             );
 
-            // Also compute calculated speed from distance
+            // Also compute calculated speed from distance.
+            // Require >= 3s gap to avoid GPS drift amplification:
+            // a 10m GPS jitter over 1s gives a fake 36 km/h reading!
             let calculatedKmh = 0;
             let timeDiffMs = 0;
             if (isValidTimestamp) {
               timeDiffMs = Math.max(1, currTimestamp - prevTimestamp);
-              const hours = timeDiffMs / (1000 * 60 * 60);
-              calculatedKmh = dist / hours;
+              if (timeDiffMs >= 3000) {
+                const hours = timeDiffMs / (1000 * 60 * 60);
+                calculatedKmh = dist / hours;
+              }
             }
 
             // Use native speed primarily, fall back to calculated
@@ -597,7 +599,8 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                   // which was causing 1-2 km loss per trip in heavy traffic.
                   if (isScooterModeRef.current) {
                     // Prevent stationary drift: do not accumulate distance if speed is near zero and we have been still
-                    const isStationary = currentKmh < 1.2 && stillCountRef.current >= 2;
+                    // Truly stationary = speed < 0.8 km/h AND still for >= 3 consecutive readings
+                    const isStationary = currentKmh < 0.8 && stillCountRef.current >= 3;
                     if (!isStationary) {
                       onDistanceUpdateRef.current(dist * (settingsRef.current.distanceMultiplier ?? 1.0), currentKmh);
                     } else {

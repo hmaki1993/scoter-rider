@@ -190,11 +190,10 @@ public class BackgroundTrackingService extends Service {
                         currentSpeedKmh = (distanceMeters / 1000.0f) / hours;
                     }
 
-                    // Calculate speed from distance as well, for more reliable activity recognition.
-                    // GPS speed sensor often reports 0 at low speeds (< 5 km/h), causing
-                    // the app to ignore real movement in heavy traffic.
+                    // Require at least 3s gap to avoid GPS drift amplification:
+                    // a 10m GPS jitter over 1s gives a fake 36 km/h calculated speed!
                     float calculatedSpeedKmh = 0.0f;
-                    {
+                    if (timeDeltaMs >= 3000) {
                         float calcHours = timeDeltaMs / (1000.0f * 60.0f * 60.0f);
                         if (calcHours > 0) {
                             calculatedSpeedKmh = (distanceMeters / 1000.0f) / calcHours;
@@ -214,16 +213,14 @@ public class BackgroundTrackingService extends Service {
                     // Use the higher of GPS speed and calculated speed for activity recognition
                     float activeSpeed = Math.max(currentSpeedKmh, calculatedSpeedKmh);
 
-                    // Track if we're standing still
-                    if (currentSpeedKmh < 3.0f) {
+                    // Track if we're truly stationary (not just slow in traffic).
+                    // Only count as "still" when speed < 1.5 km/h to avoid blocking
+                    // distance counting in heavy slow-moving traffic (2-5 km/h).
+                    // Walking detection is handled separately by walkingDurationStart.
+                    if (currentSpeedKmh < 1.5f) {
                         stillCount++;
                     } else {
                         stillCount = 0;
-                    }
-
-                    // Exit scooter mode if still for more than 1 minute (assuming ~5s updates)
-                    if (stillCount >= 12) {
-                        isScooterMode = false;
                     }
 
                     // --- Smart Activity Recognition (Scooter vs Walk) ---
@@ -263,7 +260,8 @@ public class BackgroundTrackingService extends Service {
                             // causing 1-2 km loss per trip in heavy traffic.
                             if (isScooterMode) {
                                 // Prevent stationary drift: do not accumulate distance if speed is near zero and we have been still
-                                boolean isStationary = currentSpeedKmh < 1.2f && stillCount >= 2;
+                                // Truly stationary = speed < 0.8 km/h AND still for >= 3 consecutive readings
+                                boolean isStationary = currentSpeedKmh < 0.8f && stillCount >= 3;
                                 if (!isStationary) {
                                     accumulatedDistanceKm += distKm;
                                     updateNativeStats(distKm);
