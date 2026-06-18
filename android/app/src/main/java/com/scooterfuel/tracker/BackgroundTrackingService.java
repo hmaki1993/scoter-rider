@@ -47,6 +47,8 @@ public class BackgroundTrackingService extends Service {
     private long walkingDurationStart = 0;
     private float pendingDistanceKm = 0.0f;
     private long lastHighSpeedTime = 0;
+    private Location acceptedLocation;
+    private float lastAcceptedBearing = -1.0f;
     private long stopStartTime = 0;
     private int stillCount = 0;
     
@@ -177,10 +179,10 @@ public class BackgroundTrackingService extends Service {
                     return; // Ignore low accuracy points
                 }
 
-                if (lastLocation != null) {
-                    float distanceMeters = lastLocation.distanceTo(location);
+                if (acceptedLocation != null) {
+                    float distanceMeters = acceptedLocation.distanceTo(location);
                     float currentSpeedKmh = 0.0f;
-                    long timeDeltaMs = Math.max(1000, location.getTime() - lastLocation.getTime());
+                    long timeDeltaMs = Math.max(1000, location.getTime() - acceptedLocation.getTime());
                     
                     // 1. UI Speed Calculation
                     if (location.hasSpeed()) {
@@ -258,28 +260,51 @@ public class BackgroundTrackingService extends Service {
                             // The 5m minimum guard already prevents GPS drift.
                             // GPS speed sensors report 0 at low speeds, which was
                             // causing 1-2 km loss per trip in heavy traffic.
-                            if (isScooterMode) {
-                                // Prevent stationary drift: do not accumulate distance if speed is near zero and we have been still
-                                // Truly stationary = speed < 0.8 km/h AND still for >= 3 consecutive readings
-                                boolean isStationary = currentSpeedKmh < 0.8f && stillCount >= 3;
-                                if (!isStationary) {
-                                    accumulatedDistanceKm += distKm;
-                                    updateNativeStats(distKm);
-                                } else {
-                                    android.util.Log.d("FuelTracker", "Ignoring stationary drift: speed=" + currentSpeedKmh + ", stillCount=" + stillCount);
+                            boolean bearingOk = true;
+                            float bearing = acceptedLocation.bearingTo(location);
+                            if (bearing < 0) bearing += 360.0f;
+
+                            if (lastAcceptedBearing >= 0 && distanceMeters < 30.0f) {
+                                float bearingDiff = Math.abs(bearing - lastAcceptedBearing);
+                                if (bearingDiff > 180.0f) bearingDiff = 360.0f - bearingDiff;
+                                if (bearingDiff > 170.0f) {
+                                    bearingOk = false;
+                                    android.util.Log.d("FuelTracker", "Bearing flip detected, ignoring drift segment");
                                 }
-                            } else if (activeSpeed >= 1.0f) {
-                                pendingDistanceKm += distKm;
-                                if (pendingDistanceKm > 0.5f) pendingDistanceKm = 0.5f;
+                            }
+
+                            if (bearingOk) {
+                                if (isScooterMode) {
+                                    // Prevent stationary drift: do not accumulate distance if speed is near zero and we have been still
+                                    // Truly stationary = speed < 0.8 km/h AND still for >= 3 consecutive readings
+                                    boolean isStationary = currentSpeedKmh < 0.8f && stillCount >= 3;
+                                    if (!isStationary) {
+                                        accumulatedDistanceKm += distKm;
+                                        updateNativeStats(distKm);
+                                    } else {
+                                        android.util.Log.d("FuelTracker", "Ignoring stationary drift: speed=" + currentSpeedKmh + ", stillCount=" + stillCount);
+                                    }
+                                } else if (activeSpeed >= 1.0f) {
+                                    pendingDistanceKm += distKm;
+                                    if (pendingDistanceKm > 0.5f) pendingDistanceKm = 0.5f;
+                                }
+                                
+                                lastAcceptedBearing = bearing;
+                                acceptedLocation = location;
                             }
                         }
                     }
-                    // Always update lastLocation to prevent small movements
-                    // accumulating into a jump that exceeds maxAllowedDistance
-                    lastLocation = location;
+                    // Fallback to update acceptedLocation if a huge jump happens, to reset
+                    if (distanceMeters >= Math.max(150.0f, (timeDeltaMs / 1000.0f) * 41.6f)) {
+                        acceptedLocation = location;
+                        lastAcceptedBearing = -1.0f;
+                    }
                 } else {
-                    lastLocation = location;
+                    acceptedLocation = location;
                 }
+                
+                // Always update lastLocation for external reference if needed
+                lastLocation = location;
             } catch (Exception e) {
                 android.util.Log.e("FuelTracker", "Crash prevented in location update", e);
             }
