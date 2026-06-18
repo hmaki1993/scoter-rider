@@ -482,6 +482,11 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
             stillCountRef.current = 0;
           }
 
+          // If still for more than 1 minute (assuming ~5s update interval), exit scooter mode
+          if (stillCountRef.current >= 12) {
+            isScooterModeRef.current = false;
+          }
+
           const refPoint = lastAcceptedRef.current;
 
           // ── Calculate speed from distance for more reliable activity recognition ──
@@ -591,7 +596,13 @@ export function useGpsTracking({ settings, initialOdo, onDistanceUpdate, onTrack
                   // GPS speed sensors often report 0 at low speeds (< 5 km/h),
                   // which was causing 1-2 km loss per trip in heavy traffic.
                   if (isScooterModeRef.current) {
-                    onDistanceUpdateRef.current(dist * (settingsRef.current.distanceMultiplier ?? 1.0), currentKmh);
+                    // Prevent stationary drift: do not accumulate distance if speed is near zero and we have been still
+                    const isStationary = currentKmh < 1.2 && stillCountRef.current >= 2;
+                    if (!isStationary) {
+                      onDistanceUpdateRef.current(dist * (settingsRef.current.distanceMultiplier ?? 1.0), currentKmh);
+                    } else {
+                      console.log(`[GPS] Ignoring stationary drift: speed=${currentKmh.toFixed(1)} km/h, stillCount=${stillCountRef.current}`);
+                    }
                   } else if (activeSpeed >= 1.0) {
                     pendingDistanceKmRef.current += dist;
                     if (pendingDistanceKmRef.current > 0.5) pendingDistanceKmRef.current = 0.5;

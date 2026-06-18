@@ -48,6 +48,7 @@ public class BackgroundTrackingService extends Service {
     private float pendingDistanceKm = 0.0f;
     private long lastHighSpeedTime = 0;
     private long stopStartTime = 0;
+    private int stillCount = 0;
     
     // --- Floating Overlay ---
     private FloatingOdoOverlay floatingOverlay;
@@ -213,6 +214,18 @@ public class BackgroundTrackingService extends Service {
                     // Use the higher of GPS speed and calculated speed for activity recognition
                     float activeSpeed = Math.max(currentSpeedKmh, calculatedSpeedKmh);
 
+                    // Track if we're standing still
+                    if (currentSpeedKmh < 3.0f) {
+                        stillCount++;
+                    } else {
+                        stillCount = 0;
+                    }
+
+                    // Exit scooter mode if still for more than 1 minute (assuming ~5s updates)
+                    if (stillCount >= 12) {
+                        isScooterMode = false;
+                    }
+
                     // --- Smart Activity Recognition (Scooter vs Walk) ---
                     if (activeSpeed >= 6.0f) {
                         isScooterMode = true;
@@ -249,8 +262,14 @@ public class BackgroundTrackingService extends Service {
                             // GPS speed sensors report 0 at low speeds, which was
                             // causing 1-2 km loss per trip in heavy traffic.
                             if (isScooterMode) {
-                                accumulatedDistanceKm += distKm;
-                                updateNativeStats(distKm);
+                                // Prevent stationary drift: do not accumulate distance if speed is near zero and we have been still
+                                boolean isStationary = currentSpeedKmh < 1.2f && stillCount >= 2;
+                                if (!isStationary) {
+                                    accumulatedDistanceKm += distKm;
+                                    updateNativeStats(distKm);
+                                } else {
+                                    android.util.Log.d("FuelTracker", "Ignoring stationary drift: speed=" + currentSpeedKmh + ", stillCount=" + stillCount);
+                                }
                             } else if (activeSpeed >= 1.0f) {
                                 pendingDistanceKm += distKm;
                                 if (pendingDistanceKm > 0.5f) pendingDistanceKm = 0.5f;
